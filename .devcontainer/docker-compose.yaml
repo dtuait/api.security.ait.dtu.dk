@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  app-soc-api:
+    build:
+      context: .
+      dockerfile: Dockerfile-app-soc-api
+    image: vicmrp/app-soc-api
+    container_name: app
+    restart: unless-stopped
+    tty: true
+    volumes:
+      - ..:/usr/src/project
+    

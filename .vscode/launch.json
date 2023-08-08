@@ -1,0 +1,29 @@
+{
+    "configurations": [
+        {
+            "name": "Python: SCCM object",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/app/manage.py",
+            "args": [
+                "runscript",
+                "sccm.scripts.sccm_get_computer_info"
+            ],
+            "django": true,
+            "justMyCode": true
+        },
+
+        {
+            "name": "Python: Runserver",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/app/manage.py",
+            "args": [
+                "runserver",
+                "0.0.0.0:8000"
+            ],
+            "django": true,
+            "justMyCode": true
+        },
+    ]
+}

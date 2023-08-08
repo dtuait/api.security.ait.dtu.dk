@@ -1,0 +1,14 @@
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from .views import ItemViewSet, SCCMViewSet
+
+router = DefaultRouter()
+router.register(r'items', ItemViewSet)
+# router.register(r'sccm', SCCMViewSet, basename='sccm')
+
+
+urlpatterns = [
+    path('', include(router.urls)),
+    path('sccm/<str:computer_name>/', SCCMViewSet.as_view({'get': 'retrieve'})),
+]
+
