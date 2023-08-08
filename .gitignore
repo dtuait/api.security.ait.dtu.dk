@@ -5,4 +5,4 @@ app/venv/
 examples/
 
 
-app/db.sqlite
+app/db.sqlite3
