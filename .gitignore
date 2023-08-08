@@ -3,3 +3,6 @@
 
 app/venv/
 examples/
+
+
+app/db.sqlite
