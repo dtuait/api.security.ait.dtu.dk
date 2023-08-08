@@ -1,11 +1,11 @@
 version: '3.8'
 
 services:
-  app-soc-api:
+  api-security-ait-dtu-dk:
     build:
       context: .
-      dockerfile: Dockerfile-app-soc-api
-    image: vicmrp/app-soc-api
+      dockerfile: Dockerfile-api-security-ait-dtu-dk
+    image: vicmrp/api-security-ait-dtu-dk
     container_name: app
     restart: unless-stopped
     tty: true
