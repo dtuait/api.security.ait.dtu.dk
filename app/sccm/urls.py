@@ -9,6 +9,7 @@ router.register(r'items', ItemViewSet)
 
 urlpatterns = [
     path('', include(router.urls)),
-    path('sccm/<str:computer_name>/', SCCMViewSet.as_view({'get': 'retrieve'})),
+    path('sccm/v1/<str:computer_name>/', SCCMViewSet.as_view({'get': 'retrieve'})),
+    # path('sccm/v2/<str:computer_name>/', SCCMViewSet.as_view({'get': 'retrieve'})),
 ]
 

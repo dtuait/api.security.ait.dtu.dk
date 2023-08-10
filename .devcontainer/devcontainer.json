@@ -1,8 +1,9 @@
+
 {
     "name": "Dev container: api-security-ait-dtu-dk",
     "dockerComposeFile": "docker-compose.yaml",
     "service": "api-security-ait-dtu-dk",
-    "workspaceFolder": "/usr/src/project",
+    "workspaceFolder": "/mnt/project",
     "customizations": {
         "vscode": {
             "settings": {

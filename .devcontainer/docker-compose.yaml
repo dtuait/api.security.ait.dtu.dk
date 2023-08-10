@@ -10,5 +10,5 @@ services:
     restart: unless-stopped
     tty: true
     volumes:
-      - ..:/usr/src/project
+      - ..:/mnt/project
     

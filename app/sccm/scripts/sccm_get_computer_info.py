@@ -87,21 +87,25 @@ WHERE
 
     # Execute the SQL statement
     try:
+
+        
         cursor = sccmdbh.execute(sql_statement, computer_name)
         row = cursor.fetchone()
         
         columns = [column[0] for column in cursor.description]
 
-        # Convert the row to a dictionary
+        # Check if the row is None and return an appropriate error message
+        if row is None:
+            return None, f"No computer found with name {computer_name}"
+
         row_dict = dict(zip(columns, row))
-
-        return row_dict
-
+        return row_dict, None
 
 
     except pyodbc.Error as e:
-        print(f"Error executing SQL statement: {e}")
-        exit()
+        print(f"Error: executing SQL statement: {e}")
+        return None, f"Internal server error"
+        
 
 
 
