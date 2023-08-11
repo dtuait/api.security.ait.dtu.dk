@@ -1,9 +1,9 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import ItemViewSet, SCCMViewSet
+from .views import SCCMViewSet
 
 router = DefaultRouter()
-router.register(r'items', ItemViewSet)
+# router.register(r'items', ItemViewSet)
 # router.register(r'sccm', SCCMViewSet, basename='sccm')
 
 

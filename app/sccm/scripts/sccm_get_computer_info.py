@@ -34,53 +34,65 @@ def get_computer_info(computer_name):
 
 
     sql_statement = """
--- TOP 1 is used to limit the result to 1 row
 SELECT DISTINCT TOP 1
+
     VRS.Netbios_Name0 as 'MachineName', 
-    VCS.Model0 as 'Model', 
-    VCS.ResourceID,  
-    VRS.description0 as 'Description',  
-    VENCVOL.DriveLetter0 as 'SystemDrive', 
-    VENCVOL.ProtectionStatus0 as 'SystemDriveEncryption', 
-    VENCL.ChassisTypes0 as 'ComputerType',
     VRS.Last_Logon_Timestamp0 as 'LastLogon',
     VRS.CPUType0 as 'CPUType',
     VRS.Operating_System_Name_and0 as 'OperatingSystem', 
-    LDisk.Size0 as 'SystemDriveSize', 
-    LDisk.FreeSpace0 AS 'SystemDriveFree', 
-    VUMR.UniqueUserName as 'PrimaryUser', 
+    VRS.Build01 as 'OSVesionBuild',
     VRS.User_Name0 as 'LastLogonUser',
+    VRS.description0 as 'Description', 
 
-    -- sccm agent status
-    ws.LastHWScan, 
+    VCS.Model0 as 'Model',	
+    VCS.ResourceID,  
 
-    -- last boot time
-    OS.LastBootUpTime0 AS 'LastBootTime',
+    LDisk.Size0 as 'SystemDriveSize', 
+    LDisk.FreeSpace0 as 'SystemDriveFree', 
 
-    -- TPM
+    -- sccm agent status	
+    ws.LastHWScan as 'LastTimeAgentTalkedToServer',
+
+    -- TPM 
     v_GS_TPM.SpecVersion0 as 'TPMVersion',
     v_GS_TPM.IsActivated_InitialValue0 as 'TPMActivated',
     v_GS_TPM.IsEnabled_InitialValue0 as 'TPMEnabled',
     v_GS_TPM.IsOwned_InitialValue0 as 'TPMOwned',
 
-    -- uefi
     SecureBoot0 AS 'SecureBoot',
     UEFI0 AS 'UEFI',
+        
+    OS.LastBootUpTime0 AS 'LastBootTime',
 
-    VRS.Build01 as 'OSVesionBuild'
+    VENCVOL.DriveLetter0 as 'SystemDrive', 
+    VENCVOL.ProtectionStatus0 as 'SystemDriveEncryption', 
 
-FROM (
+    VENCL.ChassisTypes0 as 'ComputerType',
+
+    VUMR.UniqueUserName as 'PrimaryUser'
+
+FROM 
     V_R_System VRS 
-    INNER JOIN v_GS_COMPUTER_SYSTEM VCS on VCS.ResourceID=VRS.ResourceID 
-    INNER JOIN v_GS_Logical_Disk LDisk on LDisk.ResourceID = VRS.ResourceID 
-    INNER JOIN v_GS_WORKSTATION_STATUS as ws ON VRS.ResourceID = ws.ResourceID 
-    INNER JOIN v_GS_TPM ON VRS.ResourceID = v_GS_TPM.ResourceID
-    INNER JOIN v_GS_FIRMWARE AS fw ON VRS.ResourceID = fw.ResourceID
-    INNER JOIN v_GS_OPERATING_SYSTEM OS ON OS.ResourceID = VRS.ResourceID
-    LEFT JOIN v_GS_ENCRYPTABLE_VOLUME VENCVOL ON VENCVOL.ResourceID = VRS.ResourceID 
+
+    LEFT JOIN v_GS_COMPUTER_SYSTEM VCS on VCS.ResourceID=VRS.ResourceID
+    LEFT JOIN v_GS_Logical_Disk LDisk on LDisk.ResourceID = VRS.ResourceID
+
+    -- sccm agent status
+    LEFT JOIN v_GS_WORKSTATION_STATUS as ws ON VRS.ResourceID = ws.ResourceID
+
+    -- TPM 
+    LEFT JOIN v_GS_TPM ON VRS.ResourceID = v_GS_TPM.ResourceID
+
+    -- UEFI
+    LEFT JOIN v_GS_FIRMWARE AS fw ON VRS.ResourceID = fw.ResourceID
+
+    -- last boot time
+    LEFT JOIN v_GS_OPERATING_SYSTEM OS ON OS.ResourceID = VRS.ResourceID
+
+    LEFT JOIN v_GS_ENCRYPTABLE_VOLUME VENCVOL ON VENCVOL.ResourceID = VRS.ResourceID
     LEFT JOIN v_GS_SYSTEM_ENCLOSURE VENCL on VENCL.ResourceID = VRS.ResourceID
     LEFT JOIN v_UserMachineRelationship VUMR on VRS.ResourceID=VUMR.MachineResourceID 
-  ) 
+   
 WHERE
     VRS.Netbios_Name0=?
 """
@@ -111,7 +123,8 @@ WHERE
 
 
 def run():
-    get_computer_info("DTU-CND1363SBJ")
+    computer_info = get_computer_info("MEK-425-222-02P")
+    print(computer_info)
 
 
 

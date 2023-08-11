@@ -5,9 +5,6 @@ from .serializers import ItemSerializer, SCCMSerializer
 from sccm.scripts.sccm_get_computer_info import get_computer_info
 from drf_yasg.utils import swagger_auto_schema
 
-class ItemViewSet(viewsets.ModelViewSet):
-    queryset = Item.objects.all()
-    serializer_class = ItemSerializer
 
 
 

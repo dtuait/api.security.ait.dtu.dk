@@ -5,8 +5,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile-api-security-ait-dtu-dk
-    image: vicmrp/api-security-ait-dtu-dk
-    container_name: app
+    # image: vicmrp/api-security-ait-dtu-dk
+    container_name: app-api-security-ait-dtu-dk
     restart: unless-stopped
     tty: true
     volumes:
