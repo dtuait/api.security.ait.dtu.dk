@@ -8,3 +8,4 @@ cd ./app && rm -rf venv && \
 git config --global user.email "victor.reipur@gmail.com"
 git config --global user.name "Victor Reipur"
 git config --global --add safe.directory /usr/src/project
+git config --global --add safe.directory /mnt/project
