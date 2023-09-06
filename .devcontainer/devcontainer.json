@@ -2,12 +2,12 @@
 {
     "name": "Dev container: api-security-ait-dtu-dk",
     "dockerComposeFile": "docker-compose.yaml",
-    "service": "api-security-ait-dtu-dk",
-    "workspaceFolder": "/mnt/project",
+    "service": "api-security-ait-dtu-dk-app-main",
+    "workspaceFolder": "/usr/src/project",
     "customizations": {
         "vscode": {
             "settings": {
-                "python.defaultInterpreterPath": "/usr/src/project/app/venv/bin/python"
+                "python.defaultInterpreterPath": "/usr/src/project/app-main/venv/bin/python"
             },
             "extensions": [
                 "ms-python.python",

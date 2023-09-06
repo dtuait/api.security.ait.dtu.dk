@@ -1,8 +1,14 @@
 *.env
 
+__pycache__/
 
-app/venv/
-examples/
+app-main/venv/
+examples/venv/
+.migrate/
+
+# examples/
 
 
 app/db.sqlite3
+
+.migrate/

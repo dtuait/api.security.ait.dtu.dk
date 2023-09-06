@@ -14,16 +14,31 @@
         },
 
         {
-            "name": "Python: Runserver",
+            "name": "Python: Runserver Live",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/app/manage.py",
+            "program": "${workspaceFolder}/app-main/manage.py",
             "args": [
                 "runserver",
-                "0.0.0.0:8000"
+                "0.0.0.0:8080",
+                "--settings",
+                "find_artek.development_settings"
             ],
             "django": true,
             "justMyCode": true
+        },
+        {
+            "name": "Runserver Live via Proxy",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/app-main/manage.py",
+            "args": [
+                "runserver",
+                "0.0.0.0:8000"
+
+            ],
+            "django": true,
+            "justMyCode": false
         },
     ]
 }
