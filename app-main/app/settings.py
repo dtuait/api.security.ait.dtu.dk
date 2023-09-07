@@ -33,6 +33,12 @@ SECRET_KEY = os.getenv('DJANGO_SECRET')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
+
+# CAS_SERVER_URL = 'https://auth.dtu.dk/dtu/' # no multifactor
+CAS_SERVER_URL = 'https://auth2.dtu.dk/dtu/' # with multifactor
+CAS_VERSION = '2'
+# CAS_REDIRECT_URL = '/admin/'
+
 ALLOWED_HOSTS = [
     'localhost',
     '192.38.87.230',
@@ -52,8 +58,10 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django_extensions',
     'rest_framework',
+    'django_cas_ng',
     'sccm',
     'drf_yasg',
+    'app_meta',
 ]
 
 MIDDLEWARE = [
@@ -71,7 +79,7 @@ ROOT_URLCONF = 'app.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [os.path.join(BASE_DIR, 'templates')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -143,3 +151,8 @@ MEDIA_ROOT = os.path.join('/mnt/shared-project-data/django/mediafiles')
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+AUTHENTICATION_BACKENDS = (
+    'django.contrib.auth.backends.ModelBackend',
+    'django_cas_ng.backends.CASBackend',
+)
