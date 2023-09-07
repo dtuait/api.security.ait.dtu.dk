@@ -37,8 +37,8 @@ urlpatterns = [
     # admin panel 
     path('admin/', admin.site.urls),
 
-    # api/*
-    path('api/', include('sccm.urls')),
+    # sccm api
+    path('', include('sccm.urls')),
 
     #swagger ui
     path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
