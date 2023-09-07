@@ -22,7 +22,7 @@
                 "runserver",
                 "0.0.0.0:8080",
                 "--settings",
-                "find_artek.development_settings"
+                "app.development_settings"
             ],
             "django": true,
             "justMyCode": true
@@ -39,6 +39,16 @@
             ],
             "django": true,
             "justMyCode": false
+        }
+        ,
+        {
+            "name": "ChromiumDev: Home",
+            "runtimeExecutable": "C:\\Program Files\\chromium\\chrome-win\\chrome.exe",
+            "request": "launch",
+            "type": "msedge",
+            "url": "http://localhost:8080",
+            "webRoot": "${workspaceFolder}/app-main/sccm",
+            "disableNetworkCache": true
         },
     ]
 }
