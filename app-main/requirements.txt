@@ -5,3 +5,4 @@ Django==4.2
 djangorestframework==3.14.0 # REST API
 drf-yasg==1.21.7 # Swagger
 django-extensions==3.2.1 # python manage.py runscript <script>
+ldap3==2.9.1
