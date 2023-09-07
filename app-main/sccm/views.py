@@ -9,6 +9,8 @@ from drf_yasg.utils import swagger_auto_schema
 
 
 class SCCMViewSet(viewsets.ViewSet): # Note the change here
+
+    
     @swagger_auto_schema(
         operation_description="""
         Retrieve computer information by name.
