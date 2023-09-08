@@ -1,13 +1,13 @@
 {
     "configurations": [
         {
-            "name": "Python: SCCM object",
+            "name": "Python: script",
             "type": "python",
             "request": "launch",
-            "program": "${workspaceFolder}/app/manage.py",
+            "program": "${workspaceFolder}/app-main/manage.py",
             "args": [
                 "runscript",
-                "sccm.scripts.sccm_get_computer_info"
+                "management.scripts.locate-department-domain"
             ],
             "django": true,
             "justMyCode": true
@@ -27,6 +27,7 @@
             "django": true,
             "justMyCode": true
         },
+
         {
             "name": "Runserver Live via Proxy",
             "type": "python",
