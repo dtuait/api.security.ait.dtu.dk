@@ -34,8 +34,8 @@ SECRET_KEY = os.getenv('DJANGO_SECRET')
 DEBUG = False
 
 
-# CAS_SERVER_URL = 'https://auth.dtu.dk/dtu/' # no multifactor
-CAS_SERVER_URL = 'https://auth2.dtu.dk/dtu/' # with multifactor
+CAS_SERVER_URL = 'https://auth.dtu.dk/dtu/' # no multifactor
+# CAS_SERVER_URL = 'https://auth2.dtu.dk/dtu/' # with multifactor
 CAS_VERSION = '2'
 # CAS_REDIRECT_URL = '/admin/'
 
@@ -58,10 +58,12 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django_extensions',
     'rest_framework',
+    'rest_framework.authtoken',
     'django_cas_ng',
     'sccm',
     'drf_yasg',
     'app_meta',
+    'myview',
 ]
 
 MIDDLEWARE = [
@@ -156,3 +158,22 @@ AUTHENTICATION_BACKENDS = (
     'django.contrib.auth.backends.ModelBackend',
     'django_cas_ng.backends.CASBackend',
 )
+
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.TokenAuthentication',
+    ],
+}
+
+SWAGGER_SETTINGS = {
+    'SECURITY_DEFINITIONS': {
+        'DEFAULT_API_KEY': 'Authorization: Token <token>',
+        'USE_SESSION_AUTH': False,  # This will disable the button to log out in Swagger's UI
+        'Token': {
+            'type': 'apiKey',
+            'name': 'Authorization',
+            'in': 'header'
+        }
+    },
+}

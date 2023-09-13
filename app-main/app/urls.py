@@ -24,7 +24,7 @@ import django_cas_ng.views
 
 schema_view = get_schema_view(
    openapi.Info(
-      title="My API",
+      title="API",
       default_version='v1',
       description="A simple API",
       terms_of_service="https://www.google.com/policies/terms/",
@@ -45,11 +45,18 @@ urlpatterns = [
     path("logout/", django_cas_ng.views.LogoutView.as_view(), name="cas_ng_logout"),
 
     # sccm api
-    # path('', include('sccm.urls')),
+    path('', include('sccm.urls')),
 
     #swagger ui
     path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
     
     # redoc
     path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
+
+    # panel for 
+    path('my-view/', include('myview.urls')),
+
+    # redirect index to myview
+    path('', include('myview.urls')),
+
 ]

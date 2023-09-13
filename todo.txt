@@ -1,0 +1,8 @@
+Afgør ou_variable, baseret paa token
+
+Kan man vælge version under svagger?
+
+Hent installeret programmer fra sccm og defender
+
+require login for swagger
+

@@ -13,12 +13,6 @@ def get_computer_info(computer_name):
     sccm_username = os.getenv("SCCM_USERNAME")
     sccm_password = os.getenv("SCCM_PASSWORD")
 
-    final_dict = {
-        "v_r_system": {},
-        "v_add_remove_programs": [],
-        "v_gs_computer_system": [],
-
-    }
     row_dict = {}
 
     # Connection string
@@ -67,40 +61,40 @@ def get_computer_info(computer_name):
     sql_statement_1 = """
 SELECT DISTINCT TOP 1
 
-    VRS.Netbios_Name0, 
-    VRS.Last_Logon_Timestamp0,
-    VRS.CPUType0,
-    VRS.Operating_System_Name_and0, 
-    VRS.Build01,
-    VRS.User_Name0,
-    VRS.description0, 
+    VRS.Netbios_Name0 as 'MachineName', 
+    VRS.Last_Logon_Timestamp0 as 'LastLogon',
+    VRS.CPUType0 as 'CPUType',
+    VRS.Operating_System_Name_and0 as 'OperatingSystem', 
+    VRS.Build01 as 'OSVesionBuild',
+    VRS.User_Name0 as 'LastLogonUser',
+    VRS.description0 as 'Description', 
 
-    VCS.Model0,	
+    VCS.Model0 as 'Model',	
     VCS.ResourceID,  
 
-    LDisk.Size0, 
-    LDisk.FreeSpace0, 
+    LDisk.Size0 as 'SystemDriveSize', 
+    LDisk.FreeSpace0 as 'SystemDriveFree', 
 
     -- sccm agent status	
-    ws.LastHWScan,
+    ws.LastHWScan as 'LastTimeAgentTalkedToServer',
 
     -- TPM 
-    v_GS_TPM.SpecVersion0,
-    v_GS_TPM.IsActivated_InitialValue0,
-    v_GS_TPM.IsEnabled_InitialValue0,
-    v_GS_TPM.IsOwned_InitialValue0,
+    v_GS_TPM.SpecVersion0 as 'TPMVersion',
+    v_GS_TPM.IsActivated_InitialValue0 as 'TPMActivated',
+    v_GS_TPM.IsEnabled_InitialValue0 as 'TPMEnabled',
+    v_GS_TPM.IsOwned_InitialValue0 as 'TPMOwned',
 
-    SecureBoot0,
-    UEFI0,
+    SecureBoot0 AS 'SecureBoot',
+    UEFI0 AS 'UEFI',
         
-    OS.LastBootUpTime0,
+    OS.LastBootUpTime0 AS 'LastBootTime',
 
-    VENCVOL.DriveLetter0, 
-    VENCVOL.ProtectionStatus0, 
+    VENCVOL.DriveLetter0 as 'SystemDrive', 
+    VENCVOL.ProtectionStatus0 as 'SystemDriveEncryption', 
 
-    VENCL.ChassisTypes0,
+    VENCL.ChassisTypes0 as 'ComputerType',
 
-    VUMR.UniqueUserName
+    VUMR.UniqueUserName as 'PrimaryUser'
 
 FROM 
     V_R_System VRS 
@@ -125,74 +119,33 @@ FROM
     LEFT JOIN v_UserMachineRelationship VUMR on VRS.ResourceID=VUMR.MachineResourceID 
    
 WHERE
-    VRS.ResourceID=?
+    VRS.Netbios_Name0=?
 """
 
     # Execute the SQL statement1
     try:
 
         
-        cursor = sccmdbh.execute(sql_statement_1, resource_id)
+        cursor = sccmdbh.execute(sql_statement_1, computer_name)
         row = cursor.fetchone()
         
         columns = [column[0] for column in cursor.description]
 
         # Check if the row is None and return an appropriate error message
         if row is None:
-            return None, f"No computer found with name {resource_id}"
+            return None, f"No computer found with name {computer_name}"
 
 
     except pyodbc.Error as e:
         print(f"Error: executing SQL statement: {e}")
         return None, f"Internal server error"
 
-    row_dict = dict(zip(columns, row))
-    final_dict["v_r_system"] = row_dict
-    
-
-
-
-
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
     sql_statement_2 = """
 
     -- v_Add_Remove_Programs: This view contains information about software that has been discovered from the "Add or Remove Programs" data on a client computer.
-    SELECT
+    SELECT    
         ARP.ResourceID,
         ARP.GroupID,
         ARP.RevisionID,
@@ -210,286 +163,33 @@ WHERE
         
 
     WHERE
-        VRS.ResourceID=?
-
+        VRS.Netbios_Name0=?
 
 
     """
 
 
-    # Execute the SQL statement2
+    # Execute the SQL statement1
     try:
 
-        cursor2 = sccmdbh.execute(sql_statement_2, resource_id)
+        cursor = sccmdbh.execute(sql_statement_1, computer_name)
+        row = cursor.fetchone()
         
-        
-        columns2 = [column[0] for column in cursor2.description]
-
-        rows2 = cursor2.fetchall()
+        columns = [column[0] for column in cursor.description]
 
         # Check if the row is None and return an appropriate error message
-        if rows2 is None:
-            return None, f"No computer found with resource_id {resource_id}"
+        if row is None:
+            return None, f"No computer found with name {computer_name}"
         
-        # Convert each row to dictionary and append to the list
-        for row2 in rows2:
-            row_dict2 = dict(zip(columns2, row2))
-            final_dict["v_add_remove_programs"].append(row_dict2)
-
-
-        
-
+        # row_dict = dict(zip(columns, row))
+        # return row_dict, None
     
     except pyodbc.Error as e:
         print(f"Error: executing SQL statement: {e}")
         return None, f"Internal server error"
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    sql_statement_3 = """
-
-    -- v_GS_INSTALLED_SOFTWARE: This view provides details about installed software discovered by the hardware inventory client agent.
-
-SELECT
-GIS.ResourceID,
-GIS.GroupID,
-GIS.RevisionID,
-GIS.AgentID,
-GIS.TimeStamp,
-GIS.ARPDisplayName0,
-GIS.ChannelCode0,
-GIS.ChannelID0,
-GIS.CM_DSLID0,
-GIS.EvidenceSource0,
-GIS.InstallDate0,
-GIS.InstallDirectoryValidation0,
-GIS.InstalledLocation0,
-GIS.InstallSource0,
-GIS.InstallType0,
-GIS.LocalPackage0,
-GIS.MPC0,
-GIS.OsComponent0,
-GIS.PackageCode0,
-GIS.ProductID0,
-GIS.ProductName0,
-GIS.ProductVersion0,
-GIS.Publisher0,
-GIS.RegisteredUser0,
-GIS.Publisher0,
-GIS.RegisteredUser0,
-GIS.ServicePack0,
-GIS.SoftwareCode0,
-GIS.SoftwarePropertiesHash0,
-GIS.UninstallString0,
-GIS.UpgradeCode0,
-GIS.VersionMajor0,
-GIS.VersionMinor0
-FROM 
-V_R_System VRS 
-LEFT JOIN v_GS_INSTALLED_SOFTWARE AS GIS ON GIS.ResourceID=VRS.ResourceID
-WHERE 
-	VRS.ResourceID=?
-
-
-
-
-
-    """
-
-
-    # Execute the SQL statement3
-    try:
-
-        cursor3 = sccmdbh.execute(sql_statement_3, resource_id)
-        
-        
-        columns3 = [column[0] for column in cursor3.description]
-
-        rows3 = cursor3.fetchall()
-
-        # Check if the row is None and return an appropriate error message
-        if rows3 is None:
-            return None, f"No computer found with resource_id {resource_id}"
-        
-        # Convert each row to dictionary and append to the list
-        for row3 in rows3:
-            row_dict3 = dict(zip(columns3, row3))
-            final_dict["v_gs_computer_system"].append(row_dict3)
-
-
-        
-
-    
-    except pyodbc.Error as e:
-        print(f"Error: executing SQL statement: {e}")
-        return None, f"Internal server error"
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    return final_dict, None
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        # row_dict = dict(zip(columns, row))
+        # return row_dict, None
 
 
 
@@ -526,11 +226,8 @@ WHERE
 
 
 def run():
-    computer_info, message = get_computer_info("MEK-425-222-02P")
-    if message:
-        print(message)
-    else:
-        print(computer_info)
+    computer_info = get_computer_info("MEK-425-222-02Pasdasdsa")
+    print(computer_info)
 
 
 

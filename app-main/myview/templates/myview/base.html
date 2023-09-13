@@ -1,0 +1,73 @@
+<!-- i18n and static are Django template tags. They are used to load the i18n and static template tags. The i18n template tag is used to mark strings for translation. -->
+<!-- The static is a template tag that is used to load the static template tag library. This library provides a way to reference static files, such as CSS, JavaScript, or image files, which are not tied to a particular instance of a model in your Django app. -->
+{% load i18n static %}
+
+{% csrf_token %}
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <!-- static head content starts here -->
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" type="text/css" media="all" href="{% static 'myview/css/base.css' %}" />
+
+    <!-- <link rel="icon" href="{% static 'publications/img/artek_logo_absract_transparent_resized_favicon.ico' %}" -->
+        <!-- type="image/x-icon" /> -->
+    <script src="{% static 'myview/js/base.js' %}" defer></script>
+    <title>{% block title %}Base Title{% endblock %}</title>
+    <!-- static head content ends here -->
+
+    <!-- dynamic head content starts here -->
+    {% block dynamic_head_content %}{% endblock %}
+    <!-- dynamic head content ends here -->
+</head>
+
+<body>
+
+
+
+
+
+
+    <header class="flex-container flex-column justify-center">
+
+        <p>Welcome, {{ user.username }}!</p>
+       
+    </header>
+
+
+
+
+    <main id="main">
+        <div class='headline'>
+            <h1>{% block headline %}Base Headline{% endblock %}</h1>
+        </div>
+        <!-- dynamic main-content starts here -->
+        {% block main-content %}{% endblock %}
+        <!-- dynamic main-content ends here -->
+
+    </main>
+
+
+
+
+
+
+    <footer>
+        <div class="footer-content">
+
+        </div>
+    </footer>
+
+
+
+
+
+
+
+
+</body>
+
+</html>
