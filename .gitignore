@@ -3,6 +3,7 @@
 
 __pycache__/
 
+app/venv/
 app-main/venv/
 examples/venv/
 .migrate/
