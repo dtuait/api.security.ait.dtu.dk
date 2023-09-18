@@ -11,6 +11,7 @@ examples/venv/
 # examples/
 
 
-app/db.sqlite3
+app-main/db.sqlite3
 
 .migrate/
+
