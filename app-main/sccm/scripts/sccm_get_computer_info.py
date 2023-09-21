@@ -13,6 +13,9 @@ def get_computer_info(computer_name):
     sccm_username = os.getenv("SCCM_USERNAME")
     sccm_password = os.getenv("SCCM_PASSWORD")
 
+
+    # Check if computer_name is under a OU that the user's token has permission two
+
     final_dict = {
         "v_r_system": {},
         "v_add_remove_programs": [],
