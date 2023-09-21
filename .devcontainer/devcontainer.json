@@ -1,7 +1,7 @@
 
 {
     "name": "Dev container: beta-api.security.ait.dtu.dk",
-    "dockerComposeFile": "docker-compose.yaml",
+    "dockerComposeFile": "beta-docker-compose.yaml",
     "service": "beta-api-security-ait-dtu-dk-app-main",
     "workspaceFolder": "/usr/src/project",
     "customizations": {
