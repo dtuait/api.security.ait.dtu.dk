@@ -11,6 +11,10 @@ examples/venv/
 # examples/
 
 
+shared-project-data/
+
+
+
 app-main/db.sqlite3
 
 .migrate/
