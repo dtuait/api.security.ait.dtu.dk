@@ -5,7 +5,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile-api-security-ait-dtu-dk-app-main
-    image: vicmrp/beta-api-security-ait-dtu-dk-app-main
+    image: vicmrp/api-security-ait-dtu-dk-app-main
 
     restart: unless-stopped
     tty: true
@@ -20,9 +20,10 @@ services:
     build:
       context: .
       dockerfile: Dockerfile-api-security-ait-dtu-dk-httpd-service
-    image: vicmrp/beta-api-security-ait-dtu-dk-httpd-service
+    image: vicmrp/api-security-ait-dtu-dk-httpd-service
     volumes:
       - ../shared-project-data:/mnt/shared-project-data
+      # - find-artek-httpd-server:/usr/local/apache2
       - ../httpd-service/data/virtualhosts:/usr/local/apache2/conf/virtualhosts
       - ../httpd-service/data/httpd.conf:/usr/local/apache2/conf/httpd.conf
 
