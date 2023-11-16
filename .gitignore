@@ -19,3 +19,4 @@ app-main/db.sqlite3
 
 .migrate/
 
+shared-project-data/django/
