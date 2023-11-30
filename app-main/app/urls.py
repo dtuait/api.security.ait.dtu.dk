@@ -44,6 +44,9 @@ urlpatterns = [
     path("login/", django_cas_ng.views.LoginView.as_view(), name="cas_ng_login"),
     path("logout/", django_cas_ng.views.LogoutView.as_view(), name="cas_ng_logout"),
 
+    # graph api
+    path('', include('azure_graph.urls')),
+
     # sccm api
     path('', include('sccm.urls')),
 
