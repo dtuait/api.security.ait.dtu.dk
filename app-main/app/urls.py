@@ -47,6 +47,9 @@ urlpatterns = [
     # sccm api
     path('', include('sccm.urls')),
 
+    # active directory api
+    path('', include('active_directory.urls')),
+
     #swagger ui
     path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
     
