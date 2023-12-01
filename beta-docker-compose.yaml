@@ -13,6 +13,8 @@ services:
       - ./:/usr/src/project
       - ./shared-project-data:/mnt/shared-project-data
 
+    command: bash -c "cd /usr/src/project/app-main && rm -rf venv && python3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt && python3 manage.py runserver 0.0.0.0:8000"
+
     networks:
       - shared_network
 
@@ -25,6 +27,7 @@ services:
       - ./shared-project-data:/mnt/shared-project-data
       - ./httpd-service/data/virtualhosts:/usr/local/apache2/conf/virtualhosts
       - ./httpd-service/data/httpd.conf:/usr/local/apache2/conf/httpd.conf
+
 
     networks:
       - shared_network
