@@ -29,8 +29,9 @@ def generate_new_token():
 # Load environment variables from .env file
 load_dotenv()
 
-
 def run_hunting_query(query):
+
+
 
     # Get the expiration time from the environment variables
     expires_on = int(os.getenv("GRAPH_ACCESS_BEARER_TOKEN_EXPIRES_ON"))
@@ -47,9 +48,11 @@ def run_hunting_query(query):
         # Replace 3600 with the actual lifetime of the token in seconds
         set_key("app-main/.env", "GRAPH_ACCESS_BEARER_TOKEN", new_token)
         set_key("app-main/.env", "GRAPH_ACCESS_BEARER_TOKEN_EXPIRES_ON", str(current_time + 3600))
+        # Reload the environment variables
+        load_dotenv(override=True)
 
     
-
+    
     # Use the token to perform the hunting query
     token = os.getenv("GRAPH_ACCESS_BEARER_TOKEN")
     headers = {
