@@ -3,7 +3,7 @@ version: '3.8'
 services:
   beta-api-security-ait-dtu-dk-app-main:
     build:
-      context: .
+      context: .devcontainer/.
       dockerfile: Dockerfile-api-security-ait-dtu-dk-app-main
     image: vicmrp/beta-api-security-ait-dtu-dk-app-main
 
@@ -20,7 +20,7 @@ services:
 
   beta-api-security-ait-dtu-dk-httpd-service:
     build:
-      context: .
+      context: .devcontainer/.
       dockerfile: Dockerfile-api-security-ait-dtu-dk-httpd-service
     image: vicmrp/beta-api-security-ait-dtu-dk-httpd-service
     volumes:
