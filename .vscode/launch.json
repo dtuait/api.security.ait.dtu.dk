@@ -1,7 +1,19 @@
 {
     "configurations": [
         {
-            "name": "Python: script",
+            "name": "Python: graph script",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/app-main/manage.py",
+            "args": [
+                "runscript",
+                "azure_graph.scripts.graph_apicall_runhuntingquery"
+            ],
+            "django": true,
+            "justMyCode": true
+        },
+        {
+            "name": "Python: sccm script",
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/app-main/manage.py",
