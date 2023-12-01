@@ -64,7 +64,7 @@ def run_hunting_query(query):
     # Make the request
     response = requests.post(api_endpoint, headers=headers, json={"Query": query})
 
-    return response.json()
+    return response, response.status_code
 
 
 

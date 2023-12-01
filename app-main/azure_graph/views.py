@@ -70,10 +70,10 @@ class GraphHuntingViewSet(viewsets.ViewSet):
         if serializer.is_valid():
             query = serializer.validated_data['Query']
 
-            result = run_hunting_query(query)
+            response, status_code = run_hunting_query(query)
 
             # Now you can use `query` in your code
-            return Response(result, status=status.HTTP_200_OK)
+            return Response(response.json(), status=status_code)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
