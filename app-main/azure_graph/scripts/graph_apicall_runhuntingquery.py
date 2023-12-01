@@ -43,9 +43,6 @@ def run_hunting_query(query):
         # Generate a new token
         new_token = generate_new_token()
 
-        # Get the full path to the .env file
-        # env_path = os.path.join(os.path.dirname(__file__), '.env')
-
         # Update the .env file with the new token and expiration time
         # Replace 3600 with the actual lifetime of the token in seconds
         set_key("app-main/.env", "GRAPH_ACCESS_BEARER_TOKEN", new_token)
@@ -70,32 +67,8 @@ def run_hunting_query(query):
     return response.json()
 
 
-# # Check if 
-# # curl --location 'https://login.microsoftonline.com/AZURE_TENENT_ID/oauth2/token' \
-# # --form 'resource="GRAPH_RESOURCE"' \
-# # --form 'client_id="DEFENDER_CLIENT_ID"' \
-# # --form 'client_secret="DEFENDER_CLIENT_SECRET"' \
-# # --form 'grant_type="client_credentials"'
 
 
-
-
-#     return result
-
-
-
-
-
-
-
-
-
-# curl --location 'https://graph.microsoft.com/v1.0/security/runHuntingQuery' \
-# --header 'Content-Type: application/json' \
-# --header 'Authorization: Bearer GRAPH_ACCESS_BEARER_TOKEN' \
-# --data '{
-    # "Query": "// might contain sensitive data\nlet alertedEvent = datatable(compressedRec: string)\n['\''eAEtjkFPAjEQRv8K6RmabReF3ZNEohiMEEQP3up22Excps20S9IY/7tj5DjvvWS+b3XEMzwCAbsMXrXKVraeGTOrq6OZt2bRmrk2y4Wtbm8+1FStYlxjioMrL+4M0u9OJ+xgE+SYqrcEvGekDqMbrsEFO4Y7n0ftvyR52q+8Z0hJlGmsrpe6qbSxjbh7zEXwNlAPlCbPhfrPIvw1yzgRm3ABn7LzQH91GClz2fEBegwkfr0V/DAOA/2/fscuB54cAOPI6ucXbMZKOg=='\'']\n| extend raw = todynamic(zlib_decompress_from_base64_string(compressedRec)) | evaluate bag_unpack(raw) | project-away compressedRec;\nalertedEvent"
-# }'
 
 
 
