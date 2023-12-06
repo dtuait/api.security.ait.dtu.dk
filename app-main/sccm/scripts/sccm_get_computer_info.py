@@ -26,7 +26,7 @@ def get_computer_info(computer_name):
 
     # Connection string
     connection_string = (
-        r'DRIVER=/opt/microsoft/msodbcsql18/lib64/libmsodbcsql-18.3.so.1.1;'
+        r'DRIVER=/opt/microsoft/msodbcsql18/lib64/libmsodbcsql-18.3.so.2.1;'
         'SERVER=ait-pcmdb01.win.dtu.dk,1433;'
         'TrustServerCertificate=yes;'
         f'UID={sccm_username};'
