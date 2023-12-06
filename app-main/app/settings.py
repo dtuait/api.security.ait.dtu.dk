@@ -49,8 +49,7 @@ ALLOWED_HOSTS = [
 ]
 
 
-CSRF_COOKIE_DOMAIN = 'security.ait.dtu.dk'
-
+CSRF_COOKIE_DOMAIN = 'beta-api.security.ait.dtu.dk'
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
@@ -189,3 +188,6 @@ SWAGGER_SETTINGS = {
         }
     },
 }
+
+
+

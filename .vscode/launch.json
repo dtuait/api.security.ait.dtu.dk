@@ -39,14 +39,27 @@
             "justMyCode": true
         },
         {
-            "name": "Runserver Live via Proxy",
+            "name": "Proxy Live with Debug",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/app-main/manage.py",
+            "args": [
+                "runserver",
+                "0.0.0.0:8121",
+                "--settings",
+                "app.development_proxy_settings"
+            ],
+            "django": true,
+            "justMyCode": false
+        },
+        {
+            "name": "Proxy Live",
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/app-main/manage.py",
             "args": [
                 "runserver",
                 "0.0.0.0:8121"
-
             ],
             "django": true,
             "justMyCode": false
