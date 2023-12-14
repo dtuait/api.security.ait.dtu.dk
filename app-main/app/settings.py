@@ -75,7 +75,8 @@ INSTALLED_APPS = [
     'app_meta',
     'myview',
     'active_directory',
-    'misc',
+    # 'misc',
+    'playbook',
 ]
 
 MIDDLEWARE = [
