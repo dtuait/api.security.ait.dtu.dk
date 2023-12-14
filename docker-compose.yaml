@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  api-security-ait-dtu-dk-app-main:
+  x-api-security-ait-dtu-dk-app-main:
     build:
       context: .devcontainer/.
       dockerfile: Dockerfile-api-security-ait-dtu-dk-app-main
