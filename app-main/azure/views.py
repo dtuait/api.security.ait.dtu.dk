@@ -1,3 +1,4 @@
+from django.forms import ValidationError
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 import json
@@ -8,11 +9,12 @@ from rest_framework.permissions import IsAuthenticated
 from drf_yasg import openapi
 from rest_framework.exceptions import ParseError
 from .serializers import QuerySerializer
-from .scripts.graph_apicall_runhuntingquery import run_hunting_query
+# from .scripts.graph_apicall_runhuntingquery import run_hunting_query
+from .services import execute_hunting_query
 
 from rest_framework.decorators import action
 
-class GraphHuntingViewSet(viewsets.ViewSet):
+class GraphViewSet(viewsets.ViewSet):
 
     authentication_classes = [TokenAuthentication]  # Require token authentication for this view
     permission_classes = [IsAuthenticated]  # Require authenticated user for this view
@@ -58,22 +60,31 @@ class GraphHuntingViewSet(viewsets.ViewSet):
     )
 
 
-    @action(detail=False, methods=['post'], url_path='runHuntingQuery')
+    @action(detail=False, methods=['post'], url_path='run-hunting-query')
 
 
     def run_hunting_query(self, request):
-        
-        # serialize incoming data
-        serializer = QuerySerializer(data=request.data)
-        
-        # Check if property query exists
-        if serializer.is_valid():
+        try:
+            # serialize incoming data
+            serializer = QuerySerializer(data=request.data)
+
+            # Raise an exception if the data is not valid
+            serializer.is_valid(raise_exception=True)
+
+            # Extract the validated query
             query = serializer.validated_data['Query']
 
-            response, status_code = run_hunting_query(query)
+            # Execute the hunting query
+            response, status_code = execute_hunting_query(query)
 
-            # Now you can use `query` in your code
-            return Response(response.json(), status=status_code)
-        else:
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            # Return the response
+            return Response(response, status=status_code)
+        
+        except ValidationError as e:
+            # Handle validation errors from the serializer
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as e:
+            # Handle other unforeseen exceptions
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
