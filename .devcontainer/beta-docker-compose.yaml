@@ -23,7 +23,7 @@ services:
     image: vicmrp/beta-api-security-ait-dtu-dk-httpd-service
     volumes:
       - ../shared-project-data:/mnt/shared-project-data
-      - ../httpd-service/data/virtualhosts:/usr/local/apache2/conf/virtualhosts
+      - ../httpd-service/data/virtualhosts-beta:/usr/local/apache2/conf/virtualhosts
       - ../httpd-service/data/httpd.conf:/usr/local/apache2/conf/httpd.conf
 
     networks:
