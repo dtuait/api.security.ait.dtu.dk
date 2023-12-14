@@ -3,15 +3,15 @@ version: '3.8'
 services:
   api-security-ait-dtu-dk-app-main:
     build:
-      context: .
+      context: .devcontainer/.
       dockerfile: Dockerfile-api-security-ait-dtu-dk-app-main
     image: vicmrp/beta-api-security-ait-dtu-dk-app-main
 
     restart: unless-stopped
     tty: true
     volumes:
-      - ..:/usr/src/project
-      - ../shared-project-data:/mnt/shared-project-data
+      - .:/usr/src/project
+      - ./shared-project-data:/mnt/shared-project-data
 
     command: bash -c "cd /usr/src/project/app-main && rm -rf venv && python3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt && python3 manage.py runserver 0.0.0.0:8000"
 
@@ -24,9 +24,9 @@ services:
       dockerfile: Dockerfile-api-security-ait-dtu-dk-httpd-service
     image: vicmrp/beta-api-security-ait-dtu-dk-httpd-service
     volumes:
-      - ../shared-project-data:/mnt/shared-project-data
-      - ../httpd-service/data/virtualhosts:/usr/local/apache2/conf/virtualhosts
-      - ../httpd-service/data/httpd.conf:/usr/local/apache2/conf/httpd.conf
+      - ./shared-project-data:/mnt/shared-project-data
+      - ./httpd-service/data/virtualhosts:/usr/local/apache2/conf/virtualhosts
+      - ./httpd-service/data/httpd.conf:/usr/local/apache2/conf/httpd.conf
 
     networks:
       - shared_network
