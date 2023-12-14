@@ -74,6 +74,8 @@ INSTALLED_APPS = [
     'drf_yasg',
     'app_meta',
     'myview',
+    'active_directory',
+    'misc',
 ]
 
 MIDDLEWARE = [
