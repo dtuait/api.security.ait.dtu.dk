@@ -2,4 +2,7 @@
 {
     "workbench.colorTheme": "Tokyo Night",
     // "workbench.colorTheme": "Tokyo Night Light",
+    "editor.hover.enabled": false
+
+
 }

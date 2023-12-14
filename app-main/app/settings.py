@@ -75,6 +75,7 @@ INSTALLED_APPS = [
     'app_meta',
     'myview',
     'active_directory',
+    'azure',
     # 'misc',
     'playbook',
 ]

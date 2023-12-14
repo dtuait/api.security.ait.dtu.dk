@@ -45,7 +45,7 @@ urlpatterns = [
     path("logout/", django_cas_ng.views.LogoutView.as_view(), name="cas_ng_logout"),
 
     # graph api
-    path('', include('azure_graph.urls')),
+    path('azure/', include('azure.urls')),
 
     # sccm api
     path('', include('sccm.urls')),
@@ -54,7 +54,10 @@ urlpatterns = [
     path('', include('active_directory.urls')),
 
     # # misc api
-    # path('', include('misc.urls')),
+    path('misc/', include('misc.urls')),
+
+    # playbook
+    path('playbook/', include('playbook.urls')),
 
     #swagger ui
     path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
