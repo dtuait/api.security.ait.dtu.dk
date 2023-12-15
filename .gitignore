@@ -1,5 +1,6 @@
 *.env
 *.old
+*.log
 
 __pycache__/
 
@@ -20,3 +21,4 @@ app-main/db.sqlite3
 .migrate/
 
 shared-project-data/django/
+
