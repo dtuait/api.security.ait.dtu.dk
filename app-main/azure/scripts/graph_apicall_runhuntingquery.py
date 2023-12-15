@@ -6,7 +6,7 @@ import requests
 from dotenv import load_dotenv, set_key
 
 # Function to generate a new token
-def generate_new_token():
+def _generate_new_token():
     # Replace this with your actual logic to generate a new token
 
     url = 'https://login.microsoftonline.com/' + os.getenv("AZURE_TENENT_ID") + '/oauth2/token'
@@ -27,7 +27,8 @@ def generate_new_token():
 
 
 # Load environment variables from .env file
-load_dotenv()
+env_path = '/usr/src/project/app-main/.env'
+load_dotenv(dotenv_path=env_path)
 
 def run_hunting_query(query):
 
@@ -42,14 +43,14 @@ def run_hunting_query(query):
     # Check if the token is expired
     if current_time > expires_on:
         # Generate a new token
-        new_token = generate_new_token()
+        new_token = _generate_new_token()
 
         # Update the .env file with the new token and expiration time
         # Replace 3600 with the actual lifetime of the token in seconds
-        set_key("app-main/.env", "GRAPH_ACCESS_BEARER_TOKEN", new_token)
-        set_key("app-main/.env", "GRAPH_ACCESS_BEARER_TOKEN_EXPIRES_ON", str(current_time + 3600))
+        set_key(env_path, "GRAPH_ACCESS_BEARER_TOKEN", new_token)
+        set_key(env_path, "GRAPH_ACCESS_BEARER_TOKEN_EXPIRES_ON", str(current_time + 3600))
         # Reload the environment variables
-        load_dotenv(override=True)
+        load_dotenv(dotenv_path=env_path, override=True)
 
     
     
