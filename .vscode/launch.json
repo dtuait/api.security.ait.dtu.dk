@@ -47,7 +47,7 @@
                 "runserver",
                 "0.0.0.0:8121",
                 "--settings",
-                "app.development_proxy_settings"
+                "app.proxy_debug_true_settings"
             ],
             "django": true,
             "justMyCode": false
@@ -59,7 +59,9 @@
             "program": "${workspaceFolder}/app-main/manage.py",
             "args": [
                 "runserver",
-                "0.0.0.0:8121"
+                "0.0.0.0:8121",
+                "--settings",
+                "app.proxy_debug_false_settings"
             ],
             "django": true,
             "justMyCode": false
