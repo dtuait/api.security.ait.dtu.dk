@@ -72,7 +72,7 @@ INSTALLED_APPS = [
     'django_cas_ng',
     'sccm',
     'drf_yasg',
-    'app_meta',
+    'app_mod',
     'myview',
     'active_directory',
     'azure',
