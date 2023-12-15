@@ -4,7 +4,7 @@ from datetime import datetime
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.permissions import IsAuthenticated
 from azure.services import execute_hunting_query
-
+import pytz
 
 
 class MyMFARejectedByUser(viewsets.ViewSet):
@@ -79,10 +79,27 @@ class MyMFARejectedByUser(viewsets.ViewSet):
         fullname = data['results'][0]['Fullname']
         ip_address = data['results'][0]['IPAddress']
         state = data['results'][0]['State']
+
+        # get the time value
         time_generated = data['results'][0]['TimeGenerated'] # '2023-12-07T14:03:38.0418848Z' -> '%Y-%m-%dT%H:%M:%S.%fZ'
-        # Truncate the last digit from the seconds fraction
-        time_generated = time_generated[:-2] + 'Z'
-        time_generated_datetime = datetime.strptime(time_generated, '%Y-%m-%dT%H:%M:%S.%fZ')
+        # Truncate the last digit from the seconds fraction and add 'Z' back
+        time_generated = time_generated[:-1] + 'Z'
+
+        # Split the timestamp into the main part and the fractional seconds
+        main, _, fraction = time_generated.partition('.')
+
+        # Parse the main part of the timestamp
+        utc_datetime = datetime.strptime(main, '%Y-%m-%dT%H:%M:%S')
+
+        # Add the fractional seconds (converted to microseconds)
+        utc_datetime = utc_datetime.replace(microsecond=int(fraction.rstrip('Z'), 10) // 10)
+
+        # Convert to Copenhagen time (UTC+1 in winter, UTC+2 in summer)
+        copenhagen_timezone = pytz.timezone('Europe/Copenhagen')
+        copenhagen_datetime = utc_datetime.replace(tzinfo=pytz.utc).astimezone(copenhagen_timezone)
+        copenhagen_datetime.strftime('%Y-%m-%d %H:%M:%S %Z%z')
+
+
         user_pricipal_name = data['results'][0]['UserPrincipalName']
 
 
@@ -95,7 +112,7 @@ class MyMFARejectedByUser(viewsets.ViewSet):
         This is an automated security notification. A declined Multi-Factor Authentication (MFA) request associated with your account has been recorded:
         <br>\n
         <br>\n
-        <strong>Time and Date</strong>: {time_generated_datetime}
+        <strong>Time and Date</strong>: {copenhagen_datetime.strftime('%Y-%m-%d %H:%M:%S')} timezone('Europe/Copenhagen')
         <br>\n
         <strong>Application</strong>: {app_display_name}
         <br>\n
