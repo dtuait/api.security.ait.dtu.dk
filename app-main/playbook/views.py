@@ -105,12 +105,12 @@ class MyMFARejectedByUser(viewsets.ViewSet):
         <br>\n
         <strong>Location</strong>: {city}, {state}, {country_or_region}
         <br>\n
-        <strong>Action Required</strong>:
         <br>\n
+        <strong>Action Required</strong>:
         <br>\n
         If you recognize this event, no further action is needed.
         <br>\n
-        If you do not recognize this event, please change your password immediately at password.dtu.dk for security reasons.
+        If you do not recognize this event, please change your password at <a href="https://password.dtu.dk/admin/change_password.aspx">password.dtu.dk</a> for security reasons.
         <br>\n
         For any concerns, contact our support team.
         <br>\n
