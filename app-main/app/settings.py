@@ -76,8 +76,8 @@ INSTALLED_APPS = [
     'myview',
     'active_directory',
     'azure',
-    # 'misc',
     'playbook',
+    # 'misc',
 ]
 
 MIDDLEWARE = [
@@ -176,10 +176,12 @@ AUTHENTICATION_BACKENDS = (
 
 
 REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.TokenAuthentication',
-    ],
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'app_mod.authentication.CustomTokenAuthentication',
+    ),
 }
+
+AUTH_TOKEN_MODEL = 'app_mod.CustomToken'
 
 SWAGGER_SETTINGS = {
     'SECURITY_DEFINITIONS': {

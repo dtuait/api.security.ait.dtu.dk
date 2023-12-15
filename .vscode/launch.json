@@ -33,7 +33,7 @@
                 "runserver",
                 "0.0.0.0:8081",
                 "--settings",
-                "app.development_settings"
+                "app.localhost_debug_true_settings"
             ],
             "django": true,
             "justMyCode": true
