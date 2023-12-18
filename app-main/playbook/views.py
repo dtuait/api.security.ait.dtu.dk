@@ -129,7 +129,6 @@ class MyMFARejectedByUser(viewsets.ViewSet):
         <br>\n
         If you do not recognize this event, please change your password at <a href="https://password.dtu.dk/admin/change_password.aspx">password.dtu.dk</a> for security reasons.
         <br>\n
-        For any concerns, contact our support team.
         <br>\n
         <br>\n
         AITSOC
