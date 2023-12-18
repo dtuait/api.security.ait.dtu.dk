@@ -66,6 +66,9 @@ urlpatterns = [
 
     # playbook api 
     path('playbook/', include('playbook.urls')),
+    
+    # # # misc api
+    # path('misc/', include('misc.urls')),,
 
     # panel for 
     path('', include('myview.urls')),
