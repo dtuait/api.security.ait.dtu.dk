@@ -53,11 +53,11 @@ urlpatterns = [
     # active directory api
     path('', include('active_directory.urls')),
 
-    # # misc api
-    path('misc/', include('misc.urls')),
-
-    # playbook
+    # playbook api 
     path('playbook/', include('playbook.urls')),
+    
+    # # # misc api
+    # path('misc/', include('misc.urls')),,
 
     #swagger ui
     path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
