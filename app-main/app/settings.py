@@ -81,7 +81,8 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
-    'myview.middleware.OUAuthorizationMiddleware',
+    'myview.middleware.OUAuthorizationMiddleware', # perminssion based on ad structure
+    # 'myview.middleware.EndpointAccessMiddleware', # define who access to endpoints
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',

@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import OrganizationalUnit, UserProfile
+from .models import OrganizationalUnit, UserProfile, EndpointAccess
 
 # Registering the OrganizationalUnit model for the admin site.
 @admin.register(OrganizationalUnit)
@@ -18,3 +18,10 @@ class UserProfileAdmin(admin.ModelAdmin):
     get_ous.short_description = 'Organizational Units'
 
     filter_horizontal = ('ous',)  # This makes it easier to manage many-to-many relationships in the admin interface.
+
+
+@admin.register(EndpointAccess)
+class EndpointAccessAdmin(admin.ModelAdmin):
+    list_display = ('user', 'endpoint', 'can_access')  # Displaying the fields in the list view.
+    list_filter = ('user', 'can_access')  # Adding filters for the 'user' and 'can_access' fields.
+    search_fields = ('user__username', 'endpoint')  # Adding a search bar for the 'user__username' and 'endpoint' fields.

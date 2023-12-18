@@ -4,12 +4,14 @@ from django.db import models
 from rest_framework.authtoken.models import Token
 import binascii
 import os
+from django.contrib.auth.models import User
+
 
 class CustomToken(Token):
 
     class Meta:
-        verbose_name = "MyToken"
-        verbose_name_plural = "MyTokens"
+        verbose_name = "Custom Token"
+        verbose_name_plural = "Custom Tokens"
     
     def generate_key(self):
         # Generate a longer and more complex token
@@ -21,3 +23,19 @@ class CustomToken(Token):
         return super().save(*args, **kwargs)
 
 
+
+
+# class OrganizationalUnit(models.Model):
+#     name = models.TextField(unique=True)  # The full OU string, e.g. "OU=AIT,OU=ITAdmUsers,OU=Delegations..."
+
+#     # String representation for easier debugging.
+#     def __str__(self):
+#         return self.name
+
+# class UserProfile(models.Model):
+#     user = models.OneToOneField(User, on_delete=models.CASCADE)
+#     ous = models.ManyToManyField(OrganizationalUnit)
+
+#     def __str__(self):
+#         return self.user.username
+    
