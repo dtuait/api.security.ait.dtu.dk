@@ -11,10 +11,8 @@ from drf_yasg import openapi
 
 
 
-class SCCMComputerViewSet_1_0_1(viewsets.ViewSet):
+class SCCMViewSet_1_0_1(viewsets.ViewSet):
 
-    authentication_classes = [TokenAuthentication]  # Require token authentication for this view
-    permission_classes = [IsAuthenticated]  # Require authenticated user for this view
 
     header_parameter = openapi.Parameter(
         'Authorization',  # name of the header
@@ -45,10 +43,18 @@ class SCCMComputerViewSet_1_0_1(viewsets.ViewSet):
         },
 
     )
-    def retrieve(self, request, computer_name=None):
+
+    def get_computerinfo(self, request, computer_name=None):
+
+        authentication_classes = [TokenAuthentication]  # Require token authentication for this view
+        permission_classes = [IsAuthenticated]  # Require authenticated user for this view
+
+
         # Check if the computer_name is None, or is an empty string, or with only spaces
         if computer_name is None or computer_name.strip() == "":
             return Response({"error": "Computer name must be provided."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # control if user has access
         
         # Get the computer info
         computer_info, error = get_computer_info(computer_name)
