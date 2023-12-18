@@ -29,6 +29,8 @@ from django.db import models
 from rest_framework.authtoken.models import Token
 import binascii
 import os
+from django.contrib.auth.models import User
+
 
 # Ensure you have the correct length set for your token key field.
 class CustomToken(Token):
