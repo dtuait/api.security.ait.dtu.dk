@@ -31,6 +31,44 @@ services:
 
 
 
+
+  beta-api-security-ait-dtu-dk-mariadb-service:
+    image: mariadb:latest
+    environment:
+      MYSQL_ROOT_PASSWORD: mariadb
+      MYSQL_DATABASE: mariadb
+      MYSQL_USER: mariadb
+      MYSQL_PASSWORD: mariadb
+    volumes:
+      - beta-api-security-ait-dtu-dk-mariadb-service-volume:/var/lib/mysql
+      - ../mariadb-service/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - shared_network
+
+
+
+  beta-api-security-ait-dtu-dk-phpmyadmin-service:
+      image: phpmyadmin/phpmyadmin:latest
+      ports:
+        - "5010:80"
+      environment:
+        PMA_HOST: beta-api-security-ait-dtu-dk-mariadb-service
+        MYSQL_ROOT_PASSWORD: mariadb
+        MYSQL_USER: mariadb
+        MYSQL_PASSWORD: mariadb
+      volumes:
+        - ../phpmyadmin-service/phpmyadmin-misc.ini:/usr/local/etc/php/conf.d/phpmyadmin-misc.ini
+#      depends_on:
+#        - security-ait-dtu-dk-app-mariadb
+      networks:
+        - shared_network
+
+
+
 networks:
   shared_network:
+    external: true
+
+volumes:
+  beta-api-security-ait-dtu-dk-mariadb-service-volume:
     external: true
