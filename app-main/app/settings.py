@@ -75,9 +75,7 @@ INSTALLED_APPS = [
     'app_mod',
     'myview',
     'active_directory',
-    'azure',
-    'playbook',
-    # 'misc',
+    'misc',
 ]
 
 MIDDLEWARE = [
