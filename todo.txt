@@ -18,5 +18,3 @@ Lav en rettighedsstyring som opfylder
     * hvilke endpoints man kan tilgaa
     * afgrænsning af domæne, f.eks. Anders Brink, kun maa afisolere maskiner som er under hans OU
     
-
-test commit 4
