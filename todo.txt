@@ -6,3 +6,11 @@ Hent installeret programmer fra sccm og defender
 
 require login for swagger
 
+
+Benyt mysql som database
+
+Lav en rettighedsstyring som opfylder
+    * read, write(action)
+    * hvilke endpoints man kan tilgaa
+    * afgrænsning af domæne, f.eks. Anders Brink, kun maa afisolere maskiner som er under hans OU
+    
