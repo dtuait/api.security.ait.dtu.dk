@@ -31,7 +31,7 @@
             "program": "${workspaceFolder}/app-main/manage.py",
             "args": [
                 "runserver",
-                "0.0.0.0:8081",
+                "0.0.0.0:6081",
                 "--settings",
                 "app.localhost_debug_true_settings"
             ],
@@ -71,7 +71,7 @@
             "runtimeExecutable": "C:\\Program Files\\chromium\\chrome-win\\chrome.exe",
             "request": "launch",
             "type": "msedge",
-            "url": "http://localhost:8081/swagger",
+            "url": "http://localhost:6081/swagger",
             "webRoot": "${workspaceFolder}/app-main",
             "disableNetworkCache": true
         },
