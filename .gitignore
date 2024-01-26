@@ -1,6 +1,7 @@
 *.env
 *.old
 *.log
+*.bak
 
 __pycache__/
 
@@ -22,3 +23,4 @@ app-main/db.sqlite3
 
 shared-project-data/django/
 
+app-main/data.json
