@@ -14,9 +14,11 @@ from pathlib import Path
 
 import os
 
-# load .env file
+# Load .env file
+# Import load_dotenv
 from dotenv import load_dotenv
-load_dotenv()
+dotenv_path = '/usr/src/project/.devcontainer/.env'
+load_dotenv(dotenv_path=dotenv_path)
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -124,10 +126,10 @@ WSGI_APPLICATION = 'app.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'app-main',
-        'USER': 'mariadb',
-        'PASSWORD': 'mariadb',
-        'HOST': 'beta-api-security-ait-dtu-dk-mariadb-service',
+        'NAME': os.getenv('MYSQL_DATABASE'),
+        'USER': os.getenv('MYSQL_USER'),
+        'PASSWORD': os.getenv('MYSQL_PASSWORD'),
+        'HOST': os.getenv('MYSQL_HOST'),
         'PORT': '3306',
     }
 }
