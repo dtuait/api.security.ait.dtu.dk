@@ -19,7 +19,7 @@
             "program": "${workspaceFolder}/app-main/manage.py",
             "args": [
                 "runscript",
-                "active_directory.scripts.active_directory_get_computer_info"
+                "active_directory.scripts.active_directory_get_soon_disabled_computers"
             ],
             "django": true,
             "justMyCode": true
