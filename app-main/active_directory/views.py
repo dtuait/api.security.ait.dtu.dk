@@ -65,3 +65,7 @@ class ADComputerViewSet(viewsets.ViewSet):
 
         # return Response(computer_info, status=status.HTTP_200_OK)
         return Response({"error": "Not implemented"}, status=status.HTTP_501_NOT_IMPLEMENTED)
+    
+
+
+    
