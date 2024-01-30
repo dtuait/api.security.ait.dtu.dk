@@ -542,7 +542,7 @@ WHERE
 
 
 def run():
-    computer_info, message = get_computer_info("MEK-425-222-02P")
+    computer_info, message = get_computer_info("DTU-CND1363SBJ")
     if message:
         print(message)
     else:

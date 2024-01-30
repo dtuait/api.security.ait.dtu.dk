@@ -13,6 +13,30 @@
             "justMyCode": true
         },
         {
+            "name": "Python: ad script",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/app-main/manage.py",
+            "args": [
+                "runscript",
+                "active_directory.scripts.active_directory_get_computer_info"
+            ],
+            "django": true,
+            "justMyCode": true
+        },
+        {
+            "name": "Python: ad connect script",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/app-main/manage.py",
+            "args": [
+                "runscript",
+                "active_directory.scripts.active_directory_connect"
+            ],
+            "django": true,
+            "justMyCode": true
+        },
+        {
             "name": "Python: sccm script",
             "type": "python",
             "request": "launch",
