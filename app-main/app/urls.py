@@ -16,6 +16,9 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include, re_path
+from django.views.generic import RedirectView
+from django.conf import settings
+from django.conf.urls.static import static
 from rest_framework import permissions
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
@@ -36,6 +39,13 @@ schema_view = get_schema_view(
 )
 
 urlpatterns = [
+
+    # redirect '' to 'my-view/frontpage'¨
+    # path('', include('myview.urls')),
+    # path('', include('myview.urls')),
+    # redirect root URL to pubs/publist
+    path('', RedirectView.as_view(url="my-view/frontpage/", permanent=True)),
+
     # admin panel 
     path('admin/', admin.site.urls),
     path('admin-cas-login/', AdminCasLoginView.as_view(), name='admin-cas-login'),
@@ -68,7 +78,12 @@ urlpatterns = [
     # panel for 
     path('my-view/', include('myview.urls')),
 
-    # redirect index to myview
-    path('', include('myview.urls')),
+    
+    # path('', include('myview.urls')),
 
 ]
+
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    

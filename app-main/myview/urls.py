@@ -5,7 +5,11 @@ from .views import FrontpagePageView, generate_api_token, regenerate_api_token
 
 urlpatterns = [
 
-    path('', FrontpagePageView.as_view(), name='frontpage'),
+    # path('', FrontpagePageView.as_view(), name='frontpage'),
+    path('frontpage/', FrontpagePageView.as_view(), name='frontpage'),
+
+
+
     path('generate-token/', generate_api_token, name='generate_api_token'),
     path('regenerate-token/', regenerate_api_token, name='regenerate_api_token'),
 
@@ -21,6 +25,5 @@ urlpatterns = [
     # path('login/', views.LoginView.as_view(), name='login'),
     # path('logout/', views.LogoutView.as_view(), name='logout'),
     # path('accounts/logout/', auth_views.LogoutView.as_view(next_page=reverse_lazy('frontpage')), name='logout'),
-
 
 ]
