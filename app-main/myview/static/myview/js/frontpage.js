@@ -1,5 +1,9 @@
 console.log('Frontpage JS loaded');
 
+
+
+
+
 function generateToken() {
     // Get the CSRF token
     let csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
@@ -26,6 +30,14 @@ function generateToken() {
         console.error('Error:', error);
     });
 }
+
+
+
+
+
+
+
+
 
 
 function regenerateToken() {
