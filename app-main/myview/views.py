@@ -45,6 +45,23 @@ class SwaggerView(BaseView):
             return redirect('cas_ng_login')
     
 
+
+class SwaggerView(BaseView):
+    template_name = "myview/custom_swagger.html"
+
+    def get(self, request, **kwargs):
+        if request.user.is_authenticated:
+            token = Token.objects.filter(user=request.user).first()
+
+            context = super().get_context_data(**kwargs)
+            context['user'] = request.user
+            context['token'] = token.key if token else None  # Pass the token key to the template context if it exists, otherwise pass None
+
+            return render(request, self.template_name, context)
+        else:
+            return redirect('cas_ng_login')
+    
+
 class FrontpagePageView(BaseView):
     template_name = "myview/frontpage.html"
 
