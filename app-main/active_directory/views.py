@@ -7,6 +7,7 @@ from drf_yasg.utils import swagger_auto_schema
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.permissions import IsAuthenticated
 from drf_yasg import openapi
+from .services import get_inactive_computers
 
 
 
@@ -68,4 +69,58 @@ class ADComputerViewSet(viewsets.ViewSet):
     
 
 
+
+
+
+class ADInactiveComputersViewset(viewsets.ViewSet):
+    authentication_classes = [TokenAuthentication]  # Require token authentication for this view
+    permission_classes = [IsAuthenticated]  # Require authenticated user for this view
+
+    
+    header_parameter = openapi.Parameter(
+        'Authorization',  # name of the header
+        in_=openapi.IN_HEADER,  # where the parameter is located
+        description="Type: Token \<token\>",
+        type=openapi.TYPE_STRING,  # type of the parameter
+        required=True  # if the header is required or not
+    )
+
+    @swagger_auto_schema(
+        manual_parameters=[header_parameter],
+        operation_description="""
+        Retrieve inactive computers
+        
+        You can only query computers under this OU: <ou_variable>
+
+        Curl example: \n
+        \t curl --location 'http://api.security.ait.dtu.dk/active-directory/computer/v1-0-0/inactive-computers'
+        \t\t  --header 'Authorization: Token \<token\>'
+        
+
+        """,
+        responses={
+            # 200: ComputerInfoSerializer(),
+            400: 'Error: Computer name must be provided.',
+            404: 'Error: No computer found with given name',
+            500: 'Error: Internal server error'
+        },
+
+    )
+    
+    # that endpoint retrives a list of computers that has not been logged in for x days - default 30 days
+    def retrieve(self, request):
+
+        # get the query params
+        days = request.query_params.get('days', 30)
+
+        ou = request.query_params.get('ou', 'DC=win,DC=dtu,DC=dk')
+        
+        # Get the soon disabled computers
+        inactive_computers = get_inactive_computers(days, ou)
+
+        return Response(inactive_computers, status=status.HTTP_200_OK)
+
+        # 
+        
+        # return Response({"error": "Not implemented"}, status=status.HTTP_501_NOT_IMPLEMENTED)
     

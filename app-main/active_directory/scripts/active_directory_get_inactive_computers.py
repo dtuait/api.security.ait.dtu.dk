@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, timezone
 # returns computer that has nat been logged in witing x days
 # write a good function name 
 
-def get_soon_disabled_computers(days=30, base_dn='DC=win,DC=dtu,DC=dk'):
+def get_inactive_computers(days=30, base_dn='DC=win,DC=dtu,DC=dk'):
 
     # Connect to Active Directory
     conn, message = active_directory_connect.active_directory_connect()
@@ -108,17 +108,17 @@ def get_soon_disabled_computers(days=30, base_dn='DC=win,DC=dtu,DC=dk'):
 
     # Prepare the final object to return
     result = {
-        "Days": days,
-        "Number_of_computers": len(active_directory_objects),
-        "Computers": active_directory_objects
+        "inactive_days": days,
+        "number_of_computers": len(active_directory_objects),
+        "inactive_computers": active_directory_objects
     }
 
     return result
 
 
 def run():
-    soon_disabled_computers = get_soon_disabled_computers(days=30, base_dn='DC=win,DC=dtu,DC=dk')
-    print(computer_info)
+    inactive_computers = get_inactive_computers(days=30, base_dn='DC=win,DC=dtu,DC=dk')
+    print(inactive_computers)
 
 
 
