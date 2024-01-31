@@ -4,7 +4,7 @@ from django.http import JsonResponse
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.authtoken.models import Token
-
+from .services import generate_custom_api_token
 
 # Create your views here.
 
@@ -44,6 +44,9 @@ class FrontpagePageView(BaseView):
 # @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def generate_api_token(request):
+
+    generate_custom_api_token(request=request, username=request.user.username)
+    
     token, created = Token.objects.get_or_create(user=request.user)
     return JsonResponse({'token': token.key})
 
@@ -59,6 +62,9 @@ def regenerate_api_token(request):
         token.delete()
     except Token.DoesNotExist:
         pass
-    # Create a new token
-    token = Token.objects.create(user=request.user)
+    
+    generate_custom_api_token(request=request, username=request.user.username)
+    
+    token, created = Token.objects.get_or_create(user=request.user)
     return JsonResponse({'token': token.key})
+
