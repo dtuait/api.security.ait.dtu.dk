@@ -13,13 +13,25 @@
             "justMyCode": true
         },
         {
+            "name": "Python: api gen token script",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/app-main/manage.py",
+            "args": [
+                "runscript",
+                "myview.scripts.myview_generate_api_token"
+            ],
+            "django": true,
+            "justMyCode": true
+        },
+        {
             "name": "Python: ad script",
             "type": "python",
             "request": "launch",
             "program": "${workspaceFolder}/app-main/manage.py",
             "args": [
                 "runscript",
-                "active_directory.scripts.active_directory_get_soon_disabled_computers"
+                "active_directory.scripts.active_directory_get_inactive_computers"
             ],
             "django": true,
             "justMyCode": true
@@ -95,7 +107,7 @@
             "runtimeExecutable": "C:\\Program Files\\chromium\\chrome-win\\chrome.exe",
             "request": "launch",
             "type": "msedge",
-            "url": "http://localhost:6081/swagger",
+            "url": "http://localhost:6081/my-view/frontpage/",
             "webRoot": "${workspaceFolder}/app-main",
             "disableNetworkCache": true
         },
