@@ -19,4 +19,4 @@ Lav en rettighedsstyring som opfylder
     * afgrænsning af domæne, f.eks. Anders Brink, kun maa afisolere maskiner som er under hans OU
     
 
-    test commit 1
+    test commit 2
