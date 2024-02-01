@@ -6,6 +6,6 @@ Hent installeret programmer fra sccm og defender
 
 require login for swagger
 
-test commit 2 (push)
+test commit 3 (push)
 
 test commit from container (push)
