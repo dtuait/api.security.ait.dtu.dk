@@ -6,3 +6,4 @@ Hent installeret programmer fra sccm og defender
 
 require login for swagger
 
+test commit (push)
