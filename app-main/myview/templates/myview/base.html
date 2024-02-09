@@ -48,7 +48,8 @@
 
                 <!-- <a class="nav-link header-nav-persons" href="#">{% trans "Persons" %}</a> -->
 
-                <a class="nav-link header-nav-api" href="{% url 'schema-swagger-ui' %}">{% trans "API" %}</a>
+                
+                <a class="nav-link header-nav-api" href="{% url 'custom-swagger-ui' %}">{% trans "API" %}</a>
 
                 
 
@@ -259,13 +260,9 @@
 
 
     <main id="main">
-        <div class='headline'>
-            <h1>{% block headline %}Base Headline{% endblock %}</h1>
-        </div>
         <!-- dynamic main-content starts here -->
         {% block main-content %}{% endblock %}
         <!-- dynamic main-content ends here -->
-
     </main>
 
 

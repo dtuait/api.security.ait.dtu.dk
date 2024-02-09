@@ -64,10 +64,10 @@
 :root {
     --primary-font-family: "Mona Sans", "Roboto", Verdana, Geneva, sans-serif;
     --primary-color: black;
-    --primary-background-color: #B0C4DE;
+    --primary-background-color: #a09939;
     --message-border-width: 1px;
-    --primary-site-width: 80%;
-    --primary-site-width-max: 900px;
+    --primary-site-width: 100%;
+    --primary-site-width-max: 100%;
     --dtu-color-corporate-red: #900;
 
 
@@ -259,9 +259,10 @@ body a:visited {
 }
 
 body a:hover {
-    color: grey;
+    background-color: grey;
     cursor: pointer;
 }
+
 
 ul {
     list-style-type: none;
@@ -449,6 +450,7 @@ header {
     width: auto;
     height: var(--header-height);
     overflow: auto;
+    padding-right: 20px;
 }
 
 header .default-header-content {
@@ -456,6 +458,9 @@ header .default-header-content {
     font-family: var(--primary-font-family), sans-serif;
     /* The second font is a fallback in case the custom font fails to load */
     font-size: 16px;
+    align-items: stretch;
+    height: 100%;
+    
 }
 
 
@@ -506,19 +511,26 @@ header .default-header-content {
 
 /* <!-- navigiation to the left starts here --> */
 header .nav-left {
-    width: auto;
     display: flex;
-    gap: 5px;
+    justify-content: center;
+    align-items: center;
 }
 
-/* add a little more gap between the logo and 'frontpag' */
-header .nav-left .header-nav-frontpage-icon {
-    margin-right: 10px;
+
+
+header .nav-left .nav-link {
+    display: inline-flex; /* Makes the element flexible */
+    justify-content: center; /* Centers content horizontally */
+    align-items: center; /* Centers content vertically */
+    width: 100px;
+    height:100%;
+    text-align: center;
 }
 
-header .frontpage-icon {
-    height: 40px;
-}
+
+
+
+
 
 
 
@@ -536,11 +548,18 @@ header .frontpage-icon {
 
 
 /* <!-- navigiation to the right starts here --> */
+header .nav-right {
+    /* margin-right: 20px; */
+    width: auto;
+}
+
+
 header .nav-right .sign-in {
     border: 1px solid black;
     border-radius: 5px;
     padding: 5px;
-    width: calc(var(--header-sign-in-icon-width) + var(--header-sign-in-span-width) + 20px);
+    /* width: calc(var(--header-sign-in-icon-width) + var(--header-sign-in-span-width) + 20px); */
+    width: auto;
 }
 
 header .sign-in-icon {
@@ -626,7 +645,7 @@ header .mobile-header-content {
 
 
 
-
+æ
 
    /* this is the hamburger menu starts here */
    header .mobile-menu-collapsed {
@@ -779,8 +798,8 @@ header .mobile-header-content {
 
 main {
     position: relative;
-    padding-top: 20px;
-    padding-bottom: 20px;
+    /* padding-top: 20px; */
+    /* padding-bottom: 20px; */
     width: var(--primary-site-width);
     max-width: var(--primary-site-width-max);
     margin: 0 auto;
