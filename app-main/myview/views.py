@@ -5,6 +5,10 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.authtoken.models import Token
 from .services import generate_custom_api_token
+from django.shortcuts import render
+from drf_yasg.views import get_schema_view
+from drf_yasg import openapi
+from rest_framework.permissions import AllowAny
 
 # Create your views here.
 
@@ -24,6 +28,23 @@ class BaseView(View):
         return render(request, self.base_template, context)
 
 
+
+class SwaggerView(BaseView):
+    template_name = "myview/custom_swagger.html"
+
+    def get(self, request, **kwargs):
+        if request.user.is_authenticated:
+            token = Token.objects.filter(user=request.user).first()
+
+            context = super().get_context_data(**kwargs)
+            context['user'] = request.user
+            context['token'] = token.key if token else None  # Pass the token key to the template context if it exists, otherwise pass None
+
+            return render(request, self.template_name, context)
+        else:
+            return redirect('cas_ng_login')
+    
+
 class FrontpagePageView(BaseView):
     template_name = "myview/frontpage.html"
 
@@ -40,6 +61,45 @@ class FrontpagePageView(BaseView):
         else:
             return redirect('cas_ng_login')
 
+
+
+
+
+
+
+schema_view = get_schema_view(
+   openapi.Info(
+      title="API",
+      default_version='v1',
+      description="A simple API",
+      terms_of_service="https://www.google.com/policies/terms/",
+      contact=openapi.Contact(email="vicre@dtu.dk"),
+      license=openapi.License(name="BSD License"),
+   ),
+   public=True,
+   permission_classes=(AllowAny,),
+)
+
+
+# # @permission_classes([IsAuthenticated])
+# from django.urls import reverse
+
+# def custom_swagger_view(request):
+#     # Assuming you have a URL named 'schema-json' that serves your OpenAPI schema
+#     schema_url = request.build_absolute_uri(reverse('schema-json'))
+#     return render(request, 'custom_swagger.html', {'schema_url': schema_url})
+
+from django.urls import reverse
+
+def custom_swagger_view(request):
+    template_name = "myview/custom_swagger.html"
+    # Build the URL to the Swagger UI
+    schema_url = reverse('myview/schema-swagger-ui')
+    return render(request, template_name, {'schema_url': schema_url})
+
+# def custom_swagger_view(request):
+#     schema_url = schema_view.without_ui(cache_timeout=0)
+#     return render(request, 'custom_swagger.html', {'schema_url': schema_url.url})
 
 # @api_view(['POST'])
 @permission_classes([IsAuthenticated])

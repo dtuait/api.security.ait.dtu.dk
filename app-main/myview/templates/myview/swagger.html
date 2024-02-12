@@ -1,0 +1,35 @@
+<!-- myview/templates/myview/swagger.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Swagger UI</title>
+  <link rel="stylesheet" type="text/css" href="{% static 'path_to_swagger_ui_css' %}" >
+</head>
+<body>
+
+<div id="swagger-ui"></div>
+
+<script src="{% static 'path_to_swagger_ui_bundle_js' %}"></script>
+<script src="{% static 'path_to_swagger_ui_standalone_preset_js' %}"></script>
+<script>
+window.onload = function() {
+  // Begin Swagger UI call region
+  const ui = SwaggerUIBundle({
+    url: "{% url 'schema-json' %}",
+    dom_id: '#swagger-ui',
+    deepLinking: true,
+    presets: [
+      SwaggerUIBundle.presets.apis,
+      SwaggerUIStandalonePreset
+    ],
+    plugins: [
+      SwaggerUIBundle.plugins.DownloadUrl
+    ],
+    layout: "StandaloneLayout"
+  })
+  // End Swagger UI call region
+}
+</script>
+</body>
+</html>
