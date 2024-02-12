@@ -25,18 +25,19 @@ from drf_yasg import openapi
 from app_mod.views import AdminCasLoginView
 import django_cas_ng.views
 
-schema_view = get_schema_view(
-   openapi.Info(
-      title="API",
-      default_version='v1',
-      description="A simple API",
-      terms_of_service="https://www.google.com/policies/terms/",
-      contact=openapi.Contact(email="vicre@dtu.dk"),
-      license=openapi.License(name="BSD License"),
-   ),
-   public=True,
-   permission_classes=(permissions.AllowAny,),
-)
+
+# schema_view = get_schema_view(
+#    openapi.Info(
+#       title="API",
+#       default_version='v1',
+#       description="A simple API",
+#       terms_of_service="https://www.google.com/policies/terms/",
+#       contact=openapi.Contact(email="vicre@dtu.dk"),
+#       license=openapi.License(name="BSD License"),
+#    ),
+#    public=True,
+#    permission_classes=(permissions.AllowAny,),
+# )
 
 urlpatterns = [
 
@@ -65,18 +66,20 @@ urlpatterns = [
 
     # playbook api 
     path('playbook/', include('playbook.urls')),
+
+    # panel for 
+    path('', include('myview.urls')),
+
     
     # # # misc api
     # path('misc/', include('misc.urls')),,
 
     #swagger ui
-    path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
+    # path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
     
     # redoc
-    path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
+    # path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
 
-    # panel for 
-    path('my-view/', include('myview.urls')),
 
     
     # path('', include('myview.urls')),
@@ -86,4 +89,5 @@ urlpatterns = [
 
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
     

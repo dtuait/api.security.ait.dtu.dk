@@ -522,9 +522,11 @@ header .nav-left .nav-link {
     display: inline-flex; /* Makes the element flexible */
     justify-content: center; /* Centers content horizontally */
     align-items: center; /* Centers content vertically */
-    width: 100px;
+    min-width: 100px;
     height:100%;
     text-align: center;
+    padding-left: 10px;
+    padding-right: 10px;
 }
 
 
@@ -645,7 +647,6 @@ header .mobile-header-content {
 
 
 
-æ
 
    /* this is the hamburger menu starts here */
    header .mobile-menu-collapsed {

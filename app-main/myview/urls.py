@@ -1,17 +1,55 @@
 from django.urls import include, path, reverse_lazy
 from django.contrib.auth import views as auth_views
+from drf_yasg.views import get_schema_view
+from drf_yasg import openapi
+from rest_framework import permissions
+from .views import FrontpagePageView, SwaggerView, generate_api_token, regenerate_api_token, custom_swagger_view, schema_view
 
-from .views import FrontpagePageView, generate_api_token, regenerate_api_token
+
+schema_view = get_schema_view(
+   openapi.Info(
+      title="API",
+      default_version='v1',
+      description="A simple API",
+      terms_of_service="https://www.google.com/policies/terms/",
+      contact=openapi.Contact(email="vicre@dtu.dk"),
+      license=openapi.License(name="BSD License"),
+   ),
+   public=True,
+   permission_classes=(permissions.AllowAny,),
+)
 
 urlpatterns = [
+    path('my-view/swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
+    path('my-view/custom-swagger/', SwaggerView.as_view(), name='custom-swagger-ui'),
 
-    # path('', FrontpagePageView.as_view(), name='frontpage'),
-    path('frontpage/', FrontpagePageView.as_view(), name='frontpage'),
+    path('my-view/', FrontpagePageView.as_view(), name='frontpage'),
+    path('my-view/frontpage/', FrontpagePageView.as_view(), name='frontpage'),
 
 
 
-    path('generate-token/', generate_api_token, name='generate_api_token'),
-    path('regenerate-token/', regenerate_api_token, name='regenerate_api_token'),
+    path('my-view/generate-token/', generate_api_token, name='generate_api_token'),
+    path('my-view/regenerate-token/', regenerate_api_token, name='regenerate_api_token'),
+
+
+  
+
+
+
+
+
+
+
+
+
+
+  #swagger ui
+    # path('my-view/swagger/', custom_swagger_view, name='custom_swagger'),
+    # path('my-view/swagger.json', schema_view.without_ui(cache_timeout=0), name='schema-json'),
+    # path('my-view/swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
+    # path('my-view/custom-swagger/', custom_swagger_view, name='custom_swagger'),
+
+
 
     # path('base/', views.BaseView.as_view(), name='base'),
     # path('frontpage/', views.FrontPageView.as_view(), name='frontpage'),
