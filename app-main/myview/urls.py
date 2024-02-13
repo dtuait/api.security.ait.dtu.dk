@@ -37,7 +37,7 @@ urlpatterns = [
    path('custom-swagger/', CustomSwaggerView.as_view(), name='custom-swagger-ui'), 
 
    
-   path('', RedirectView.as_view(url="my-view/frontpage/", permanent=True)),
+   path('', RedirectView.as_view(url="frontpage/", permanent=True)),
    path('frontpage/', FrontpagePageView.as_view(), name='frontpage'),
 
 
