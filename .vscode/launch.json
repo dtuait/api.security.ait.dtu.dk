@@ -2,7 +2,7 @@
     "configurations": [
         {
             "name": "Python: graph script",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/app-main/manage.py",
             "args": [
@@ -14,7 +14,7 @@
         },
         {
             "name": "Python: api gen token script",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/app-main/manage.py",
             "args": [
@@ -26,7 +26,7 @@
         },
         {
             "name": "Python: ad script",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/app-main/manage.py",
             "args": [
@@ -38,7 +38,7 @@
         },
         {
             "name": "Python: ad connect script",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/app-main/manage.py",
             "args": [
@@ -50,7 +50,7 @@
         },
         {
             "name": "Python: sccm script",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/app-main/manage.py",
             "args": [
@@ -62,7 +62,7 @@
         },
         {
             "name": "Python: Runserver Live",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/app-main/manage.py",
             "args": [
@@ -76,7 +76,7 @@
         },
         {
             "name": "Proxy Live with Debug",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/app-main/manage.py",
             "args": [
@@ -90,7 +90,7 @@
         },
         {
             "name": "Proxy Live",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/app-main/manage.py",
             "args": [
@@ -101,6 +101,17 @@
             ],
             "django": true,
             "justMyCode": false
+        },
+        {
+            "name": "Python: Unittest",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/app-main/manage.py",
+            "args": [
+                "test",
+                "myview"
+            ],
+            "django": true
         },
         {
             "name": "ChromiumDev: Home",

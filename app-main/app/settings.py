@@ -207,6 +207,8 @@ SWAGGER_SETTINGS = {
 }
 
 
+LOGIN_URL='/login/'
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
