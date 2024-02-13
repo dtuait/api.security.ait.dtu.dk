@@ -45,11 +45,11 @@ urlpatterns = [
     # path('', include('myview.urls')),
     # path('', include('myview.urls')),
     # redirect root URL to pubs/publist
-    path('', RedirectView.as_view(url="my-view/frontpage/", permanent=True)),
+    # path('', RedirectView.as_view(url="my-view/frontpage/", permanent=True)),
 
     # admin panel 
     path('admin/', admin.site.urls),
-    path('admin-cas-login/', AdminCasLoginView.as_view(), name='admin-cas-login'),
+    # path('admin-cas-login/', AdminCasLoginView.as_view(), name='admin-cas-login'),
 
     # cas login and logout
     path("login/", django_cas_ng.views.LoginView.as_view(), name="cas_ng_login"),
@@ -59,16 +59,16 @@ urlpatterns = [
     path('azure/', include('azure.urls')),
 
     # sccm api
-    path('', include('sccm.urls')),
+    path('sccm/', include('sccm.urls')),
 
     # active directory api
-    path('', include('active_directory.urls')),
+    path('active_directory/', include('active_directory.urls')),
 
     # playbook api 
     path('playbook/', include('playbook.urls')),
 
     # panel for 
-    path('', include('myview.urls')),
+    path('myview/', include('myview.urls')),
 
     
     # # # misc api

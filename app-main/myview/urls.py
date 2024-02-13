@@ -31,18 +31,18 @@ urlpatterns = [
    
    # Use the wrapper function here instead of schema_view.with_ui
    # has unit tests that confirms that the using needs to be logged in
-   path('my-view/swagger/', schema_swagger_ui, name='schema-swagger-ui'),
+   path('swagger/', schema_swagger_ui, name='schema-swagger-ui'),
 
    # 
-   path('my-view/custom-swagger/', CustomSwaggerView.as_view(), name='custom-swagger-ui'), 
+   path('custom-swagger/', CustomSwaggerView.as_view(), name='custom-swagger-ui'), 
 
    
-   path('my-view/', RedirectView.as_view(url="my-view/frontpage/", permanent=True)),
-   path('my-view/frontpage/', FrontpagePageView.as_view(), name='frontpage'),
+   path('', RedirectView.as_view(url="my-view/frontpage/", permanent=True)),
+   path('frontpage/', FrontpagePageView.as_view(), name='frontpage'),
 
 
-   path('my-view/generate-token/', generate_api_token, name='generate_api_token'),
-   path('my-view/regenerate-token/', regenerate_api_token, name='regenerate_api_token'),
+   path('generate-token/', generate_api_token, name='generate_api_token'),
+   path('regenerate-token/', regenerate_api_token, name='regenerate_api_token'),
 
 
 
@@ -56,10 +56,10 @@ urlpatterns = [
 
 
   #swagger ui
-    # path('my-view/swagger/', custom_swagger_view, name='custom_swagger'),
-    # path('my-view/swagger.json', schema_view.without_ui(cache_timeout=0), name='schema-json'),
-    # path('my-view/swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
-    # path('my-view/custom-swagger/', custom_swagger_view, name='custom_swagger'),
+    # path('swagger/', custom_swagger_view, name='custom_swagger'),
+    # path('swagger.json', schema_view.without_ui(cache_timeout=0), name='schema-json'),
+    # path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
+    # path('custom-swagger/', custom_swagger_view, name='custom_swagger'),
 
 
 
