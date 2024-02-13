@@ -3,8 +3,11 @@ from django.contrib.auth import views as auth_views
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 from rest_framework import permissions
-from .views import FrontpagePageView, SwaggerView, generate_api_token, regenerate_api_token, custom_swagger_view, schema_view
-
+from .views import FrontpagePageView, generate_api_token, regenerate_api_token, CustomSwaggerView
+from django.contrib.auth.decorators import login_required
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from django.views.generic import RedirectView
 
 schema_view = get_schema_view(
    openapi.Info(
@@ -19,20 +22,29 @@ schema_view = get_schema_view(
    permission_classes=(permissions.AllowAny,),
 )
 
+
+@login_required
+def schema_swagger_ui(request, *args, **kwargs):
+    return schema_view.with_ui('swagger', cache_timeout=0)(request, *args, **kwargs)
+
 urlpatterns = [
-    path('my-view/swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
-    path('my-view/custom-swagger/', SwaggerView.as_view(), name='custom-swagger-ui'),
+   
+   # Use the wrapper function here instead of schema_view.with_ui
+   # has unit tests that confirms that the using needs to be logged in
+   path('my-view/swagger/', schema_swagger_ui, name='schema-swagger-ui'),
 
-    path('my-view/', FrontpagePageView.as_view(), name='frontpage'),
-    path('my-view/frontpage/', FrontpagePageView.as_view(), name='frontpage'),
+   # 
+   path('my-view/custom-swagger/', CustomSwaggerView.as_view(), name='custom-swagger-ui'), 
+
+   
+   path('my-view/', RedirectView.as_view(url="my-view/frontpage/", permanent=True)),
+   path('my-view/frontpage/', FrontpagePageView.as_view(), name='frontpage'),
 
 
+   path('my-view/generate-token/', generate_api_token, name='generate_api_token'),
+   path('my-view/regenerate-token/', regenerate_api_token, name='regenerate_api_token'),
 
-    path('my-view/generate-token/', generate_api_token, name='generate_api_token'),
-    path('my-view/regenerate-token/', regenerate_api_token, name='regenerate_api_token'),
 
-
-  
 
 
 
