@@ -48,7 +48,7 @@ urlpatterns = [
     path('', RedirectView.as_view(url="my-view/frontpage/", permanent=True)),
 
     # admin panel 
-    path('admin/', admin.site.urls),
+    path('admin-3dbLnPXcGL4GLAw2cDgBm6F4LrS5VXTD/', admin.site.urls),
     # path('admin-cas-login/', AdminCasLoginView.as_view(), name='admin-cas-login'),
 
     # cas login and logout
