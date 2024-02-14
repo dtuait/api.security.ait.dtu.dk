@@ -39,6 +39,7 @@ class BaseView(View):
 
 
 
+
 class CustomSwaggerView(BaseView):
     template_name = "myview/custom_swagger.html"
 
@@ -48,36 +49,31 @@ class CustomSwaggerView(BaseView):
         # Your view logic here, accessible without login
         return render(request, self.template_name, context)
 
-
-    # def get(self, request, **kwargs):
-    #     if request.user.is_authenticated:
-    #         token = Token.objects.filter(user=request.user).first()
-
-    #         context = super().get_context_data(**kwargs)
-    #         context['user'] = request.user
-    #         context['token'] = token.key if token else None  # Pass the token key to the template context if it exists, otherwise pass None
-
-    #         return render(request, self.template_name, context)
-    #     else:
-    #         return redirect('cas_ng_login')
     
+
+class FrontpagePageView(BaseView):
+    template_name = "myview/frontpage.html"
+
+
+
 
 
 class SwaggerView(BaseView):
     template_name = "myview/custom_swagger.html"
 
+
     def get(self, request, **kwargs):
-        if request.user.is_authenticated:
-            token = Token.objects.filter(user=request.user).first()
+        context = super().get_context_data(**kwargs)
+        # Your view logic here, accessible without login
+        return render(request, self.template_name, context)
 
-            context = super().get_context_data(**kwargs)
-            context['user'] = request.user
-            context['token'] = token.key if token else None  # Pass the token key to the template context if it exists, otherwise pass None
 
-            return render(request, self.template_name, context)
-        else:
-            return redirect('cas_ng_login')
-    
+
+
+
+
+
+
 
 class FrontpagePageView(BaseView):
     template_name = "myview/frontpage.html"
@@ -88,59 +84,6 @@ class FrontpagePageView(BaseView):
         # Your view logic here, accessible without login
         return render(request, self.template_name, context)
 
-
-    # # is user logged in?
-    # def get(self, request, **kwargs):
-    #     if request.user.is_authenticated:
-    #         token = Token.objects.filter(user=request.user).first()
-
-    #         context = super().get_context_data(**kwargs)
-    #         context['user'] = request.user
-    #         context['token'] = token.key if token else None  # Pass the token key to the template context if it exists, otherwise pass None
-
-    #         return render(request, self.template_name, context)
-    #     else:
-    #         return redirect('cas_ng_login')
-
-
-
-
-
-
-
-# schema_view = get_schema_view(
-#    openapi.Info(
-#       title="API",
-#       default_version='v1',
-#       description="A simple API",
-#       terms_of_service="https://www.google.com/policies/terms/",
-#       contact=openapi.Contact(email="vicre@dtu.dk"),
-#       license=openapi.License(name="BSD License"),
-#    ),
-#    public=True,
-#    permission_classes=(AllowAny,),
-# )
-
-
-# # # @permission_classes([IsAuthenticated])
-# # from django.urls import reverse
-
-# # def custom_swagger_view(request):
-# #     # Assuming you have a URL named 'schema-json' that serves your OpenAPI schema
-# #     schema_url = request.build_absolute_uri(reverse('schema-json'))
-# #     return render(request, 'custom_swagger.html', {'schema_url': schema_url})
-
-# from django.urls import reverse
-
-# def custom_swagger_view(request):
-#     template_name = "myview/custom_swagger.html"
-#     # Build the URL to the Swagger UI
-#     schema_url = reverse('myview/schema-swagger-ui')
-#     return render(request, template_name, {'schema_url': schema_url})
-
-# # def custom_swagger_view(request):
-# #     schema_url = schema_view.without_ui(cache_timeout=0)
-# #     return render(request, 'custom_swagger.html', {'schema_url': schema_url.url})
 
 
 
