@@ -11,5 +11,5 @@ git config --global user.email "vicre@dtu.dk"
 git config --global user.name "Victor Reipur"
 git config --global --add safe.directory /usr/src/project
 git config --global --add safe.directory /mnt/project
-git config --global --add safe.directory /usr/src/project/app-main/.docker-migrate
+git config --global --add safe.directory /usr/src/project/.docker-migrate
 git config pull.rebase true
