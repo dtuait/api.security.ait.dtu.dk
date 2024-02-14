@@ -53,20 +53,20 @@ services:
 
 
 
-  # beta-api-security-ait-dtu-dk-phpmyadmin-service:
-  #     image: phpmyadmin/phpmyadmin:latest
-  #     restart: always
-  #     ports:
-  #       - "5010:80"
-  #     environment:
-  #       PMA_HOST: ${MYSQL_HOST} # beta-api-security-ait-dtu-dk-mariadb-service
-  #       MYSQL_ROOT_PASSWORD: ${MYSQL_DATABASE}
-  #       MYSQL_USER: ${MYSQL_USER}
-  #       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
-  #     volumes:
-  #       - ../phpmyadmin-service/phpmyadmin-misc.ini:/usr/local/etc/php/conf.d/phpmyadmin-misc.ini
-  #     networks:
-  #       - shared_network
+  xx-api-security-ait-dtu-dk-phpmyadmin-service:
+      image: phpmyadmin/phpmyadmin:latest
+      restart: always
+      ports:
+        - "5010:80"
+      environment:
+        PMA_HOST: ${MYSQL_HOST} # beta-api-security-ait-dtu-dk-mariadb-service
+        MYSQL_ROOT_PASSWORD: ${MYSQL_DATABASE}
+        MYSQL_USER: ${MYSQL_USER}
+        MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      volumes:
+        - ../phpmyadmin-service/phpmyadmin-misc.ini:/usr/local/etc/php/conf.d/phpmyadmin-misc.ini
+      networks:
+        - shared_network
 
 
 
