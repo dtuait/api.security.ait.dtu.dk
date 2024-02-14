@@ -70,6 +70,8 @@ urlpatterns = [
     # panel for 
     path('my-view/', include('myview.urls')),
 
+
+
     
     # # # misc api
     # path('misc/', include('misc.urls')),,
