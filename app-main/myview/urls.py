@@ -31,18 +31,21 @@ urlpatterns = [
    
    # Use the wrapper function here instead of schema_view.with_ui
    # has unit tests that confirms that the using needs to be logged in
+   path('', RedirectView.as_view(url="swagger/", permanent=True)),
    path('swagger/', schema_swagger_ui, name='schema-swagger-ui'),
 
+   
+   
    # 
-   path('custom-swagger/', CustomSwaggerView.as_view(), name='custom-swagger-ui'), 
+   # path('custom-swagger/', CustomSwaggerView.as_view(), name='custom-swagger-ui'), 
 
    
-   path('', RedirectView.as_view(url="frontpage/", permanent=True)),
-   path('frontpage/', FrontpagePageView.as_view(), name='frontpage'),
+   # path('', RedirectView.as_view(url="frontpage/", permanent=True)),
+   # path('frontpage/', FrontpagePageView.as_view(), name='frontpage'),
 
 
-   path('generate-token/', generate_api_token, name='generate_api_token'),
-   path('regenerate-token/', regenerate_api_token, name='regenerate_api_token'),
+   # path('generate-token/', generate_api_token, name='generate_api_token'),
+   # path('regenerate-token/', regenerate_api_token, name='regenerate_api_token'),
 
 
 
