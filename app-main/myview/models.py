@@ -2,13 +2,32 @@ from django.contrib.auth.models import User
 from django.db import models
 from django.db import models
 from django.contrib.auth.models import User
+from django.db import models
+from django.utils import timezone
 
-class OrganizationalUnit(models.Model):
-    name = models.TextField(unique=True)  # The full OU string, e.g. "OU=AIT,OU=ITAdmUsers,OU=Delegations..."
 
-    # String representation for easier debugging.
+
+
+
+
+
+class BaseModel(models.Model):
+    datetime_created = models.DateTimeField(auto_now_add=True)
+    datetime_modified = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        abstract = True
+
+
+
+class OrganizationalUnit(BaseModel):
+    distinguished_name = models.TextField(unique=True)  # The full OU string
+    canonical_name = models.TextField(unique=True, default="")  # The canonical name of the OU
+
     def __str__(self):
-        return self.name
+        return self.distinguished_name
+
+
 
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
