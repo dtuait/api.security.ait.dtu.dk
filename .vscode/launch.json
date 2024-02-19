@@ -43,11 +43,24 @@
             "program": "${workspaceFolder}/app-main/manage.py",
             "args": [
                 "runscript",
-                "active_directory.scripts.active_directory_connect"
+                "utils.active_directory_connect"
             ],
             "django": true,
             "justMyCode": true
         },
+
+        {
+            "name": "Python: update ous script",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/app-main/manage.py",
+            "args": [
+                "runscript",
+                "utils.cronjob_active_directory_update_ous"
+            ],
+            "django": true,
+            "justMyCode": true
+        },        
         {
             "name": "Python: sccm script",
             "type": "debugpy",
