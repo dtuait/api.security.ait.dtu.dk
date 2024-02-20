@@ -25,7 +25,7 @@ class OrganizationalUnit(BaseModel):
     canonical_name = models.TextField(unique=True, default="")  # The canonical name of the OU
 
     def __str__(self):
-        return self.distinguished_name
+        return self.canonical_name
 
 
 
