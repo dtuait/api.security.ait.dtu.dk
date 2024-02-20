@@ -25,6 +25,7 @@ services:
       - shared_network
 
   xx-api-security-ait-dtu-dk-httpd-service:
+    restart: always
     #build:
     #  context: .
     #  dockerfile: Dockerfile-api-security-ait-dtu-dk-httpd-service
