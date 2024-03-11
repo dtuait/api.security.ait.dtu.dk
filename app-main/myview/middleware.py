@@ -5,7 +5,7 @@ from .models import UserProfile
 from dotenv import load_dotenv
 import os
 from django.http import HttpResponseForbidden
-from .models import EndpointAccess
+# from .models import EndpointAccess
 
 
 

@@ -37,13 +37,13 @@
             "justMyCode": true
         },
         {
-            "name": "Python: ad connect script",
+            "name": "Python: utils script",
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/app-main/manage.py",
             "args": [
                 "runscript",
-                "utils.active_directory_connect"
+                "utils.cronjob_list_rest_urls"
             ],
             "django": true,
             "justMyCode": true
