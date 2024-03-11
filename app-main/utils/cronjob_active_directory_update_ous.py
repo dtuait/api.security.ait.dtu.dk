@@ -103,7 +103,7 @@ def update_ous():
         print('Error in bind', conn.result)
         return
 
-# Define search parameters
+    # Define search parameters
     base_dn = "DC=win,DC=dtu,DC=dk"
     search_filter = "(objectClass=organizationalUnit)"
     search_attributes = ["distinguishedName", "name", "description"]
