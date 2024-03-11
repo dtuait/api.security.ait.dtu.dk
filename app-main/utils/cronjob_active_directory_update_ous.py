@@ -153,7 +153,7 @@ def update_ous():
     OrganizationalUnit.objects.filter(distinguished_name__in=existing_ous).delete()
 
     # Add the base_dn as an OrganizationalUnit
-    OrganizationalUnit.objects.get_or_create(distinguished_name=base_dn, canonical_name='win.dtu.dk')
+    OrganizationalUnit.objects.get_or_create(distinguished_name=base_dn, canonical_name='DC_win.dtu.dk')
 
     conn.unbind()
     print("Completed updating OUs.")
