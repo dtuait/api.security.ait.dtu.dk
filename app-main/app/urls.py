@@ -45,7 +45,7 @@ urlpatterns = [
     # path('', include('myview.urls')),
     # path('', include('myview.urls')),
     # redirect root URL to pubs/publist
-    path('', RedirectView.as_view(url="my-view/swagger/", permanent=True)),
+    path('', RedirectView.as_view(url="my-view/frontpage/", permanent=True)),
 
     # admin panel 
     path('admin-3dbLnPXcGL4GLAw2cDgBm6F4LrS5VXTD/', admin.site.urls),

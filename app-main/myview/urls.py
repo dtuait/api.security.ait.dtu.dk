@@ -31,7 +31,7 @@ urlpatterns = [
    
    # Use the wrapper function here instead of schema_view.with_ui
    # has unit tests that confirms that the using needs to be logged in
-   path('', RedirectView.as_view(url="swagger/", permanent=True)),
+   # path('', RedirectView.as_view(url="frontpage/", permanent=True)),
    path('swagger/', schema_swagger_ui, name='schema-swagger-ui'),
 
    
