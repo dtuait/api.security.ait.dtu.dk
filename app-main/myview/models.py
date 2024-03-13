@@ -1,8 +1,9 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils.translation import gettext_lazy as _
-from django.db.models.signals import pre_delete
+from django.db.models.signals import pre_delete, post_save
 from django.dispatch import receiver
+
 
 class BaseModel(models.Model):
     datetime_created = models.DateTimeField(auto_now_add=True)
@@ -52,9 +53,6 @@ class Endpoint(BaseModel):
 
     def __str__(self):
         return f"{self.method if self.method else ''} {self.path}"
-
-
-
 
 
 
@@ -124,10 +122,6 @@ class EndpointAccessControl(BaseModel):
 
 
 
-
-
-
-
 @receiver(pre_delete, sender=Endpoint)
 def endpoint_pre_delete_handler(sender, instance, **kwargs):
     # Automatically deny access requests associated with the endpoint being deleted
@@ -136,6 +130,24 @@ def endpoint_pre_delete_handler(sender, instance, **kwargs):
 
 
 
+@receiver(post_save, sender=AccessRequest)
+def update_endpoint_permission(sender, instance, **kwargs):
+    """
+    Signal to update EndpointPermission when an AccessRequest is saved.
+    """
+    if instance.status == AccessRequestStatus.GRANTED:
+        # If access is granted, ensure the user has permission.
+        EndpointPermission.objects.update_or_create(
+            user_profile=instance.user_profile,
+            endpoint=instance.endpoint,
+            defaults={'can_access': True}
+        )
+    elif instance.status in [AccessRequestStatus.PENDING, AccessRequestStatus.DENIED]:
+        # If access is not granted, ensure the user does not have permission.
+        EndpointPermission.objects.filter(
+            user_profile=instance.user_profile,
+            endpoint=instance.endpoint
+        ).update(can_access=False)
 
 
 

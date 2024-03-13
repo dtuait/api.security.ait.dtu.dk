@@ -1,13 +1,182 @@
-from django.http import JsonResponse
-from rest_framework.authtoken.models import Token
-from utils.get_computer_ou import get_computer_ou
-from .models import UserProfile
-from dotenv import load_dotenv
-import os
 from django.http import HttpResponseForbidden
-from django.core.cache import cache
-from django.http import HttpResponseForbidden
-from .models import UserProfile, EndpointPermission
+from django.utils.deprecation import MiddlewareMixin
+from .models import EndpointPermission, Endpoint
+
+class AccessControlMiddleware(MiddlewareMixin):
+    def __init__(self, get_response):
+        self.get_response = get_response
+        # Initialize the list of paths to exclude from checks
+        self.excluded_paths = [
+            '/admin',  # Exclude all Django admin paths
+            '/accounts/login/',  # Exclude login page
+            # Add any other paths you want to exclude
+            '/myview',
+            # '/myview/swagger/',
+        ]
+        super().__init__(get_response)
+
+    def __call__(self, request):
+        path = request.path
+        method = request.method.lower()
+
+        # Check if the path is in the excluded paths
+        if any(path.startswith(excluded_path) for excluded_path in self.excluded_paths):
+            return self.get_response(request)
+
+        # Check if user is authenticated
+        if not request.user.is_authenticated:
+            return HttpResponseForbidden('You must be logged in to access this endpoint')
+
+        # Special handling for root users and 'any' endpoint
+        if request.user.is_superuser and (path == 'any' or method == 'any'):
+            return self.get_response(request)
+
+        # Check access in EndpointPermission
+        try:
+            endpoint = Endpoint.objects.get(path=path, method=method)
+            permission = EndpointPermission.objects.get(user_profile=request.user.userprofile, endpoint=endpoint)
+            if not permission.can_access:
+                return HttpResponseForbidden('You do not have access to this endpoint')
+        except (Endpoint.DoesNotExist, EndpointPermission.DoesNotExist):
+            return HttpResponseForbidden('Endpoint not found or access not defined')
+
+        return self.get_response(request)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# from django.http import HttpResponseForbidden
+# from django.utils.deprecation import MiddlewareMixin
+# from .models import EndpointPermission, Endpoint
+
+# class AccessControlMiddleware(MiddlewareMixin):
+#     def __call__(self, request):
+#         # Extract the request path and method
+#         path = request.path
+#         method = request.method.lower()
+
+#         # Check if user is authenticated
+#         if not request.user.is_authenticated:
+#             return HttpResponseForbidden('You must be logged in to access this endpoint')
+
+#         # Special handling for root users and 'any' endpoint
+#         if request.user.is_superuser and (path == 'any' or method == 'any'):
+#             return self.get_response(request)
+
+#         # Check access in EndpointPermission
+#         try:
+#             endpoint = Endpoint.objects.get(path=path, method=method)
+#             permission = EndpointPermission.objects.get(user_profile=request.user.userprofile, endpoint=endpoint)
+#             if not permission.can_access:
+#                 return HttpResponseForbidden('You do not have access to this endpoint')
+#         except (Endpoint.DoesNotExist, EndpointPermission.DoesNotExist):
+#             return HttpResponseForbidden('Endpoint not found or access not defined')
+
+#         return self.get_response(request)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# from django.http import JsonResponse
+# from rest_framework.authtoken.models import Token
+# from utils.get_computer_ou import get_computer_ou
+# from .models import UserProfile
+# from dotenv import load_dotenv
+# import os
+# from django.http import HttpResponseForbidden
+# from django.core.cache import cache
+# from django.http import HttpResponseForbidden
+# from .models import UserProfile, EndpointPermission
 
 
 

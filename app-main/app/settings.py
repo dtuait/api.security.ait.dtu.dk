@@ -83,6 +83,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     # 'myview.middleware.OUAuthorizationMiddleware', # perminssion based on ad structure
     # 'myview.middleware.EndpointAccessMiddleware', # define who access to endpoints
+
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -90,6 +91,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'myview.middleware.AccessControlMiddleware',
 ]
 
 ROOT_URLCONF = 'app.urls'
