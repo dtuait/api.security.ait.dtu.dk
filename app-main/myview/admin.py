@@ -1,21 +1,77 @@
-# from django.contrib import admin
-# from .models import OrganizationalUnit, UserProfile, AccessRequest, Endpoint, EndpointPermission
+from django.contrib import admin
+from .models import UserProfile, Endpoint, EndpointPermission, AccessRequest, AccessRequestStatus
+# from .models import (UserProfile, AccessControlType, Endpoint, AccessRequest, EndpointPermission, EndpointAccessControl)
 
+
+# # Register your models here.
+# admin.site.register(UserProfile)
+# admin.site.register(AccessControlType)
+admin.site.register(Endpoint) # shows list of endpoints
+# admin.site.register(AccessRequest)
+admin.site.register(EndpointPermission)
+# admin.site.register(EndpointAccessControl)
+
+class EndpointPermissionInline(admin.TabularInline):
+    model = EndpointPermission
+    extra = 1  # Specifies the number of blank forms the inline formset should display. Adjust as needed.
+
+
+
+class UserProfileAdmin(admin.ModelAdmin):
+    inlines = [EndpointPermissionInline,]
+    list_display = ('user', 'id')  # Adjust list_display as needed for your use case
+
+admin.site.register(UserProfile, UserProfileAdmin)
+
+
+
+class AccessRequestAdmin(admin.ModelAdmin):
+    list_display = ('user_profile', 'endpoint', 'status', 'request_date')
+    list_filter = ('status', 'request_date')
+    search_fields = ('user_profile__user__username', 'endpoint__path')
+    actions = ['approve_request', 'deny_request']
+
+    def get_readonly_fields(self, request, obj=None):
+        if obj:  # This is the case when obj is already created i.e. it's an edit
+            return 'user_profile', 'endpoint'
+        else:
+            return []
+
+    def approve_request(self, request, queryset):
+        """
+        Custom admin action to approve selected requests.
+        """
+        queryset.update(status=AccessRequestStatus.GRANTED)
+
+    approve_request.short_description = "Approve selected access requests"
+
+    def deny_request(self, request, queryset):
+        """
+        Custom admin action to deny selected requests.
+        """
+        queryset.update(status=AccessRequestStatus.DENIED)
+
+    deny_request.short_description = "Deny selected access requests"
+
+admin.site.register(AccessRequest, AccessRequestAdmin)
 # class AccessRequestInline(admin.TabularInline):
 #     model = AccessRequest
 #     extra = 1  # Determines the number of empty forms the formset displays.
-#     fields = ['organizational_unit', 'status']
-#     autocomplete_fields = ['organizational_unit']  # Use autocomplete for organizational_unit field if there are many instances.
+#     # fields = ['organizational_unit', 'status']
+#     # autocomplete_fields = ['organizational_unit']  # Use autocomplete for organizational_unit field if there are many instances.
 
 # @admin.register(UserProfile)
 # class UserProfileAdmin(admin.ModelAdmin):
-#     list_display = ('user', 'get_ous')
+#     list_display = ('user',)
 #     inlines = [AccessRequestInline]
 #     search_fields = ('user__username',)  # Enable search by user's username.
 
-#     def get_ous(self, obj):
-#         return ", ".join([ou.canonical_name for ou in obj.ous.all()])
-#     get_ous.short_description = 'Organizational Units'
+
+
+
+    # def get_ous(self, obj):
+    #     return ", ".join([ou.canonical_name for ou in obj.ous.all()])
+    # get_ous.short_description = 'Organizational Units'
 
 # # Existing admin registrations...
 

@@ -1,7 +1,7 @@
 from drf_yasg.generators import OpenAPISchemaGenerator
 from drf_yasg import openapi
 from django.urls import get_resolver
-from myview.models import Endpoint  # Update 'myview' with the actual name of your app
+from myview.models import Endpoint  # Update 'your_app' with the actual name of your app
 
 def updateEndpoints():
     # Instantiate the schema generator
@@ -23,12 +23,9 @@ def updateEndpoints():
     # Create a set of all endpoint paths in the Django model
     existing_endpoints = set(Endpoint.objects.values_list('path', flat=True))
 
-    # Ensure the special 'any' path and method exists
-    Endpoint.objects.get_or_create(path='any', method='any')
-
     # Loop through the paths in the schema
     for path, path_data in schema['paths'].items():
-        for method in path_data.keys():
+        for method, method_data in path_data.items():
             # Normalize method to uppercase
             common_http_methods = ['get', 'post', 'put', 'patch', 'delete', 'head', 'options', 'trace']
             method = method.lower()
@@ -46,7 +43,7 @@ def updateEndpoints():
                 existing_endpoints.discard(path)
 
     # Delete any endpoints that were not found in the schema
-    Endpoint.objects.filter(path__in=existing_endpoints).exclude(path='any', method='any').delete()
+    Endpoint.objects.filter(path__in=existing_endpoints).delete()
 
     print("Completed updating endpoints.")
 
