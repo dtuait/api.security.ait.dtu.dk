@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from datetime import datetime
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.permissions import IsAuthenticated
-from azure.services import execute_hunting_query
+from graph.services import execute_hunting_query
 import pytz
 
 

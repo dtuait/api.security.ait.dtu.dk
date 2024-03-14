@@ -1,9 +1,10 @@
-import pyodbc
-import os
-import json
-import time
-import requests
 from dotenv import load_dotenv, set_key
+import requests
+import time
+import os
+
+
+
 
 # Function to generate a new token
 def _generate_new_token():
@@ -13,9 +14,9 @@ def _generate_new_token():
 
     data = {
         'resource': os.getenv("GRAPH_RESOURCE"),
-        'client_id': os.getenv("DEFENDER_CLIENT_ID"),
-        'client_secret': os.getenv("DEFENDER_CLIENT_SECRET"),
-        'grant_type': 'client_credentials'
+        'client_id': os.getenv("GRAPH_CLIENT_ID"),
+        'client_secret': os.getenv("GRAPH_CLIENT_SECRET"),
+        'grant_type': os.getenv("GRAPH_GRANT_TYPE")
     }
 
     response = requests.post(url, data=data)
@@ -26,13 +27,16 @@ def _generate_new_token():
         return None
 
 
-# Load environment variables from .env file
-env_path = '/usr/src/project/app-main/.env'
-load_dotenv(dotenv_path=env_path)
-
-def run_hunting_query(query):
 
 
+
+
+def _get_bearertoken():
+    
+
+    # Load environment variables from .env file
+    env_path = '/usr/src/project/app-main/.env'
+    load_dotenv(dotenv_path=env_path)
 
     # Get the expiration time from the environment variables
     expires_on = int(os.getenv("GRAPH_ACCESS_BEARER_TOKEN_EXPIRES_ON"))
@@ -52,29 +56,9 @@ def run_hunting_query(query):
         # Reload the environment variables
         load_dotenv(dotenv_path=env_path, override=True)
 
-    
-    
     # Use the token to perform the hunting query
     token = os.getenv("GRAPH_ACCESS_BEARER_TOKEN")
-    headers = {
-        'Authorization': f'Bearer {token}',
-        'Content-Type': 'application/json'
-    }
-
-
-    # Define the API endpoint
-    api_endpoint = "https://graph.microsoft.com/v1.0/security/runHuntingQuery"  # Replace with your actual endpoint
-
-    # Make the request
-    response = requests.post(api_endpoint, headers=headers, json={"Query": query})
-
-    return response, response.status_code
-
-
-
-
-
-
+    return token
 
 
 
@@ -84,8 +68,8 @@ def run():
     # message = new_token
     # print(message)
 
-    kql = "// might contain sensitive data\nlet alertedEvent = datatable(compressedRec: string)\n['eAEtjkFPAjEQRv8K6RmabReF3ZNEohiMEEQP3up22Excps20S9IY/7tj5DjvvWS+b3XEMzwCAbsMXrXKVraeGTOrq6OZt2bRmrk2y4Wtbm8+1FStYlxjioMrL+4M0u9OJ+xgE+SYqrcEvGekDqMbrsEFO4Y7n0ftvyR52q+8Z0hJlGmsrpe6qbSxjbh7zEXwNlAPlCbPhfrPIvw1yzgRm3ABn7LzQH91GClz2fEBegwkfr0V/DAOA/2/fscuB54cAOPI6ucXbMZKOg==']\n| extend raw = todynamic(zlib_decompress_from_base64_string(compressedRec)) | evaluate bag_unpack(raw) | project-away compressedRec;\nalertedEvent"
-    response = run_hunting_query(kql)
+
+    response = _get_bearertoken()
     print(response)
 
 
