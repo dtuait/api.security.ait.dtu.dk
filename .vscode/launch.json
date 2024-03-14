@@ -37,13 +37,25 @@
             "justMyCode": true
         },
         {
-            "name": "Python: graph_apicall_getuserauthenticationmethods",
+            "name": "Python: graph_apicall_listuserauthenticationmethods",
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/app-main/manage.py",
             "args": [
                 "runscript",
-                "graph.scripts.graph_apicall_getuserauthenticationmethods"
+                "graph.scripts.graph_apicall_listuserauthenticationmethods"
+            ],
+            "django": true,
+            "justMyCode": true
+        },
+        {
+            "name": "Python: graph_apicall_deletemfa",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/app-main/manage.py",
+            "args": [
+                "runscript",
+                "graph.scripts.graph_apicall_deletemfa"
             ],
             "django": true,
             "justMyCode": true

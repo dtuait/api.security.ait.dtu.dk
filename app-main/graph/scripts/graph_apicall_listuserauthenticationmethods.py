@@ -4,11 +4,12 @@ from ._graph_get_bearertoken import _get_bearertoken
 
 
 
-def get_user_authentication_methods(user_id):
+def list_user_authentication_methods(user_id):
 
 
 
     token = _get_bearertoken()
+    # https://learn.microsoft.com/en-us/graph/api/microsoftauthenticatorauthenticationmethod-list?view=graph-rest-1.0&tabs=http
     api_endpoint = f"https://graph.microsoft.com/v1.0/users/{user_id}/authentication/methods"
 
 
@@ -26,7 +27,7 @@ def get_user_authentication_methods(user_id):
 
 def run():
     user_id = '3358461b-2b36-4019-a2b7-2da92001cf7c'
-    response, status_code = get_user_authentication_methods(user_id)
+    response, status_code = list_user_authentication_methods(user_id)
     print(response)
 
 

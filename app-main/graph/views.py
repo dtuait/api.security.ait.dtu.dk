@@ -10,7 +10,7 @@ from drf_yasg import openapi
 from rest_framework.exceptions import ParseError
 from .serializers import QuerySerializer
 # from .scripts.graph_apicall_runhuntingquery import run_hunting_query
-from .services import execute_hunting_query, execute_get_user, execute_get_user_authentication_methods
+from .services import execute_hunting_query, execute_get_user, execute_list_user_authentication_methods
 
 from rest_framework.decorators import action
 
@@ -191,7 +191,7 @@ class GetUserViewSet(viewsets.ViewSet):
 
 
 
-class GetUserAuthenticationMethodsViewSet(viewsets.ViewSet):
+class ListUserAuthenticationMethodsViewSet(viewsets.ViewSet):
 
 
 
@@ -210,12 +210,12 @@ class GetUserAuthenticationMethodsViewSet(viewsets.ViewSet):
     )
 
     user_path_param = openapi.Parameter(
-        'user_id',  # name of the path parameter
+        'user_id__or__user_principalname',  # name of the path parameter
         in_=openapi.IN_PATH,  # location of the parameter
         description="Get user authentication methods for the given user id",
         type=openapi.TYPE_STRING,  # type of the parameter
         required=True,  # if the path parameter is required
-        default='3358461b-2b36-4019-a2b7-2da92001cf7c',  # default value
+        default='vicre-test01@dtudk.onmicrosoft.com',  # default value
         override=True  # override the default value
     )
 
@@ -224,6 +224,7 @@ class GetUserAuthenticationMethodsViewSet(viewsets.ViewSet):
         operation_description="""
         Get the user authentication methods for the given user id.
 
+        Microsoft Graph API documentation: https://learn.microsoft.com/en-us/graph/api/microsoftauthenticatorauthenticationmethod-list?view=graph-rest-1.0&tabs=http
         
         """,
         responses={
@@ -236,13 +237,12 @@ class GetUserAuthenticationMethodsViewSet(viewsets.ViewSet):
     )
 
 
-    @action(detail=False, methods=['get'], url_path='get_user_authentication_methods')
+    @action(detail=False, methods=['get'], url_path='list_user_authentication_methods')
 
 
-    def get_user_authentication_methods(self, request, user_id):
-            
+    def list_user_authentication_methods(self, request, user_id__or__user_principalname):
 
-        response, status_code = execute_get_user_authentication_methods(user_id)
+        response, status_code = execute_list_user_authentication_methods(user_id__or__user_principalname)
 
         return Response(response, status=status_code)
 
@@ -312,6 +312,8 @@ class DeleteMfaViewSet(viewsets.ViewSet):
         manual_parameters=[autho_bearer_token, user_path_param],
         operation_description="""
         Incoming user MFA solutions will be deleted, thereby giving users space to re-enable MFA by deleting their MFA solution on the app, then visiting office.com and signing in with <user>@dtu.dk to re-enable MFA.
+
+        Microsoft Graph API documentation: https://learn.microsoft.com/en-us/graph/api/microsoftauthenticatorauthenticationmethod-delete?view=graph-rest-1.0&tabs=http
 
         Curl example: \n
         \t curl --location --request DELETE 'https://api.security.ait.dtu.dk/graph/security/delete-mfa/<user>'
