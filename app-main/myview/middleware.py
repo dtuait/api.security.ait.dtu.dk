@@ -28,9 +28,10 @@ class AccessControlMiddleware(MiddlewareMixin):
             return HttpResponseForbidden('You must be logged in to access this endpoint')
 
         # Special handling for root users and 'any' endpoint
-        if request.user.is_superuser and (path == 'any' or method == 'any'):
+        if request.user.is_superuser:
             return self.get_response(request)
-
+        
+        
         # Check access in EndpointPermission
         try:
             endpoint = Endpoint.objects.get(path=path, method=method)

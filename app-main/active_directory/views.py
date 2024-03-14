@@ -32,7 +32,7 @@ class ADComputerViewSet(viewsets.ViewSet):
         You can only query computers under this OU: <ou_variable>
 
         Curl example: \n
-        \t curl --location 'http://api.security.ait.dtu.dk/active-directory/computer/v1-0-0/<str:computer_name>/'
+        \t curl --location 'https://api.security.ait.dtu.dk/active-directory/computer/v1-0-0/<str:computer_name>/'
         \t\t  --header 'Authorization: Token \<token\>'
         
 
