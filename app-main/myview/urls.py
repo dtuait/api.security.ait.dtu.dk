@@ -3,7 +3,7 @@ from django.contrib.auth import views as auth_views
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 from rest_framework import permissions
-from .views import FrontpagePageView, generate_api_token, regenerate_api_token, CustomSwaggerView
+from .views import FrontpagePageView, generate_api_token, regenerate_api_token, CustomSwaggerView, MFAResetPageView
 from django.contrib.auth.decorators import login_required
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
@@ -33,15 +33,19 @@ urlpatterns = [
    # has unit tests that confirms that the using needs to be logged in
    # path('', RedirectView.as_view(url="frontpage/", permanent=True)),
    path('swagger/', schema_swagger_ui, name='schema-swagger-ui'),
-
+   
    
    
    # 
    path('custom-swagger/', CustomSwaggerView.as_view(), name='custom-swagger-ui'), 
 
    
+
+   
    path('', RedirectView.as_view(url="frontpage/", permanent=True)),
    path('frontpage/', FrontpagePageView.as_view(), name='frontpage'),
+   path('mfa-reset/', MFAResetPageView.as_view(), name='mfa-reset'),
+   # path('mfa-reset/', mfa_reset, name='mfa-reset'),
 
    # path('generate-token/', generate_api_token, name='generate_api_token'),
    # path('regenerate-token/', regenerate_api_token, name='regenerate_api_token'),

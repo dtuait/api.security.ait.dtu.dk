@@ -11,6 +11,7 @@ class AccessControlMiddleware(MiddlewareMixin):
             '/accounts/login/',  # Exclude login page
             # Add any other paths you want to exclude
             '/myview',
+            '/login/',
             # '/myview/swagger/',
         ]
         super().__init__(get_response)

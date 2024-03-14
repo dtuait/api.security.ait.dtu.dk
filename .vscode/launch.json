@@ -85,13 +85,13 @@
             "justMyCode": true
         },
         {
-            "name": "Python: utils script",
+            "name": "Python: cronjob_update_endpoints",
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/app-main/manage.py",
             "args": [
                 "runscript",
-                "utils.cronjob_list_rest_urls"
+                "utils.cronjob_update_endpoints"
             ],
             "django": true,
             "justMyCode": true
