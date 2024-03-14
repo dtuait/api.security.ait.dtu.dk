@@ -24,7 +24,7 @@ def updateEndpoints():
     existing_endpoints = set(Endpoint.objects.values_list('path', flat=True))
 
     # Ensure the special 'any' path and method exists
-    Endpoint.objects.get_or_create(path='any', method='any')
+    # Endpoint.objects.get_or_create(path='any', method='any')
 
     # Loop through the paths in the schema
     for path, path_data in schema['paths'].items():
@@ -46,7 +46,7 @@ def updateEndpoints():
                 existing_endpoints.discard(path)
 
     # Delete any endpoints that were not found in the schema
-    Endpoint.objects.filter(path__in=existing_endpoints).exclude(path='any', method='any').delete()
+    Endpoint.objects.filter(path__in=existing_endpoints).delete()
 
     print("Completed updating endpoints.")
 
