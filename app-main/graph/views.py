@@ -145,6 +145,26 @@ class GetUserViewSet(viewsets.ViewSet):
         Curl example: \n
         \t curl --location --request GET 'https://api.security.ait.dtu.dk/v1.0/graph/get-user/<user>'
         \t\t  --header 'Authorization: Token \<token\>'
+
+
+
+        Response example:
+        ```json
+        {
+            "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#users/$entity",
+            "businessPhones": [],
+            "displayName": "vicre-test01",
+            "givenName": "Victors test bruger",
+            "jobTitle": "test bruger",
+            "mail": "vicre-test01@dtudk.onmicrosoft.com",
+            "mobilePhone": null,
+            "officeLocation": null,
+            "preferredLanguage": null,
+            "surname": null,
+            "userPrincipalName": "vicre-test01@dtudk.onmicrosoft.com",
+            "id": "3358461b-2b36-4019-a2b7-2da92001cf7c"
+        }
+        ```
         """,
         responses={
             200: 'Successfully got user',
@@ -226,6 +246,28 @@ class ListUserAuthenticationMethodsViewSet(viewsets.ViewSet):
 
         Microsoft Graph API documentation: https://learn.microsoft.com/en-us/graph/api/microsoftauthenticatorauthenticationmethod-list?view=graph-rest-1.0&tabs=http
         
+        Response example using sms as mfa method:
+        ```
+        {
+            "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#users('vicre-test01%40dtudk.onmicrosoft.com')/authentication/methods",
+            "value": [
+                {
+                "@odata.type": "#microsoft.graph.phoneAuthenticationMethod",
+                "id": "3179e48a-750b-4051-897c-87b9720928f7",
+                "phoneNumber": "+45 24213819",
+                "phoneType": "mobile",
+                "smsSignInState": "notAllowedByPolicy"
+                },
+                {
+                "@odata.type": "#microsoft.graph.passwordAuthenticationMethod",
+                "id": "28c10230-6103-485e-b985-444c60001490",
+                "password": null,
+                "createdDateTime": "2024-03-12T13:25:21Z"
+                }
+            ]
+        }
+        ```
+
         """,
         responses={
             200: 'Successfully got user methods',
