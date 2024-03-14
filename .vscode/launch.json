@@ -37,6 +37,18 @@
             "justMyCode": true
         },
         {
+            "name": "Python: graph_apicall_getuserauthenticationmethods",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/app-main/manage.py",
+            "args": [
+                "runscript",
+                "graph.scripts.graph_apicall_getuserauthenticationmethods"
+            ],
+            "django": true,
+            "justMyCode": true
+        },
+        {
             "name": "Python: api gen token script",
             "type": "debugpy",
             "request": "launch",
@@ -61,7 +73,7 @@
             "justMyCode": true
         },
         {
-            "name": "Python: cronjob_list_rest_urls",
+            "name": "Python: utils script",
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/app-main/manage.py",

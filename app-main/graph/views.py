@@ -10,7 +10,7 @@ from drf_yasg import openapi
 from rest_framework.exceptions import ParseError
 from .serializers import QuerySerializer
 # from .scripts.graph_apicall_runhuntingquery import run_hunting_query
-from .services import execute_hunting_query, execute_get_user
+from .services import execute_hunting_query, execute_get_user, execute_get_user_authentication_methods
 
 from rest_framework.decorators import action
 
@@ -181,6 +181,72 @@ class GetUserViewSet(viewsets.ViewSet):
 
 
 
+
+
+
+
+
+
+
+
+
+
+class GetUserAuthenticationMethodsViewSet(viewsets.ViewSet):
+
+
+
+
+    authentication_classes = [TokenAuthentication]  # Require token authentication for this view
+    permission_classes = [IsAuthenticated]  # Require authenticated user for this view
+
+
+    autho_bearer_token = openapi.Parameter(
+        'Authorization',  # name of the header        
+        in_=openapi.IN_HEADER,  # where the parameter is located
+        description="Required. Must be in the format 'Token \<token\>'.",
+        type=openapi.TYPE_STRING,  # type of the parameter
+        required=True,  # if the header is required or not
+        default='Token <token>'  # default value
+    )
+
+    user_path_param = openapi.Parameter(
+        'user_id',  # name of the path parameter
+        in_=openapi.IN_PATH,  # location of the parameter
+        description="Get user authentication methods for the given user id",
+        type=openapi.TYPE_STRING,  # type of the parameter
+        required=True,  # if the path parameter is required
+        default='3358461b-2b36-4019-a2b7-2da92001cf7c',  # default value
+        override=True  # override the default value
+    )
+
+    @swagger_auto_schema(
+        manual_parameters=[autho_bearer_token, user_path_param],
+        operation_description="""
+        Get the user authentication methods for the given user id.
+
+        
+        """,
+        responses={
+            200: 'Successfully got user methods',
+            400: 'Error: 1',
+            404: 'Error: 2',
+            500: 'Error: Internal server error'
+        },
+  
+    )
+
+
+    @action(detail=False, methods=['get'], url_path='get_user_authentication_methods')
+
+
+    def get_user_authentication_methods(self, request, user_id):
+            
+
+        response, status_code = execute_get_user_authentication_methods(user_id)
+
+        return Response(response, status=status_code)
+
+        # return Response({'error': 'Not implemented'}, status=status.HTTP_501_NOT_IMPLEMENTED)
 
 
 
