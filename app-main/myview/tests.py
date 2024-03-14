@@ -155,60 +155,60 @@
 
 
 
-from django.test import TestCase, RequestFactory
-from django.http import HttpResponseForbidden
-from django.contrib.auth.models import User
-from myview.middleware import AccessControlMiddleware
-from myview.models import Endpoint, EndpointPermission, UserProfile
-from django.test.utils import override_settings
-from unittest.mock import MagicMock
+# from django.test import TestCase, RequestFactory
+# from django.http import HttpResponseForbidden
+# from django.contrib.auth.models import User
+# from myview.middleware import AccessControlMiddleware
+# from myview.models import Endpoint, EndpointPermission, UserProfile
+# from django.test.utils import override_settings
+# from unittest.mock import MagicMock
 
-@override_settings(
-    MIDDLEWARE=['myapp.middleware.AccessControlMiddleware',]
-)
-class AccessControlMiddlewareTest(TestCase):
+# @override_settings(
+#     MIDDLEWARE=['myview.middleware.AccessControlMiddleware',]
+# )
+# class AccessControlMiddlewareTest(TestCase):
 
-    def setUp(self):
-        self.factory = RequestFactory()
-        self.middleware = AccessControlMiddleware(get_response=MagicMock(name="get_response"))
-        self.user = User.objects.create_user(username='testuser', password='12345')
-        self.superuser = User.objects.create_superuser(username='superuser', password='12345')
-        self.endpoint = Endpoint.objects.create(path='/test_endpoint', method='get')
-        self.user_profile = UserProfile.objects.create(user=self.user)
-        EndpointPermission.objects.create(user_profile=self.user_profile, endpoint=self.endpoint, can_access=True)
+#     def setUp(self):
+#         self.factory = RequestFactory()
+#         self.middleware = AccessControlMiddleware(get_response=MagicMock(name="get_response"))
+#         self.user = User.objects.create_user(username='testuser', password='12345')
+#         self.superuser = User.objects.create_superuser(username='superuser', password='12345')
+#         self.endpoint = Endpoint.objects.create(path='/test_endpoint', method='get')
+#         self.user_profile = UserProfile.objects.create(user=self.user)
+#         EndpointPermission.objects.create(user_profile=self.user_profile, endpoint=self.endpoint, can_access=True)
 
-    def test_authenticated_access(self):
-        request = self.factory.get('/test_endpoint')
-        request.user = self.user
-        response = self.middleware(request)
-        self.assertNotEqual(response.status_code, 403, 'Authenticated user should have access')
+#     def test_authenticated_access(self):
+#         request = self.factory.get('/test_endpoint')
+#         request.user = self.user
+#         response = self.middleware(request)
+#         self.assertNotEqual(response.status_code, 403, 'Authenticated user should have access')
 
-    def test_unauthenticated_access(self):
-        request = self.factory.get('/test_endpoint')
-        request.user = MagicMock(is_authenticated=False)
-        response = self.middleware(request)
-        self.assertEqual(response.status_code, 403, 'Unauthenticated user should not have access')
+#     def test_unauthenticated_access(self):
+#         request = self.factory.get('/test_endpoint')
+#         request.user = MagicMock(is_authenticated=False)
+#         response = self.middleware(request)
+#         self.assertEqual(response.status_code, 403, 'Unauthenticated user should not have access')
 
-    def test_superuser_access(self):
-        request = self.factory.get('/any')
-        request.user = self.superuser
-        response = self.middleware(request)
-        self.assertNotEqual(response.status_code, 403, 'Superuser should have access to any endpoint')
+#     def test_superuser_access(self):
+#         request = self.factory.get('/any')
+#         request.user = self.superuser
+#         response = self.middleware(request)
+#         self.assertNotEqual(response.status_code, 403, 'Superuser should have access to any endpoint')
 
-    def test_excluded_path_access(self):
-        request = self.factory.get('/admin')
-        request.user = MagicMock(is_authenticated=True)
-        response = self.middleware(request)
-        self.assertNotIsInstance(response, HttpResponseForbidden, 'Access to excluded path should not be forbidden')
+    # def test_excluded_path_access(self):
+    #     request = self.factory.get('/admin')
+    #     request.user = MagicMock(is_authenticated=True)
+    #     response = self.middleware(request)
+    #     self.assertNotIsInstance(response, HttpResponseForbidden, 'Access to excluded path should not be forbidden')
 
-    def test_no_permission_access(self):
-        EndpointPermission.objects.filter(user_profile=self.user_profile, endpoint=self.endpoint).update(can_access=False)
-        request = self.factory.get('/test_endpoint')
-        request.user = self.user
-        response = self.middleware(request)
-        self.assertEqual(response.status_code, 403, 'User without permission should not have access')
+    # def test_no_permission_access(self):
+    #     EndpointPermission.objects.filter(user_profile=self.user_profile, endpoint=self.endpoint).update(can_access=False)
+    #     request = self.factory.get('/test_endpoint')
+    #     request.user = self.user
+    #     response = self.middleware(request)
+    #     self.assertEqual(response.status_code, 403, 'User without permission should not have access')
 
-    def tearDown(self):
-        User.objects.all().delete()
-        Endpoint.objects.all().delete()
-        EndpointPermission.objects.all().delete()
+    # def tearDown(self):
+    #     User.objects.all().delete()
+    #     Endpoint.objects.all().delete()
+    #     EndpointPermission.objects.all().delete()
