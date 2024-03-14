@@ -1,13 +1,37 @@
 {
     "configurations": [
         {
-            "name": "Python: graph script",
+            "name": "Python: _graph_get_bearertoken",
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/app-main/manage.py",
             "args": [
                 "runscript",
-                "azure_graph.scripts.graph_apicall_runhuntingquery"
+                "graph.scripts._graph_get_bearertoken"
+            ],
+            "django": true,
+            "justMyCode": true
+        },
+        {
+            "name": "Python: graph_apicall_runhuntingquery",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/app-main/manage.py",
+            "args": [
+                "runscript",
+                "graph.scripts.graph_apicall_runhuntingquery"
+            ],
+            "django": true,
+            "justMyCode": true
+        },
+        {
+            "name": "Python: graph_apicall_getuser",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/app-main/manage.py",
+            "args": [
+                "runscript",
+                "graph.scripts.graph_apicall_getuser"
             ],
             "django": true,
             "justMyCode": true
@@ -37,7 +61,7 @@
             "justMyCode": true
         },
         {
-            "name": "Python: utils script",
+            "name": "Python: cronjob_list_rest_urls",
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/app-main/manage.py",
