@@ -60,10 +60,10 @@ urlpatterns = [
     path('', include('graph.urls')),
 
     # sccm api
-    path('sccm/', include('sccm.urls')),
+    # path('sccm/', include('sccm.urls')),
 
     # active directory api
-    path('active_directory/', include('active_directory.urls')),
+    # path('active_directory/', include('active_directory.urls')),
 
     # playbook api 
     path('playbook/', include('playbook.urls')),
