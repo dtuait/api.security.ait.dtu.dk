@@ -18,30 +18,94 @@ from .forms import UserLookupForm
 from .models import User  # Ensure you import the correct User model
 from django.http import HttpResponse
 from graph.services import execute_get_user as get_user, execute_list_user_authentication_methods as list_user_authentication_methods
+import subprocess
+
+# class BaseView(View):
+#     require_login = True  # By default, require login for all views inheriting from BaseView
+#     base_template = "myview/base.html"
+
+#     def dispatch(self, request, *args, **kwargs):
+#         # Check if login is required and whether the user is authenticated
+#         if self.require_login and not request.user.is_authenticated:
+#             # Redirect unauthenticated users to the login page or a specified URL
+#             return redirect('cas_ng_login')  # Update 'login_url' to your actual login route
+#         # Proceed with the normal flow if login is not required or if the user is authenticated
+#         return super().dispatch(request, *args, **kwargs)
+
+
+#     def get_context_data(self, **kwargs):
+#         context = {
+#             'base_template': self.base_template,
+#             # Other common context variables...
+#         }
+#         return context
+    
+#     def get(self, request, **kwargs):
+#         context = self.get_context_data(**kwargs)
+#         return render(request, self.base_template, context)
+
+
 
 class BaseView(View):
     require_login = True  # By default, require login for all views inheriting from BaseView
     base_template = "myview/base.html"
 
     def dispatch(self, request, *args, **kwargs):
-        # Check if login is required and whether the user is authenticated
         if self.require_login and not request.user.is_authenticated:
-            # Redirect unauthenticated users to the login page or a specified URL
-            return redirect('cas_ng_login')  # Update 'login_url' to your actual login route
-        # Proceed with the normal flow if login is not required or if the user is authenticated
+            return redirect('cas_ng_login')
         return super().dispatch(request, *args, **kwargs)
 
+    def get_git_info(self):
+        try:
+            branch = subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD']).decode('utf-8').strip()
+            commit = subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode('utf-8').strip()
+        except subprocess.CalledProcessError:
+            # Default values if git commands fail
+            branch = "unknown"
+            commit = "unknown"
+        return branch, commit
 
     def get_context_data(self, **kwargs):
+        branch, commit = self.get_git_info()
         context = {
             'base_template': self.base_template,
-            # Other common context variables...
+            'git_branch': branch,
+            'git_commit': commit,
         }
+
         return context
-    
+
     def get(self, request, **kwargs):
         context = self.get_context_data(**kwargs)
         return render(request, self.base_template, context)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
