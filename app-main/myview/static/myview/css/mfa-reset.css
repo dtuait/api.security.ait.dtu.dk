@@ -1,0 +1,18 @@
+.user-principal-info {
+    background-color: #f0f0f0; /* Light grey background */
+    padding: 10px;
+    margin-bottom: 20px; /* Adds space between the user info and auth methods */
+}
+
+.auth-methods-list {
+    background-color: #e9ecef; /* Slightly different background color for contrast */
+    padding: 10px;
+}
+
+.auth-method {
+    margin-bottom: 10px;
+}
+
+.remove-btn {
+    margin-top: 5px;
+}

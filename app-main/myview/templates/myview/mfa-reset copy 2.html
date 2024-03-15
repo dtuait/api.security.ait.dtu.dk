@@ -1,0 +1,41 @@
+{% extends base_template %}
+
+{% load i18n static %}
+
+{% block title %}Front page{% endblock %}
+
+{% block dynamic_head_content %}{% endblock %}
+
+{% block headline %}Frontpage{% endblock %}
+
+{% block main-content %}
+<div class="container my-4">
+    <h2>MFA User Lookup</h2>
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit" class="btn btn-primary">Submit</button>
+    </form>
+
+    <!-- Authentication Methods List -->
+    {% if authentication_methods %}
+        <div class="mt-3">
+            <h3>Authentication Methods:</h3>
+            {% for method in authentication_methods %}
+                <div class="card my-2">
+                    <div class="card-body d-flex justify-content-between align-items-center">
+                        <span>{{ method.name }}</span> <!-- Adjust according to your method's attribute -->
+                        <form action="{% url 'remove_auth_method' %}" method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="method_id" value="{{ method.id }}"> <!-- Adjust according to your method's attribute -->
+                            <button type="submit" class="btn btn-danger">Remove</button>
+                        </form>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+</div>
+
+<script src="{% static 'myview/js/mfa-reset.js' %}" defer></script>
+{% endblock %}
