@@ -42,7 +42,8 @@ urlpatterns = [
    
 
    
-   path('', RedirectView.as_view(url="frontpage/", permanent=True)),
+   # path('', RedirectView.as_view(url="frontpage/", permanent=True)),
+   path('', FrontpagePageView.as_view(), name='frontpage'),
    path('frontpage/', FrontpagePageView.as_view(), name='frontpage'),
    path('mfa-reset/', MFAResetPageView.as_view(), name='mfa-reset'),
    # path('mfa-reset/', mfa_reset, name='mfa-reset'),

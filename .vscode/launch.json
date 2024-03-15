@@ -179,8 +179,8 @@
             "runtimeExecutable": "C:\\Program Files\\chromium\\chrome-win\\chrome.exe",
             "request": "launch",
             "type": "msedge",
-            "url": "http://localhost:6081/my-view/frontpage/",
-            "webRoot": "${workspaceFolder}/app-main",
+            "url": "http://localhost:6081/myview/mfa-reset/",
+            "webRoot": "${workspaceFolder}/app-main/myview",
             "disableNetworkCache": true
         },
     ]

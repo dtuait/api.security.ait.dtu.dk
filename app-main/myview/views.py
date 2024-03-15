@@ -17,7 +17,7 @@ from django.shortcuts import render
 from .forms import UserLookupForm
 from .models import User  # Ensure you import the correct User model
 from django.http import HttpResponse
-from graph.services import execute_get_user as get_user
+from graph.services import execute_get_user as get_user, execute_list_user_authentication_methods as list_user_authentication_methods
 
 class BaseView(View):
     require_login = True  # By default, require login for all views inheriting from BaseView
@@ -119,16 +119,47 @@ class MFAResetPageView(BaseView):
 
 
                 if not user_profile.has_endpoint_access('/v1.0/graph/get-user/{user}', 'get') and not request.user.is_superuser:
-                    return HttpResponseForbidden("You do not have access to this endpoint.")
+                    return HttpResponseForbidden("You do not have access to this endpoint. /v1.0/graph/get-user/{user}")
             
                 # return HttpResponse(f"First Name: {user.first_name}, Last Name: {user.last_name}")
                 user_principal_name = f"{username}@dtu.dk"
                 user_principal_object, http_status_code = get_user(user_principal_name)
-                
 
-                return HttpResponse(f"Displayname: {user_principal_object['displayName']}")
+                # get authentication methods
+
+                if not user_profile.has_endpoint_access('/v1.0/graph/list/{user_id__or__user_principalname}/authentication-methods', 'get') and not request.user.is_superuser:
+                    return HttpResponseForbidden("You do not have access to this endpoint. /v1.0/graph/list/{user_id__or__user_principalname}/authentication-methods")
+
+                authentication_methods = list_user_authentication_methods(user_principal_object['id'])
+
+                # Assuming authentication_methods is your tuple
+                # Extract the dictionary containing your data
+                auth_methods_data = authentication_methods[0]  # This is the dictionary
+
+                # Now, filter out the unwanted objects from the 'value' list
+                filtered_auth_methods = [method for method in auth_methods_data['value'] if method.get('@odata.type') != "#microsoft.graph.passwordAuthenticationMethod"]
+
+                # Replace the original 'value' list with the filtered list
+                auth_methods_data['value'] = filtered_auth_methods
+
+                # If you need to work with the tuple structure again, you can reconstruct it
+                authentication_methods = (auth_methods_data, authentication_methods[1])
+
+                # create an object that contains the user principal object and the authentication methods
+                user_principal_object['authentication_methods'] = authentication_methods
+
+                # return the user principal object
+                return JsonResponse(user_principal_object)
+            
+
+                # return HttpResponse(f"Displayname: {user_principal_object['displayName']}")
+                # context = super().get_context_data(**kwargs)
+                # context['form'] = form
+                # # context['user_principal_object'] = user_principal_object
+                # # context['authentication_methods'] = authentication_methods
+                # return render(request, self.template_name, context)
             except User.DoesNotExist:
-                return HttpResponse("User not found.")
+                return JsonResponse("Internal Server Error", status=500)
         else:
             context = super().get_context_data(**kwargs)
             context['form'] = form

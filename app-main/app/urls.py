@@ -24,7 +24,7 @@ from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 from app_mod.views import AdminCasLoginView
 import django_cas_ng.views
-
+from myview.views import FrontpagePageView
 
 # schema_view = get_schema_view(
 #    openapi.Info(
@@ -45,7 +45,8 @@ urlpatterns = [
     # path('', include('myview.urls')),
     # path('', include('myview.urls')),
     # redirect root URL to pubs/publist
-    path('', RedirectView.as_view(url="myview/frontpage/", permanent=True)),
+    # path('', RedirectView.as_view(url="myview/frontpage/", permanent=True)),
+     path('', FrontpagePageView.as_view(), name='frontpage'),
 
     # admin panel 
     path('admin-3dbLnPXcGL4GLAw2cDgBm6F4LrS5VXTD/', admin.site.urls),
