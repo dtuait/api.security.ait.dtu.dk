@@ -39,7 +39,7 @@ DEBUG = False
 # CAS_SERVER_URL = 'https://auth.dtu.dk/dtu/' # no multifactor
 CAS_SERVER_URL = 'https://auth2.dtu.dk/dtu/' # with multifactor
 CAS_VERSION = '2'
-CAS_REDIRECT_URL = '/myview/frontpage'
+CAS_REDIRECT_URL = '/myview/mfa-reset/'
 
 ALLOWED_HOSTS = [
     'localhost',
