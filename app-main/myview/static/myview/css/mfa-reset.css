@@ -16,3 +16,15 @@
 .remove-btn {
     margin-top: 5px;
 }
+
+
+/* Custom CSS to expand tooltip width */
+.tooltip-inner {
+    max-width: none; /* Remove the max-width restriction */
+    width: auto; /* Allow it to expand based on content */
+}
+
+/* Optional: Add some padding for better visual appeal */
+.bs-tooltip-auto[x-placement^=top] .tooltip-inner {
+    max-width: 100%;
+}
