@@ -53,6 +53,16 @@ class AccessRequestAdmin(admin.ModelAdmin):
 
     deny_request.short_description = "Deny selected access requests"
 
+
+    def get_actions(self, request):
+        actions = super().get_actions(request)
+        if 'approve_request' in actions:
+            del actions['approve_request']
+        if 'deny_request' in actions:
+            del actions['deny_request']
+        # Add any other custom actions you wish to remove here
+        return actions
+
 admin.site.register(AccessRequest, AccessRequestAdmin)
 # class AccessRequestInline(admin.TabularInline):
 #     model = AccessRequest

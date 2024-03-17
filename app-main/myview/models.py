@@ -22,7 +22,7 @@ class UserProfile(models.Model):
         related_name='user_profiles'
     )
 
-    def has_endpoint_access(self, path, method=None):
+    def has_endpoint_access(self, path, method):
         endpoint_qs = Endpoint.objects.filter(path=path)
         if method:
             endpoint_qs = endpoint_qs.filter(method=method)
@@ -148,12 +148,6 @@ def update_endpoint_permission(sender, instance, **kwargs):
             user_profile=instance.user_profile,
             endpoint=instance.endpoint
         ).update(can_access=False)
-
-
-
-
-
-
 
 
 

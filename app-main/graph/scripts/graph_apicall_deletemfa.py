@@ -4,7 +4,7 @@ from ._graph_get_bearertoken import _get_bearertoken
 # from ._graph_get_user_authentication_methods import get_user_authentication_methods
 
 
-def delete_authentication_method(authentication_method_id):
+def delete_authentication_method(azure_user_principal_id ,authentication_method_id):
 
     token = _get_bearertoken()
 
@@ -20,7 +20,8 @@ def delete_authentication_method(authentication_method_id):
 
 
 
-    api_endpoint = f"https://graph.microsoft.com/v1.0/users/{authentication_method_id}/authentication/methods"
+    # api_endpoint = f"https://graph.microsoft.com/v1.0/users/{authentication_method_id}/authentication/methods"
+    api_endpoint = f"https://graph.microsoft.com/v1.0/users/{azure_user_principal_id}/authentication/microsoftAuthenticatorMethods/{authentication_method_id}"
     # https://graph.microsoft.com/v1.0/users/157181b5-5931-4849-b7fd-c80ebf17bd11/authentication/methods
 
     response = requests.delete(api_endpoint, headers=headers)
@@ -31,9 +32,11 @@ def delete_authentication_method(authentication_method_id):
 
 
 def run():
-    authentication_method_id = '23234e09-d1d7-468b-aa33-2121d59338bb'
-    response, status_code = delete_authentication_method(authentication_method_id)
-    print(response)
+    azure_user_principal_id = '3358461b-2b36-4019-a2b7-2da92001cf7c'
+    authentication_method_id = 'f18a98ad-7fc4-4294-8814-4fbdea4ef13b'
+    response, status_code = delete_authentication_method(azure_user_principal_id, authentication_method_id)
+    # print(response)
+    print(status_code)
 
 
 

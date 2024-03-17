@@ -46,6 +46,9 @@ urlpatterns = [
    path('', FrontpagePageView.as_view(), name='frontpage'),
    path('frontpage/', FrontpagePageView.as_view(), name='frontpage'),
    path('mfa-reset/', MFAResetPageView.as_view(), name='mfa-reset'),
+   path('mfa-reset/user/<str:user_principal_id>/delete-authentication/<str:authentication_id>/', MFAResetPageView.as_view(), name='delete-auth-method'),
+
+
    # path('mfa-reset/', mfa_reset, name='mfa-reset'),
 
    # path('generate-token/', generate_api_token, name='generate_api_token'),
