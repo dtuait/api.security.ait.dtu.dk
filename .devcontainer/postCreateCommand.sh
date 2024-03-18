@@ -7,7 +7,7 @@
 
 echo "Starting postCreateCommand.sh"
 
-cd ./app-main && source /usr/src/venvs/app-main/bin/activate
+cd /usr/src/project/app-main && source /usr/src/venvs/app-main/bin/activate
 
 git config --global user.email "vicre@dtu.dk"
 git config --global user.name "Victor Reipur"
