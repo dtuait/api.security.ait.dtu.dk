@@ -24,3 +24,4 @@ app-main/db.sqlite3
 shared-project-data/django/
 
 app-main/data.json
+.devcontainer/dockerfiles/not-used-anymore/
