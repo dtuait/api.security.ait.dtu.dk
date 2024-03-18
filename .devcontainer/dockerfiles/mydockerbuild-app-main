@@ -1,0 +1,44 @@
+#!/bin/bash
+
+# bash mydockerbuild-app-main api-security-ait-dtu-dk-app-main:python-3.10-vanilla
+
+# Check if an argument was provided
+if [ "$#" -ne 1 ]; then
+    echo "Usage: $0 'foldername'"
+    exit 1
+fi
+
+FOLDER_NAME="$1"
+
+# Navigate to the script's directory
+cd "$(dirname "$0")" || exit
+
+echo $FOLDER_NAME
+pwd
+
+if [ ! -d "$FOLDER_NAME" ]; then
+    echo "The specified folder does not exist."
+    exit 1
+fi
+
+
+cd "./$FOLDER_NAME" || exit
+
+
+# Extract the image name and tag from the folder name
+# This assumes the folder name is directly usable as the tag
+IMAGE_NAME="vicre/api-security-ait-dtu-dk-app-main"
+TAG=$(echo "$FOLDER_NAME" | sed 's/.*:\(.*\)/\1/')
+
+
+# Build the Docker image
+echo "Building Docker image: $IMAGE_NAME:$TAG..."
+docker build -t "$IMAGE_NAME:$TAG" .
+
+# Check if the build was successful
+if [ $? -eq 0 ]; then
+    echo "Docker image $IMAGE_NAME:$TAG successfully built."
+else
+    echo "Failed to build the Docker image."
+    exit 1
+fi

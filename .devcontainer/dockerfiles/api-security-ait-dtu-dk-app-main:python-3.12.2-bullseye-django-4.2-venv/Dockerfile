@@ -1,8 +1,8 @@
-FROM python:3.10
+FROM python:3.12.2-bullseye
 
-RUN mkdir -p /mnt/project
 
-WORKDIR /mnt/project
+
+WORKDIR /usr/src/project
 
 RUN apt-get update && apt-get install -y unixodbc
 
@@ -43,6 +43,12 @@ RUN mv microsoft.gpg /etc/apt/trusted.gpg.d/microsoft.gpg
 RUN apt update && ACCEPT_EULA=Y apt-get install -y msodbcsql18
 ##### microsoft this is to make SCCM endpoint work ####
 
+RUN mkdir -p /usr/src/venvs && python -m venv /usr/src/venvs/app-main
+
+COPY requirements.txt /usr/src/
+
+RUN /usr/src/venvs/app-main/bin/pip install --upgrade pip && \
+    /usr/src/venvs/app-main/bin/pip install -r /usr/src/requirements.txt
 
 
 # install ping utils

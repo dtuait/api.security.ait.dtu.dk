@@ -5,7 +5,7 @@
 #     pip install --upgrade pip && \
 #     pip install -r requirements.txt
 
-cd ./app-main && source venv/bin/activate
+cd ./app-main && source /usr/src/venvs/app-main/bin/activate
 
 git config --global user.email "vicre@dtu.dk"
 git config --global user.name "Victor Reipur"
