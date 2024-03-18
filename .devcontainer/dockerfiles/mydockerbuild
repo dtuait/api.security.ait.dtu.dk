@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# bash mydockerbuild-app-main api-security-ait-dtu-dk-app-main:python-3.10-vanilla
+# bash mydockerbuild-app-main api-security-ait-dtu-dk-app-main_python-3.10-vanilla
 
 # Check if an argument was provided
 if [ "$#" -ne 1 ]; then
@@ -28,9 +28,9 @@ cd "./$FOLDER_NAME" || exit
 # Extract the image name and tag from the folder name
 # This assumes the folder name is directly usable as the tag
 # IMAGE_NAME="vicre/api-security-ait-dtu-dk-app-main"
-TAG=$(echo "$FOLDER_NAME" | sed 's/.*:\(.*\)/\1/')
+TAG=$(echo "$FOLDER_NAME" | sed 's/.*_\(.*\)/\1/')
 # ectaxt image name from folder name <imagename>:<tag>
-IMAGE_NAME=$(echo "$FOLDER_NAME" | sed 's/\(.*\):.*/\1/')
+IMAGE_NAME=$(echo "$FOLDER_NAME" | sed 's/\(.*\)_.*/\1/')
 
 USER_NAME="vicre"
 
