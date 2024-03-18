@@ -15,3 +15,5 @@ git config --global --add safe.directory /usr/src/project
 git config --global --add safe.directory /mnt/project
 git config --global --add safe.directory /usr/src/project/.docker-migrate
 git config pull.rebase true
+
+echo "Ending postCreateCommand.sh"
