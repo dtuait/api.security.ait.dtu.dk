@@ -36,5 +36,9 @@ COPY requirements.txt /usr/src/
 RUN /usr/src/venvs/app-main/bin/pip install --upgrade pip && \
     /usr/src/venvs/app-main/bin/pip install -r /usr/src/requirements.txt
 
+# create a pip requirements file, based on the current environment
+RUN mkdir -p /usr/src/project/app-main && \
+    /usr/src/venvs/app-main/bin/pip freeze > /usr/src/project/app-main/requirements.txt
+
 # install ping utils
 RUN apt-get update && apt-get install -y iputils-ping tree

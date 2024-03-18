@@ -25,3 +25,4 @@ shared-project-data/django/
 
 app-main/data.json
 .devcontainer/dockerfiles/not-used-anymore/
+!.devcontainer/dockerfiles/not-used-anymore/.gitkeep
