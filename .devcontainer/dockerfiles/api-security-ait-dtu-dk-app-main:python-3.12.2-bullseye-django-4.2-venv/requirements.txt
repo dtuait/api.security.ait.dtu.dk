@@ -1,0 +1,13 @@
+python-dotenv==1.0.0 # import .env file
+pyodbc==4.0.39 # connect to sccm
+django-cas-ng==4.3.0 # CAS authentication
+Django==4.2
+djangorestframework==3.14.0 # REST API
+drf-yasg==1.21.7 # Swagger
+django-extensions==3.2.1 # python manage.py runscript <script>
+ldap3==2.9.1
+ping3==4.0.4
+mysqlclient==2.2.1
+msgraph-core==1.0.0
+azure-core==1.30.1
+azure-identity==1.15.0

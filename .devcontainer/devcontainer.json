@@ -7,11 +7,13 @@
     "customizations": {
         "vscode": {
             "settings": {
-                "python.defaultInterpreterPath": "/usr/src/project/app-main/venv/bin/python"
+                "python.defaultInterpreterPath": "/usr/src/venvs/app-main/bin/python"
             },
             "extensions": [
-                "ms-python.python",
-                "rogalmic.bash-debug"
+                "GitHub.copilot",
+                "ms-python.vscode-pylance",
+                "ms-python.debugpy",
+                "ms-python.python"
             ]
         }
     },
