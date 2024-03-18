@@ -5,6 +5,8 @@
 #     pip install --upgrade pip && \
 #     pip install -r requirements.txt
 
+echo "Starting postCreateCommand.sh"
+
 cd ./app-main && source /usr/src/venvs/app-main/bin/activate
 
 git config --global user.email "vicre@dtu.dk"
