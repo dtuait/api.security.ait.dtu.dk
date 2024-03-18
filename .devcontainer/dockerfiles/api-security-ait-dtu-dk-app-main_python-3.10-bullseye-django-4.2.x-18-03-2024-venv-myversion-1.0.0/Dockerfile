@@ -1,17 +1,9 @@
-FROM python:3.10
+FROM python:3.10-bullseye
 
-RUN mkdir -p /mnt/project
+WORKDIR /usr/src/project
 
-WORKDIR /mnt/project
-
-RUN apt-get update && apt-get install -y unixodbc
-
-
-# 
-
-
-
-
+# Install required packages, including unixodbc
+RUN apt-get update && apt-get install -y unixodbc 
 
 ###### fix locales ######
 # Install locales package
@@ -29,12 +21,6 @@ ENV LANG en_US.UTF-8
 ENV LANGUAGE en_US.UTF-8
 ###### fix locales ######
 
-
-
-
-
-
-
 ##### microsoft this is to make SCCM endpoint work ####
 RUN echo "deb [arch=amd64] https://packages.microsoft.com/debian/10/prod buster main" > /etc/apt/sources.list.d/microsoft-prod.list
 #### RUN apt update
@@ -43,7 +29,12 @@ RUN mv microsoft.gpg /etc/apt/trusted.gpg.d/microsoft.gpg
 RUN apt update && ACCEPT_EULA=Y apt-get install -y msodbcsql18
 ##### microsoft this is to make SCCM endpoint work ####
 
+RUN mkdir -p /usr/src/venvs && python -m venv /usr/src/venvs/app-main
 
+COPY requirements.txt /usr/src/
+
+RUN /usr/src/venvs/app-main/bin/pip install --upgrade pip && \
+    /usr/src/venvs/app-main/bin/pip install -r /usr/src/requirements.txt
 
 # install ping utils
-RUN apt-get update && apt-get install -y iputils-ping
+RUN apt-get update && apt-get install -y iputils-ping tree

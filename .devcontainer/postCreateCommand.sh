@@ -5,7 +5,9 @@
 #     pip install --upgrade pip && \
 #     pip install -r requirements.txt
 
-cd ./app-main && source /usr/src/venvs/app-main/bin/activate
+echo "Starting postCreateCommand.sh"
+
+cd /usr/src/project/app-main && source /usr/src/venvs/app-main/bin/activate
 
 git config --global user.email "vicre@dtu.dk"
 git config --global user.name "Victor Reipur"
@@ -13,3 +15,5 @@ git config --global --add safe.directory /usr/src/project
 git config --global --add safe.directory /mnt/project
 git config --global --add safe.directory /usr/src/project/.docker-migrate
 git config pull.rebase true
+
+echo "Ending postCreateCommand.sh"
