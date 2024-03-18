@@ -28,7 +28,7 @@ services:
     #build:
     #  context: .
     #  dockerfile: Dockerfile-api-security-ait-dtu-dk-httpd-service
-    image: vicre/api-security-ait-dtu-dk-httpd-service
+    image: vicre/api-security-ait-dtu-dk-httpd-service:httpd-2.4
     volumes:
       - ../shared-project-data:/mnt/shared-project-data
       - ../httpd-service/data/virtualhosts:/usr/local/apache2/conf/virtualhosts

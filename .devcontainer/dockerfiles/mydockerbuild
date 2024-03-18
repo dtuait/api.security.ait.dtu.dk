@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# bash mydockerbuild-app-main api-security-ait-dtu-dk-app-main:python-3.10-vanilla
+# bash mydockerbuild-app-main api-security-ait-dtu-dk-app-main_python-3.10-vanilla
 
 # Check if an argument was provided
 if [ "$#" -ne 1 ]; then
@@ -27,17 +27,20 @@ cd "./$FOLDER_NAME" || exit
 
 # Extract the image name and tag from the folder name
 # This assumes the folder name is directly usable as the tag
-IMAGE_NAME="vicre/api-security-ait-dtu-dk-app-main"
-TAG=$(echo "$FOLDER_NAME" | sed 's/.*:\(.*\)/\1/')
+# IMAGE_NAME="vicre/api-security-ait-dtu-dk-app-main"
+TAG=$(echo "$FOLDER_NAME" | sed 's/.*_\(.*\)/\1/')
+# ectaxt image name from folder name <imagename>:<tag>
+IMAGE_NAME=$(echo "$FOLDER_NAME" | sed 's/\(.*\)_.*/\1/')
 
+USER_NAME="vicre"
 
 # Build the Docker image
-echo "Building Docker image: $IMAGE_NAME:$TAG..."
-docker build -t "$IMAGE_NAME:$TAG" .
+echo "Building Docker image: $USER_NAME/$IMAGE_NAME:$TAG..."
+docker build -t "$USER_NAME/$IMAGE_NAME:$TAG" .
 
 # Check if the build was successful
 if [ $? -eq 0 ]; then
-    echo "Docker image $IMAGE_NAME:$TAG successfully built."
+    echo "Docker image $USER_NAME/$IMAGE_NAME:$TAG successfully built."
 else
     echo "Failed to build the Docker image."
     exit 1
