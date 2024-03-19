@@ -16,4 +16,11 @@ git config --global --add safe.directory /mnt/project
 git config --global --add safe.directory /usr/src/project/.docker-migrate
 git config pull.rebase true
 
+# show current pip freeze
+echo "Show current pip freeze into requirements.txt"
+/usr/src/venvs/app-main/bin/pip freeze > /usr/src/project/app-main/requirements.txt
+
+echo "Getting git submodules"
+git submodule init && git submodule update
+
 echo "Ending postCreateCommand.sh"
