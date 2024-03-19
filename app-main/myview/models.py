@@ -160,15 +160,15 @@ def update_endpoint_permission(sender, instance, **kwargs):
 
 
 
-# class OrganizationalUnit(BaseModel):
-#     distinguished_name = models.TextField(unique=True)  # The full OU string
-#     canonical_name = models.TextField(unique=True, default="")  # The canonical name of the OU
+class OrganizationalUnit(BaseModel):
+    distinguished_name = models.TextField(unique=True)  # The full OU string
+    canonical_name = models.TextField(unique=True, default="")  # The canonical name of the OU
 
-#     def __str__(self):
-#         return self.canonical_name
+    def __str__(self):
+        return self.canonical_name
 
-#     class Meta(BaseModel.Meta):  # Make sure to inherit from BaseModel.Meta if it defines any meta options
-#         ordering = ['canonical_name']  # This sets the default ordering for queries on this model
+    class Meta(BaseModel.Meta):  # Make sure to inherit from BaseModel.Meta if it defines any meta options
+        ordering = ['canonical_name']  # This sets the default ordering for queries on this model
 
 
 

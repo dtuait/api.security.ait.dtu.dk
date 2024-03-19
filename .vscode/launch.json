@@ -98,7 +98,7 @@
         },
 
         {
-            "name": "Python: update ous script",
+            "name": "Python: cronjob_active_directory_update_ous",
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/app-main/manage.py",

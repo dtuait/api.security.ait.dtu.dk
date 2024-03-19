@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import UserProfile, Endpoint, EndpointPermission, AccessRequest, AccessRequestStatus
+from .models import UserProfile, Endpoint, EndpointPermission, AccessRequest, AccessRequestStatus, OrganizationalUnit
 # from .models import (UserProfile, AccessControlType, Endpoint, AccessRequest, EndpointPermission, EndpointAccessControl)
 
 
@@ -107,19 +107,62 @@ admin.site.register(AccessRequest, AccessRequestAdmin)
 #     display_datetime_created.short_description = 'Created At'
 
 
+
+
+
+
+
+
+
+from django.contrib import admin
+from django.db.models import Q
+
+@admin.register(OrganizationalUnit)
+class OrganizationalUnitAdmin(admin.ModelAdmin):
+    list_display = ('datetime_created', 'datetime_modified', 'distinguished_name', 'canonical_name')
+    search_fields = ('canonical_name',)
+
+    def get_search_results(self, request, queryset, search_term):
+        queryset, use_distinct = super().get_search_results(request, queryset, search_term)
+        if search_term:
+            # This query is made case-insensitive and partial matches are allowed.
+            queryset = queryset.filter(canonical_name__icontains=search_term)
+        return queryset, use_distinct
+
+
 # # Registering the OrganizationalUnit model for the admin site.
-# # @admin.register(OrganizationalUnit)
-# # class OrganizationalUnit(models.Model):
-# #     distinguished_name = models.TextField(unique=True)
-# #     canonical_name = models.TextField(unique=True, default="")
+# @admin.register(OrganizationalUnit)
+# class OrganizationalUnitAdmin(admin.ModelAdmin):
+#     list_display = ('name',)  # Displaying the 'name' field in the list view.
+#     search_fields = ('name',)  # Adding a search bar for the 'name' field.
+#     list_display = ('datetime_created', 'datetime_modified', 'distinguished_name', 'canonical_name')
+#     search_fields = ('canonical_name',)
+#     def get_search_results(self, request, queryset, search_term):
+#         queryset, use_distinct = super().get_search_results(request, queryset, search_term)
+#         if search_term:
+#             queryset = queryset.filter(canonical_name=search_term)
+#         return queryset, use_distinct
 
-# #     class Meta:
-# #         ordering = ['canonical_name']  # Add default ordering here
 
-# #     def __str__(self):
-# #         return self.canonical_name
+
+
+
+
+
+# from django.db import models
+# # Registering the OrganizationalUnit model for the admin site.
+# @admin.register(OrganizationalUnit)
+# class OrganizationalUnit(admin.ModelAdmin):
+#     distinguished_name = models.TextField(unique=True)
+#     canonical_name = models.TextField(unique=True, default="")
+
+#     class Meta:
+#         ordering = ['canonical_name']  # Add default ordering here
+
+#     def __str__(self):
+#         return self.canonical_name
     
-
+# admin.site.register(AccessRequest, AccessRequestAdmin, OrganizationalUnit)
 
 # # Registering the OrganizationalUnit model for the admin site.
 # @admin.register(OrganizationalUnit)
