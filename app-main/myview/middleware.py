@@ -101,7 +101,11 @@ class AccessControlMiddleware(MiddlewareMixin):
                 return self.get_response(request)
             
         # TEMP - skal erstattes med endpoint access control.
-        return self.get_response(request)
+        # This is the final entry
+        if request.user.is_authenticated:
+            if request.user.username.startswith('adm-') or request.user.is_superuser:
+                return self.get_response(request)
+        
         # # Check access in EndpointPermission
         # try:
         #     endpoint = Endpoint.objects.get(path=path, method=method)
