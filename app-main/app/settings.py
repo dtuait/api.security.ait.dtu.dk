@@ -39,7 +39,8 @@ DEBUG = False
 # CAS_SERVER_URL = 'https://auth.dtu.dk/dtu/' # no multifactor
 CAS_SERVER_URL = 'https://auth2.dtu.dk/dtu/' # with multifactor
 CAS_VERSION = '2'
-CAS_REDIRECT_URL = '/myview/mfa-reset/'
+CAS_REDIRECT_URL = '/login-redirector/'
+# CAS_REDIRECT_URL = '/myview/mfa-reset/'
 
 ALLOWED_HOSTS = [
     'localhost',
@@ -93,6 +94,17 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'myview.middleware.AccessControlMiddleware',
 ]
+
+
+# try: 
+#     from myview.models import Endpoint
+
+#     MIDDLEWARE += ['myview.middleware.EndpointAccessMiddleware']
+
+# except ImportError:
+#     print("Endpoint model is not available for registration in the settings.py file.")
+#     pass
+
 
 ROOT_URLCONF = 'app.urls'
 
@@ -228,7 +240,7 @@ LOGGING = {
         'file': {
             'level': 'ERROR',
             'class': 'logging.FileHandler',
-            'filename': 'django.log',
+            'filename': '/usr/src/project/app-main/django.log',
         },
     },
     'loggers': {

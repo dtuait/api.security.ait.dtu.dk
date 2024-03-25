@@ -1,6 +1,41 @@
 {
     "configurations": [
         {
+            "name": "Python: Runserver Live",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/app-main/manage.py",
+            "args": [
+                "runserver",
+                "0.0.0.0:6081",
+                "--settings",
+                "app.localhost_debug_true_settings"
+            ],
+            "django": true,
+            "justMyCode": true
+        },
+        {
+            "name": "Chromium",
+            "runtimeExecutable": "C:\\Program Files\\chromium\\chrome-win\\chrome.exe",
+            "request": "launch",
+            "type": "msedge",
+            "url": "http://localhost:6081/myview/frontpage/",
+            "webRoot": "${workspaceFolder}/app-main/myview",
+            "disableNetworkCache": true,
+        },
+        {
+            "name": "utils.command",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/app-main/manage.py",
+            "args": [
+                "runscript",
+                "utils.command"
+            ],
+            "django": true,
+            "justMyCode": true
+        },
+        {
             "name": "Python: _graph_get_bearertoken",
             "type": "debugpy",
             "request": "launch",
@@ -84,19 +119,67 @@
             "django": true,
             "justMyCode": true
         },
+        
         {
-            "name": "Python: cronjob_update_endpoints",
+            "name": "Python: get_all_adm_users",
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/app-main/manage.py",
             "args": [
                 "runscript",
-                "utils.cronjob_update_endpoints"
+                "utils.get_all_adm_users"
             ],
             "django": true,
             "justMyCode": true
         },
-
+        {
+            "name": "utils.active_directory_query",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/app-main/manage.py",
+            "args": [
+                "runscript",
+                "utils.active_directory_query"
+            ],
+            "django": true,
+            "justMyCode": true
+        },
+        {
+            "name": "Python: cronjob_create_user_groups_from_ous",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/app-main/manage.py",
+            "args": [
+                "runscript",
+                "utils.cronjob_create_user_groups_from_ous"
+            ],
+            "django": true,
+            "justMyCode": true
+        },    
+        {
+            "name": "Python: cronjob_create_superuser",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/app-main/manage.py",
+            "args": [
+                "runscript",
+                "utils.cronjob_create_superuser"
+            ],
+            "django": true,
+            "justMyCode": true
+        },            
+        {
+            "name": "Python: create_new_database",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/app-main/manage.py",
+            "args": [
+                "runscript",
+                "utils.create_new_database"
+            ],
+            "django": true,
+            "justMyCode": true
+        },   
         {
             "name": "Python: cronjob_active_directory_update_ous",
             "type": "debugpy",
@@ -108,7 +191,7 @@
             ],
             "django": true,
             "justMyCode": true
-        },        
+        },   
         {
             "name": "Python: sccm script",
             "type": "debugpy",
@@ -121,20 +204,7 @@
             "django": true,
             "justMyCode": true
         },
-        {
-            "name": "Python: Runserver Live",
-            "type": "debugpy",
-            "request": "launch",
-            "program": "${workspaceFolder}/app-main/manage.py",
-            "args": [
-                "runserver",
-                "0.0.0.0:6081",
-                "--settings",
-                "app.localhost_debug_true_settings"
-            ],
-            "django": true,
-            "justMyCode": true
-        },
+        
         {
             "name": "Proxy Live with Debug",
             "type": "debugpy",

@@ -13,6 +13,8 @@ class MyviewConfig(AppConfig):
         if settings.DEBUG:
             try:
                 call_command('runscript', 'utils.cronjob_update_endpoints')
+                # call_command('runscript', 'utils.create_new_database')
+                pass
             except:
                 pass  # Handle any expected exceptions or log errors as needed
 

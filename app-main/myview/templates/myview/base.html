@@ -12,10 +12,14 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
     <link rel="stylesheet" type="text/css" media="all" href="{% static 'myview/css/base.css' %}" />
 
-    <link rel="icon" href="{% static 'myview/img/artek_logo_absract_transparent_resized_favicon.ico' %}" type="image/x-icon" />
+    
     
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/cash-dom/dist/cash.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.6.7/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qs@6.12.0/dist/qs.min.js"></script>
     <script src="{% static 'myview/js/base.js' %}" defer></script>
+
     <title>{% block title %}Base Title{% endblock %}</title>
     <!-- static head content ends here -->
 
@@ -38,7 +42,6 @@
                     <!-- Add additional nav items here as needed -->
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'schema-swagger-ui' %}">{% trans "Swagger API Documentation" %}</a>
-                        
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'mfa-reset' %}">{% trans "MFA Reset" %}</a>
@@ -58,6 +61,7 @@
     </nav>
 
     <main id="main">
+        <div id="notifications-container"></div>
         <!-- dynamic main-content starts here -->
         {% block main-content %}{% endblock %}
         <!-- dynamic main-content ends here -->
@@ -87,7 +91,7 @@
     </footer>
 
 
-    <!-- Source Code Info Modal -->
+<!-- Source Code Info Modal -->
 <div class="modal fade" id="sourceCodeInfoModal" tabindex="-1" aria-labelledby="sourceCodeInfoModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">

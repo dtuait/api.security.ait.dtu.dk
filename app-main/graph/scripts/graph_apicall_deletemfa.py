@@ -20,11 +20,16 @@ def delete_authentication_method(azure_user_principal_id ,authentication_method_
 
 
 
-    # api_endpoint = f"https://graph.microsoft.com/v1.0/users/{authentication_method_id}/authentication/methods"
+    
+    # https://graph.microsoft.com/v1.0/users/vicre-test01@dtudk.onmicrosoft.com/authentication/microsoftAuthenticatorMethods/123e4441-eadf-4950-883d-fea123988824
     api_endpoint = f"https://graph.microsoft.com/v1.0/users/{azure_user_principal_id}/authentication/microsoftAuthenticatorMethods/{authentication_method_id}"
-    # https://graph.microsoft.com/v1.0/users/157181b5-5931-4849-b7fd-c80ebf17bd11/authentication/methods
+    
 
     response = requests.delete(api_endpoint, headers=headers)
+    # creae a mock request response object
+    # response = requests.models.Response()
+    # response.status_code = 204
+     
 
     return response, response.status_code
 

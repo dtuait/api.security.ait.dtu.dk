@@ -1,9 +1,11 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
+from django.conf import settings
+from utils.active_directory_query import active_directory_query
+from django.db import transaction
+from django.db.utils import IntegrityError
 from django.utils.translation import gettext_lazy as _
-from django.db.models.signals import pre_delete, post_save
-from django.dispatch import receiver
-
 
 class BaseModel(models.Model):
     datetime_created = models.DateTimeField(auto_now_add=True)
@@ -12,171 +14,288 @@ class BaseModel(models.Model):
     class Meta:
         abstract = True
 
+class ADGroupAssociation(BaseModel):
+    cn = models.CharField(max_length=255, verbose_name="Common Name")
+    canonical_name = models.CharField(max_length=1024)
+    distinguished_name = models.CharField(max_length=1024)
+    members = models.ManyToManyField(User, related_name='ad_groups')
 
-class UserProfile(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
-    endpoints = models.ManyToManyField(
-        'Endpoint',
-        through='AccessRequest',
-        through_fields=('user_profile', 'endpoint'),
-        related_name='user_profiles'
-    )
+    # group_no_longer_exist_in_ad = models.BooleanField(default=False)
 
-    def has_endpoint_access(self, path, method):
-        endpoint_qs = Endpoint.objects.filter(path=path)
-        if method:
-            endpoint_qs = endpoint_qs.filter(method=method)
-        return EndpointPermission.objects.filter(
-            user_profile=self,
-            endpoint__in=endpoint_qs,
-            can_access=True
-        ).exists()
+
+
+
+
+
+
+
+  # This function gets all AD groups and syncs them with the database
+    def sync_ad_groups(self):
+        base_dn = "DC=win,DC=dtu,DC=dk"
+        search_filter = "(objectClass=group)"
+        search_attributes = ['cn', 'canonicalName', 'distinguishedName']
+
+        try:
+            ad_groups = active_directory_query(base_dn, search_filter, search_attributes)
+
+            ADGroupAssociation.objects.all().delete()
+
+            # sync the delta so that current_ad_association_groups has the same groups as ad_groups
+            # is the most effecient wayt two create a third variable that is the delta of the two lists
+            # then remove and create the delta? 
+
+
+            with transaction.atomic():
+                # Fetch existing groups to identify new and to-be-deleted groups
+                existing_groups = {group.distinguished_name: group for group in ADGroupAssociation.objects.all()}
+                ad_group_dns = set()
+
+                new_groups = []
+                updated_groups = []
+
+                for group in ad_groups:
+                    cn = group.get('cn', '')
+                    canonical_name = group.get('canonicalName', '')
+                    distinguished_name = group.get('distinguishedName', '')
+
+
+   
+                    # Prepare new group for creation
+                    new_group = ADGroupAssociation(cn=cn, canonical_name=canonical_name, distinguished_name=distinguished_name)
+                    new_groups.append(new_group)
+
+                # Bulk create new groups and bulk update existing groups
+                ADGroupAssociation.objects.bulk_create(new_groups)
+                ADGroupAssociation.objects.bulk_update(updated_groups, ['cn', 'canonical_name'])
+
+
+            return True
+        except Exception as e:
+            print(f"An error occurred during sync ad groups operation: {e}")
+            return False
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    # # This function gets all AD groups and syncs them with the database
+    # def sync_ad_groups(self):
+    #     base_dn = "DC=win,DC=dtu,DC=dk"
+    #     search_filter = "(objectClass=group)"
+    #     search_attributes = ['cn', 'canonicalName', 'distinguishedName']
+
+    #     try:
+    #         ad_groups = active_directory_query(base_dn, search_filter, search_attributes)
+
+    #         with transaction.atomic():
+    #             # Fetch existing groups to identify new and to-be-deleted groups
+    #             existing_groups = {group.distinguished_name: group for group in ADGroupAssociation.objects.all()}
+    #             ad_group_dns = set()
+
+    #             new_groups = []
+    #             updated_groups = []
+
+    #             for group in ad_groups:
+    #                 cn = group.get('cn', '')
+    #                 canonical_name = group.get('canonicalName', '')
+    #                 distinguished_name = group.get('distinguishedName', '')
+
+    #                 # Track DNs of groups found in AD
+    #                 ad_group_dns.add(distinguished_name)
+
+    #                 if distinguished_name in existing_groups:
+    #                     # Prepare existing group for update
+    #                     existing_group = existing_groups[distinguished_name]
+    #                     existing_group.cn = cn
+    #                     existing_group.canonical_name = canonical_name
+    #                     updated_groups.append(existing_group)
+    #                     updated_groups.append(existing_group)
+    #                 else:
+    #                     # Prepare new group for creation
+    #                     new_group = ADGroupAssociation(cn=cn, canonical_name=canonical_name, distinguished_name=distinguished_name)
+    #                     new_groups.append(new_group)
+
+    #             # Bulk create new groups and bulk update existing groups
+    #             ADGroupAssociation.objects.bulk_create(new_groups)
+    #             ADGroupAssociation.objects.bulk_update(updated_groups, ['cn', 'canonical_name'])
+
+    #             # Delete groups that are no longer in AD
+    #             groups_to_delete = set(existing_groups.keys()) - ad_group_dns
+    #             ADGroupAssociation.objects.filter(distinguished_name__in=groups_to_delete).delete()
+
+    #         return True
+    #     except Exception as e:
+    #         print(f"An error occurred during sync ad groups operation: {e}")
+    #         return False
+
+
+  
+    def escape_ldap_filter_chars(self, s):
+        escape_chars = {
+            '\\': r'\5c',
+            '*': r'\2a',
+            '(': r'\28',
+            ')': r'\29',
+            '\0': r'\00',
+            '/': r'\2f',
+        }
+        for char, escaped_char in escape_chars.items():
+            s = s.replace(char, escaped_char)
+        return s
+    
+
+    def create_new_users_if_not_exists(self, users):
+            try:
+                User = get_user_model()
+                new_users = []  # To collect new users                
+                
+
+                for user in users:
+                    dn = user.get('distinguishedName')
+                    username = user.get('sAMAccountName', '').lower()  # Get 'sAMAccountName' from the current query
+                    first_name = user.get('givenName', '')
+                    last_name = user.get('sn', '')
+
+                    if dn and username:
+                        # Check if the user exists in Django, and if not, create a new user instance
+                        if not User.objects.filter(username=username).exists():
+                            username_part = username.rsplit('-', 1)[-1]
+                            email = f'{username_part}@dtu.dk'
+                            is_superuser = username in ['adm-jaholm']
+                            is_staff = is_superuser  # Typically, superusers are also staff
+                            new_user = User(username=username, email=email, first_name=first_name, last_name=last_name, is_superuser=is_superuser, is_staff=is_staff)
+                            new_users.append(new_user)
+                User.objects.bulk_create(new_users)
+
+                
+
+
+            except Exception as error:
+                print(f"An unexpected error occurred: {error}")
+
+
+    def sync_ad_group_members(self):
+            print("Syncing AD group members...")
+            base_dn = "DC=win,DC=dtu,DC=dk"
+            search_filter = "(&(objectClass=user)(memberOf={}))".format(self.escape_ldap_filter_chars(self.distinguished_name))
+            # search_attributes = ['distinguishedName', 'sAMAccountName']  # Include 'sAMAccountName' here
+            search_attributes = ['distinguishedName', 'sAMAccountName', 'givenName', 'sn']
+
+            try:
+                # Perform the search on LDAP
+                current_members = active_directory_query(base_dn, search_filter, search_attributes)
+
+                self.create_new_users_if_not_exists(current_members)
+
+                
+
+                print("Syncing AD group members finished")
+
+
+            except Exception as e:
+                print(f"An error occurred during the LDAP operation: {e}")
 
     def __str__(self):
-        return self.user.username
+        return self.canonical_name
+
+    
+    def add_member(self, user, admin_user):
+        self.members.add(user)
+        self.added_manually_by = admin_user
+        self.save()
 
 
 
 
-
-class AccessControlType(BaseModel):
-    name = models.CharField(max_length=255, unique=True)
-    description = models.TextField(blank=True)
-
-    def __str__(self):
-        return self.name
 
 
 class Endpoint(BaseModel):
     path = models.CharField(max_length=255, unique=True)
-    method = models.CharField(max_length=6, null=True, blank=True)
+    method = models.CharField(max_length=6, blank=True, default='')
+    ad_groups = models.ManyToManyField('ADGroupAssociation', related_name='endpoints')
 
     def __str__(self):
-        return f"{self.method if self.method else ''} {self.path}"
+        return f"{self.method} {self.path}" if self.method else self.path
+
+
+    def validate_and_get_ad_groups_for_user_access(self, user, endpoint_path):
+        # Fetch the endpoint instance based on the provided path.
+        try:
+            endpoint = Endpoint.objects.get(path=endpoint_path)
+        except Endpoint.DoesNotExist:
+            return False, None  # No access since the endpoint does not exist.
+
+        # Check if the user is in any group that is associated with the endpoint.
+        user_groups = user.ad_groups.all()
+        access_granting_groups = []
+        for group in user_groups:
+            if endpoint.ad_groups.filter(pk=group.pk).exists():
+                access_granting_groups.append(group)
+
+        if access_granting_groups:
+            return True, access_granting_groups  # Return True and the groups that grant access
+        else:
+            return False, None  # No access granted
 
 
 
-###### these classes depends on eachother ######
-class AccessRequestStatus(models.TextChoices):
+
+
+class EndpointAccessRequestStatus(models.TextChoices):
     PENDING = 'P',  _('Pending')
     GRANTED = 'G',  _('Granted')
     DENIED =  'D',  _('Denied')
 
 
-class AccessRequest(models.Model):
-    user_profile = models.ForeignKey(UserProfile, on_delete=models.CASCADE)
+
+
+
+class EndpointAccessRequest(models.Model):
+    ad_group = models.ForeignKey(ADGroupAssociation, on_delete=models.CASCADE)
     endpoint = models.ForeignKey(Endpoint, on_delete=models.CASCADE)
     status = models.CharField(
         max_length=1,
-        choices=AccessRequestStatus.choices,
-        default=AccessRequestStatus.PENDING
+        choices=EndpointAccessRequestStatus.choices,
+        default=EndpointAccessRequestStatus.PENDING
     )
     request_date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ('user_profile', 'endpoint')
+        unique_together = ('ad_group', 'endpoint')
 
     def __str__(self):
-        return f"{self.user_profile.user.username}'s access to {self.endpoint.path} is {self.get_status_display()}"  
-    
-    def save(self, *args, **kwargs):
-        # Check if this is an existing instance and not a new one
-        if self.pk:
-            old_instance = AccessRequest.objects.get(pk=self.pk)
-            # Check if status changed from Granted to something else
-            if old_instance.status == AccessRequestStatus.GRANTED and self.status != AccessRequestStatus.GRANTED:
-                # Revoke access by updating EndpointPermission
-                EndpointPermission.objects.filter(user_profile=self.user_profile, endpoint=self.endpoint).update(can_access=False)
-            elif self.status == AccessRequestStatus.GRANTED:
-                # Ensure access is granted
-                EndpointPermission.objects.update_or_create(
-                    user_profile=self.user_profile,
-                    endpoint=self.endpoint,
-                    defaults={'can_access': True}
-                )
-        super().save(*args, **kwargs)
-###### these classes depends on eachother ######
+        return f"CODEHERE's access to {self.endpoint.path} is {self.get_status_display()}"  
+
 
 
 class EndpointPermission(BaseModel):
-    user_profile = models.ForeignKey(UserProfile, on_delete=models.CASCADE)
+    ad_group = models.ForeignKey(ADGroupAssociation, on_delete=models.CASCADE)
     endpoint = models.ForeignKey(Endpoint, on_delete=models.CASCADE)
     can_access = models.BooleanField(default=False)
 
     class Meta:
-        unique_together = ('user_profile', 'endpoint')
+        unique_together = ('ad_group', 'endpoint')
         verbose_name = 'Endpoint Permission'
         verbose_name_plural = 'Endpoint Permissions'
 
     def __str__(self):
         access_status = 'can access' if self.can_access else 'cannot access'
-        return f"{self.user_profile.user.username} {access_status} {self.endpoint.path}"
-
-
-class EndpointAccessControl(BaseModel):
-    endpoint = models.ForeignKey(Endpoint, on_delete=models.CASCADE)
-    access_control = models.ForeignKey(AccessControlType, on_delete=models.CASCADE)
-
-    class Meta:
-        unique_together = ('endpoint', 'access_control')
-
-
-
-@receiver(pre_delete, sender=Endpoint)
-def endpoint_pre_delete_handler(sender, instance, **kwargs):
-    # Automatically deny access requests associated with the endpoint being deleted
-    AccessRequest.objects.filter(endpoint=instance, status=AccessRequestStatus.PENDING).update(status=AccessRequestStatus.DENIED)
-
-
-
-
-@receiver(post_save, sender=AccessRequest)
-def update_endpoint_permission(sender, instance, **kwargs):
-    """
-    Signal to update EndpointPermission when an AccessRequest is saved.
-    """
-    if instance.status == AccessRequestStatus.GRANTED:
-        # If access is granted, ensure the user has permission.
-        EndpointPermission.objects.update_or_create(
-            user_profile=instance.user_profile,
-            endpoint=instance.endpoint,
-            defaults={'can_access': True}
-        )
-    elif instance.status in [AccessRequestStatus.PENDING, AccessRequestStatus.DENIED]:
-        # If access is not granted, ensure the user does not have permission.
-        EndpointPermission.objects.filter(
-            user_profile=instance.user_profile,
-            endpoint=instance.endpoint
-        ).update(can_access=False)
-
-
-
-
-
-
-
-
-
-
-
-
-class OrganizationalUnit(BaseModel):
-    distinguished_name = models.TextField(unique=True)  # The full OU string
-    canonical_name = models.TextField(unique=True, default="")  # The canonical name of the OU
-
-    def __str__(self):
-        return self.canonical_name
-
-    class Meta(BaseModel.Meta):  # Make sure to inherit from BaseModel.Meta if it defines any meta options
-        ordering = ['canonical_name']  # This sets the default ordering for queries on this model
-
-
-
-# class EndpointOrganizationalUnit(BaseModel):
-#     endpoint = models.ForeignKey(Endpoint, on_delete=models.CASCADE)
-#     organizational_unit = models.ForeignKey(OrganizationalUnit, on_delete=models.CASCADE)
-
-#     class Meta:
-#         unique_together = ('endpoint', 'organizational_unit')
-
-
+        # Assuming the ADGroupAssociation model has a 'cn' field for common name
+        return f"{self.ad_group.cn} {access_status} {self.endpoint.path}"

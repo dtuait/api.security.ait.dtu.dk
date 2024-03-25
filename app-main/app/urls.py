@@ -23,8 +23,14 @@ from rest_framework import permissions
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 from app_mod.views import AdminCasLoginView
-import django_cas_ng.views
-from myview.views import FrontpagePageView
+from django_cas_ng.views import LoginView, LogoutView
+from django.contrib.auth.decorators import login_required
+from django.http import HttpResponseRedirect
+from django.urls import reverse
+from django.views.generic.base import RedirectView
+from utils.active_directory_query import active_directory_query
+from django.contrib.auth.models import User
+# from myview.views import FrontpagePageView
 
 # schema_view = get_schema_view(
 #    openapi.Info(
@@ -39,53 +45,93 @@ from myview.views import FrontpagePageView
 #    permission_classes=(permissions.AllowAny,),
 # )
 
+@login_required
+def cas_director(request):
+
+
+
+        try:
+            
+            if request.user.is_superuser:
+                return HttpResponseRedirect(reverse('admin:index'))  # Redirect to admin page
+            elif request.user:
+                return HttpResponseRedirect('/myview/frontpage/')
+
+            
+            HttpResponseRedirect('/myview/only-allowed-for-it-staff/')
+
+
+
+
+
+
+
+
+
+
+            # check if cas user starts with adm-. If so, then proceed otherwise redirect to only allowed for it-staff
+            # if not cas_user.startswith('adm-'):
+            #     user = User.objects.get(username=cas_user)
+            #     user.delete()
+            #     return HttpResponseRedirect('/myview/only-allowed-for-it-staff/')
+
+        
+
+            # from myview.models import ADGroupAssociation
+            # base_dn = "DC=win,DC=dtu,DC=dk"
+            # username = request.user.username
+            # # search_filter = "(&(objectClass=user)(sAMAccountName={}))".format(username)
+            # search_filter = "(&(objectClass=user)(sAMAccountName={}))".format(username)
+            # search_attributes = ['distinguishedName', 'sAMAccountName', 'givenName', 'sn']
+            
+            # ldap_user = active_directory_query(base_dn, search_filter, search_attributes)
+
+            # # delete request.user from User in django
+            # from django.contrib.auth.models import User
+            # user = User.objects.get(username=username)
+            # user.delete()
+
+            # # # then re authenticate the user
+            # # from django.contrib.auth import authenticate, login
+            # # user = authenticate(username=username, password=None)
+            # # login(request, user)
+
+
+            # ADGroupAssociation.create_new_users_if_not_exists(None, ldap_user)
+
+            # # then re authenticate the user
+            # from django.contrib.auth import authenticate, login
+            # user = authenticate(username=username, password=None)
+            # login(request, user)
+
+        except ImportError:
+            print("ADGroupAssociation model is not available for registration in the admin site.")
+            HttpResponseRedirect('/myview/only-allowed-for-it-staff/')
+        
+
 urlpatterns = [
-
-    # redirect '' to 'my-view/frontpage'¨
-    # path('', include('myview.urls')),
-    # path('', include('myview.urls')),
-    # redirect root URL to pubs/publist
-    # path('', RedirectView.as_view(url="myview/frontpage/", permanent=True)),
-     path('', FrontpagePageView.as_view(), name='frontpage'),
-
-    # admin panel 
-    path('admin-3dbLnPXcGL4GLAw2cDgBm6F4LrS5VXTD/', admin.site.urls),
-    # path('admin-cas-login/', AdminCasLoginView.as_view(), name='admin-cas-login'),
-
     # cas login and logout
-    path("login/", django_cas_ng.views.LoginView.as_view(), name="cas_ng_login"),
-    path("logout/", django_cas_ng.views.LogoutView.as_view(), name="cas_ng_logout"),
+    path("login/", LoginView.as_view(), name="cas_ng_login"),
+    path("login-redirector/", cas_director, name="cas_ng_login_redirector"),
+    path("logout/", LogoutView.as_view(), name="cas_ng_logout"),
+    path('admin-3dbLnPXcGL4GLAw2cDgBm6F4LrS5VXTD/', admin.site.urls),
+    
+    # myview
+    path('', RedirectView.as_view(url="myview/frontpage/", permanent=True)),
+    path('myview/', include('myview.urls')),
 
     # graph api
     path('', include('graph.urls')),
+
+    # playbook api 
+    path('playbook/', include('playbook.urls')),
 
     # sccm api
     # path('sccm/', include('sccm.urls')),
 
     # active directory api
     # path('active_directory/', include('active_directory.urls')),
-
-    # playbook api 
-    path('playbook/', include('playbook.urls')),
-
-    # panel for 
-    path('myview/', include('myview.urls')),
-
-
-
     
-    # # # misc api
-    # path('misc/', include('misc.urls')),,
-
-    #swagger ui
-    # path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
-    
-    # redoc
-    # path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
-
-
-    
-    # path('', include('myview.urls')),
 
 ]
 

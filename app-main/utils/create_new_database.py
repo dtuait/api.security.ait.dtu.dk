@@ -8,37 +8,100 @@ from dotenv import load_dotenv
 from datetime import datetime
 import pytz
 from ldap3 import Server, Connection, ALL, SUBTREE
-from utils import active_directory_connect
+from utils.active_directory_query import active_directory_query
 import string
 from django.contrib.auth.hashers import make_password, check_password
 import random
+from myview.models import ADGroupAssociation
+from utils.cronjob_update_endpoints import updateEndpoints
+import shutil
+from app_mod.models import CustomToken
+from rest_framework.authtoken.models import Token
+from django.contrib.auth.models import User
+from rest_framework.authtoken.models import Token
+
+
 class Command(BaseCommand):
-    def handle(self, *args, **options):
+    def reset_database(self, *args, **options):
 
 
         try:
 
-            # Load environment variables
-            dotenv_path = '/usr/src/project/.devcontainer/.env'
-            load_dotenv(dotenv_path=dotenv_path)
+      
+            self._reset_database(create_back=False)
+            self.startmake_migrations(None,None)
+            self.startmigrate(None,None)
+            self.createsuperuser(None,None)
+            self.createnormalusers(None,None)
+            self.createalladgroups(None,None)
 
-            # Configuration
-            config = {
-                "host": os.getenv("MYSQL_HOST"),
-                "user": os.getenv("MYSQL_ROOT_USER"),
-                "password": os.getenv("MYSQL_ROOT_PASSWORD"),
-            }
+            ##### 
+            django_init_token = os.getenv("DJANGO_ADM_VICRE_INIT_TOKEN")
+            user = User.objects.get(username='adm-vicre')
+            user.set_my_token(django_init_token)
 
-            # Generate new database name with timestamp
+            django_init_token = os.getenv("DJANGO_ADM_DAST_INIT_TOKEN")
+            user = User.objects.get(username='adm-byg-dast')
+            user.set_my_token(django_init_token)
+            
+            # try:
+            #     # Get the user
+            #     user = User.objects.get(username='adm-vicre')
+            #     # Get the existing token
+            #     token = Token.objects.get(user=user)
+            #     # Delete the old token
+            #     token.delete()
+            # except User.DoesNotExist:
+            #     print("User 'adm-vicre' does not exist.")
+            # except Token.DoesNotExist:
+            #     pass
+
+            # # Create a new token
+            # Token.objects.create(user=user, key=django_init_token)
+
+            #######
+            updateEndpoints()
+            
+
+        except Exception as e:
+            print(f"An error occurred: {e}")
+
+
+    def give_all_users_a_token(self, *args, **options):
+        from myview.models import CustomToken
+
+        User = get_user_model()
+        users = User.objects.all()
+        for user in users:
+            if not user.auth_token:
+                token = self.generate_alphanumeric_password(30)
+                user.auth_token = make_password(token)
+                user.save()
+        print("done giving all users a token")
+
+
+    def _reset_database(self, create_back=True, *args, **options):
+        # Load environment variables
+        dotenv_path = '/usr/src/project/.devcontainer/.env'
+        load_dotenv(dotenv_path=dotenv_path)
+
+        # Configuration
+        config = {
+            "host": os.getenv("MYSQL_HOST"),
+            "user": os.getenv("MYSQL_ROOT_USER"),
+            "password": os.getenv("MYSQL_ROOT_PASSWORD"),
+        }
+
+        # Connect to MariaDB
+        conn = pymysql.connect(**config)
+        cursor = conn.cursor()
+
+        # Generate new database name with timestamp if create_back is True
+        if create_back:
             copenhagen_tz = pytz.timezone('Europe/Copenhagen')
             timestamp = datetime.now(copenhagen_tz).strftime('%Y_%m_%d_%H_%M_%S')
             old_db_name = os.getenv("MYSQL_DATABASE")
             new_db_name = f"{timestamp}_{old_db_name}"
-
-
-            # Connect to MariaDB
-            conn = pymysql.connect(**config)
-            cursor = conn.cursor()
 
             # Rename the old database by creating a new one and moving tables
             cursor.execute(f"CREATE DATABASE `{new_db_name}`;")
@@ -46,143 +109,57 @@ class Command(BaseCommand):
             tables = cursor.fetchall()
             for (table_name,) in tables:
                 cursor.execute(f"RENAME TABLE `{old_db_name}`.`{table_name}` TO `{new_db_name}`.`{table_name}`;")
-            cursor.execute(f"DROP DATABASE `{old_db_name}`;")
-
-            # Create a new database with the original name
-            cursor.execute(f"CREATE DATABASE `{old_db_name}`;")
-
-            cursor.close()
-            conn.close()
-
-            # check if /usr/src/project/app-main/myview/migrations exists and move it to /usr/src/project/app-main/myview/migrations_{timestamp}
+            
+            # Move migrations directory if exists
             migrations_dir = '/usr/src/project/app-main/myview/migrations'
             new_migrations_dir = f'/usr/src/project/app-main/myview/migrations_{timestamp}.bak'
             if os.path.exists(migrations_dir):
                 os.rename(migrations_dir, new_migrations_dir)
+        else:
+            # If create_back is False, just get the database name without timestamp
+            old_db_name = os.getenv("MYSQL_DATABASE")
 
-            self.startmake_migrations(None,None)
-            self.startmigrate(None,None)
-            self.createsuperuser(None,None)
-            self.createnormalusers(None,None)
+        # Drop the current database and create a new one with the same name
+        cursor.execute(f"DROP DATABASE IF EXISTS `{old_db_name}`;")
+        cursor.execute(f"CREATE DATABASE `{old_db_name}`;")
 
-        except Exception as e:
-            print(f"An error occurred: {e}")
+        # If create_back is False, also delete the migrations directory
+        if not create_back:
+            migrations_dir = '/usr/src/project/app-main/myview/migrations'
+            if os.path.exists(migrations_dir):
+                shutil.rmtree(migrations_dir)  # This removes the directory and all its contents
+
+        cursor.close()
+        conn.close()
+
+
+    def createalladgroups(self, *args, **options):
+        ADGroupAssociation.sync_ad_groups(self)
+        print("done creating AD groups")
 
     def startmake_migrations(self, *args, **options):
         os.system('python /usr/src/project/app-main/manage.py makemigrations')
+        os.system('python /usr/src/project/app-main/manage.py makemigrations myview')
 
     def startmigrate(self, *args, **options):
         os.system('python /usr/src/project/app-main/manage.py migrate')        
 
 
+
     def createnormalusers(self, *args, **options):
-        # # List of normal users and their passwords
-        # users = {
-        #     'adm-vicre': '28ZLNd3jx5naUap8xjmaRL3HqFPA3Xbv',
-        #     'adm-jaholm': '28ZLNd3jx5naUap8xjmaRL3HqFPA3Xbv',
-        #     'adm-dast': '28ZLNd3jx5naUap8xjmaRL3HqFPA3Xbv'
-        # }
+
         base_dn = "DC=win,DC=dtu,DC=dk"
         search_filter = "(&(objectClass=user)(SamAccountName=adm-*))"
-        search_attributes = ["SamAccountName"]
+        search_attributes = ['distinguishedName', 'sAMAccountName', 'givenName', 'sn']
         adm_users = self.perform_ldap_search(base_dn, search_filter, search_attributes)
-        # print("Admin Users:", adm_users)
 
-        User = get_user_model()
-        new_users = []  # To collect new users
+        try:
 
-        for adm_user in adm_users:
-            username = adm_user.entry_attributes_as_dict['sAMAccountName'][0].lower()
+            ADGroupAssociation.create_new_users_if_not_exists(self, adm_users)
+            print("done creating normal users")
 
-            if not User.objects.filter(username=username).exists():
-                
-                
-                # Directly create a new user instance without checking for existence
-                username_part = username.rsplit('-', 1)[-1]
-                email = f'{username_part}@dtu.dk'
-                is_superuser = username in ['adm-vicre', 'adm-jaholm']  # Set True for specific usernames
-                is_staff = is_superuser  # Typically, superusers are also staff
-                
-                new_user = User(username=username, email=email, is_superuser=is_superuser, is_staff=is_staff)
-                
-                new_users.append(new_user)
-
-        User.objects.bulk_create(new_users)
-        print("done creating normal users")
-            # username = adm_user.entry_attributes_as_dict['sAMAccountName'][0]
-            # # new_user = User(username=username, email=f'{username}@win.dtu.dk')
-            # # new_users.append(new_user)
-            
-            # # Check if a user already exists with the given username
-            # if not User.objects.filter(username=username).exists():
-            #     # Create a new user instance without setting a password
-
-            #     # if username == 'adm-vicre' or username == 'adm-jaholm' make it a superuser else a normal user
-            #     if username == 'adm-vicre' or username == 'adm-jaholm':
-            #         new_user = User(username=username, email=f'{username}@win.dtu.dk')
-            #         new_user.is_superuser(True)  # Assuming you have a set_superuser method
-            #     else:
-            #         new_user = User(username=username, email=f'{username}@win.dtu.dk')
-
-            #     new_users.append(new_user)
-
-        # # Bulk create new users without setting passwords
-        # User.objects.bulk_create(new_users)
-        # print("done creating normal users")
-        # User = get_user_model()
-        # new_users = [] # To collect new users
-        # users_to_update = [] # To collect users whose password needs updating
-
-
-        # User = get_user_model()
-        # for adm_user in adm_users:
-        #     username = adm_user.entry_attributes_as_dict['sAMAccountName'][0]
-        #     password = self.generate_alphanumeric_password(105)  # Assuming this method exists within the same class
-            
-        #     try:
-        #         user = User.objects.get(username=username)
-        #         if not check_password(password, user.password):
-        #             user.password = make_password(password)
-        #             users_to_update.append(user)
-        #     except User.DoesNotExist:
-        #         user = User(username=username, email=f'{username}@win.dtu.dk')
-        #         user.password = make_password(password)
-        #         new_users.append(user)
-        
-        # # Bulk create new users
-        # User.objects.bulk_create(new_users)
-
-
-        # # For updating, since each user needs their password hashed (which bulk_update doesn't support for individual call), we save them individually.
-        # # If the number of users to update is significantly large, consider a more efficient strategy or background processing.
-        # for user in users_to_update:
-        #     user.save()  # This is not bulk update, but necessary for password hashing
-
-        # # You can still print successes, but consider doing so after bulk operations to minimize console I/O time.
-        # for user in new_users:
-        #     self.stdout.write(self.style.SUCCESS(f'User {user.username} created'))
-
-        # for user in users_to_update:
-        #     self.stdout.write(self.style.SUCCESS(f'Password updated for user {user.username}'))
-
-            # try:
-            #     username = adm_user.entry_attributes_as_dict['sAMAccountName'][0]
-            #     password = self.generate_alphanumeric_password(105)
-
-            #     #                 # Generate a 66-character long alphanumeric password
-            #     # alphanumeric_password = generate_alphanumeric_password(66)
-            #     # alphanumeric_password
-
-            #     user = User.objects.get(username=username)
-            #     if not check_password(password, user.password):
-            #         user.set_password(password)
-            #         user.save()
-            #         self.stdout.write(self.style.SUCCESS(f'Password updated for user {username}'))
-            #     pass
-            # except User.DoesNotExist:
-            #     User.objects.create_user(username, f'{username}@example.com', password)
-            #     self.stdout.write(self.style.SUCCESS(f'User {username} created'))
-            #     pass
+        except Exception as e:
+            print(f"An error occurred during the LDAP operation: {e}")
 
 
     def createsuperuser(self, *args, **options):
@@ -213,53 +190,16 @@ class Command(BaseCommand):
 
 
     def perform_ldap_search(self, base_dn, search_filter, search_attributes):
-        
-        
-        conn, message = active_directory_connect.active_directory_connect()
 
-        if not conn:
-            print('Failed to connect to AD:', message)
-            return
-
-        if not conn.bind():
-            print('Error in bind', conn.result)
-            return
-        
-        
-        page_size = 500
-        paged_cookie = None
-        ldap_list = []
-
-        more_pages = True
-        while more_pages:
-            conn.search(search_base=base_dn,
-                        search_filter=search_filter,
-                        search_scope=SUBTREE,
-                        attributes=search_attributes,
-                        paged_size=page_size,
-                        paged_cookie=paged_cookie)
-
-            # Process each entry
-            for entry in conn.entries:
-                user_name = entry
-                ldap_list.append(user_name)
-
-            # Handle paging if there are more pages
-            more_pages = bool(conn.result['controls']['1.2.840.113556.1.4.319']['value']['cookie'])
-            if more_pages:
-                paged_cookie = conn.result['controls']['1.2.840.113556.1.4.319']['value']['cookie']
-            else:
-                paged_cookie = None
-
-        return ldap_list
-
-
+        return active_directory_query(base_dn, search_filter, search_attributes)
+   
 
 def run():
     command = Command()
-    command.handle(None, None)
+    command.reset_database(None, None)
     print('done')
 
 # if main 
 if __name__ == "__main__":
     run()
+

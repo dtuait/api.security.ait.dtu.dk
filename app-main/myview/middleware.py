@@ -1,6 +1,30 @@
 from django.http import HttpResponseForbidden
 from django.utils.deprecation import MiddlewareMixin
-from .models import EndpointPermission, Endpoint
+from .models import Endpoint
+from rest_framework.authentication import SessionAuthentication, TokenAuthentication
+
+
+
+
+from rest_framework.authtoken.models import Token
+from django.contrib.auth.models import User
+from django.http import HttpResponseForbidden
+from rest_framework.authentication import TokenAuthentication, get_authorization_header
+from django.utils.deprecation import MiddlewareMixin
+from django.core.exceptions import ObjectDoesNotExist
+import logging
+
+
+
+from django.shortcuts import redirect
+
+def get_client_ip(request):
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        ip = x_forwarded_for.split(',')[0]
+    else:
+        ip = request.META.get('REMOTE_ADDR')
+    return ip
 
 class AccessControlMiddleware(MiddlewareMixin):
     def __init__(self, get_response):
@@ -8,42 +32,104 @@ class AccessControlMiddleware(MiddlewareMixin):
         # Initialize the list of paths to exclude from checks
         self.excluded_paths = [
             '/admin',  # Exclude all Django admin paths
-            '/accounts/login/',  # Exclude login page
-            # Add any other paths you want to exclude
             '/myview',
-            '/login/',
-            '/logout/',
-            # '/myview/swagger/',
+            '/login-redirector/'          
         ]
+
+
+        self.login_paths = [
+            {
+                'path': '/login/', 
+                'method': 'get'
+            },
+            {
+                'path': '/logout/',
+                'method': None
+            },
+        ]
+
+
+
         super().__init__(get_response)
 
     def __call__(self, request):
-        path = request.path
-        method = request.method.lower()
 
-        # Check if the path is in the excluded paths
-        if any(path.startswith(excluded_path) for excluded_path in self.excluded_paths):
-            return self.get_response(request)
 
-        # Check if user is authenticated
+        path    = request.path
+        method  = request.method.lower()     
+        
+        
+        # overwrites the request.user with the user from the token
+        token = request.META.get('HTTP_AUTHORIZATION')
+        token_short = None
+        if token:
+            try:
+                request.user = (Token.objects.get(key=token)).user
+                token_short = token[:10] if token else None
+            except ObjectDoesNotExist:
+                ip = get_client_ip(request)
+                token_short = token[:20] if token else None
+                logger = logging.getLogger(__name__)
+                logger.info(f'Invalid token from IP: {ip}, token: {token_short}')
+                # return HttpResponseForbidden('Invalid token')
+                
+        print(f'running middleware for path: {path} and method: {method} and from user {request.user.username} and token: {token_short}...')
+
+
+        # Allow the user to access the login page
+        if any(path == login_path['path'] and (login_path['method'] == method or login_path['method'] == None) for login_path in self.login_paths):
+            return self.get_response(request)   
+
+
+
+        # if the user is not authenticated, then redirect to login
         if not request.user.is_authenticated:
-            return HttpResponseForbidden('You must be logged in to access this endpoint')
-
-        # Special handling for root users and 'any' endpoint
-        if request.user.is_superuser:
-            return self.get_response(request)
+            return redirect('/login/')
         
-        
-        # Check access in EndpointPermission
-        try:
-            endpoint = Endpoint.objects.get(path=path, method=method)
-            permission = EndpointPermission.objects.get(user_profile=request.user.userprofile, endpoint=endpoint)
-            if not permission.can_access:
-                return HttpResponseForbidden('You do not have access to this endpoint')
-        except (Endpoint.DoesNotExist, EndpointPermission.DoesNotExist):
-            return HttpResponseForbidden('Endpoint not found or access not defined')
+        # if the user is authenticated and the token is None, then redirect to login
+        # also check if the user is not a superuser
+        if not request.user.username.startswith('adm-'):
+            if not request.user.is_superuser:
+                from django.contrib.auth import logout
+                logout(request)
+                return redirect('cas_ng_logout')
 
+       
+        # Check if the path is in the excluded paths, this will allow a user to acces admin and myview sites
+        if any(path.startswith(excluded_path) for excluded_path in self.excluded_paths):
+            if request.user.is_authenticated:
+                return self.get_response(request)
+            
+        # TEMP - skal erstattes med endpoint access control.
         return self.get_response(request)
+        # # Check access in EndpointPermission
+        # try:
+        #     endpoint = Endpoint.objects.get(path=path, method=method)
+        #     permission = EndpointPermission.objects.get(user_profile=request.user.userprofile, endpoint=endpoint)
+        #     if not permission.can_access:
+        #         return HttpResponseForbidden('You do not have access to this endpoint')
+        # except (Endpoint.DoesNotExist, EndpointPermission.DoesNotExist):
+        #     return HttpResponseForbidden('Endpoint not found or access not defined')
+
+        # if not request.user.is_authenticated and not token_user:
+        #     return HttpResponseForbidden('You must be logged in to access this endpoint')
+
+        # # Special handling for root users and 'any' endpoint
+        # if request.user.is_superuser:
+        #     return self.get_response(request)
+                
+
+        
+
+        # If none of the above, forbid access
+        return HttpResponseForbidden('You must be logged in to access this endpoint')
+
+
+def is_authenticated(request):
+    pass
+        
+    
+        
 
 
 
@@ -65,6 +151,55 @@ class AccessControlMiddleware(MiddlewareMixin):
 
 
 
+
+
+
+
+
+
+
+
+
+# class AccessControlMiddleware(MiddlewareMixin):
+#     def __init__(self, get_response):
+#         self.get_response = get_response
+#         self.token_auth = TokenAuthentication()
+#         self.excluded_paths = [
+#             '/admin',
+#             '/accounts/login/',
+#             '/myview',
+#             '/login/',
+#             '/logout/',
+#             # Add any other paths to exclude as needed
+#         ]
+#         super().__init__(get_response)
+
+#     def __call__(self, request):
+#         path = request.path
+
+#         # Exclude paths that don't require authentication
+#         if any(path.startswith(excluded_path) for excluded_path in self.excluded_paths):
+#             return self.get_response(request)
+
+#         # Try to authenticate using token first
+#         auth = get_authorization_header(request).split()
+#         if auth and len(auth) == 2 and auth[0].lower() == b'token':
+#             user_auth_tuple = self.token_auth.authenticate(request)
+#             if user_auth_tuple is not None:
+#                 # Token is valid, set user and continue
+#                 request.user, request.auth = user_auth_tuple
+#                 return self.get_response(request)
+
+#         # If token auth failed, check if user is authenticated via session
+#         if request.user.is_authenticated:
+#             return self.get_response(request)
+
+#         # Handle root/superuser access
+#         if request.user.is_superuser:
+#             return self.get_response(request)
+
+#         # If none of the above, forbid access
+#         return HttpResponseForbidden('You must be logged in to access this endpoint')
 
 
 

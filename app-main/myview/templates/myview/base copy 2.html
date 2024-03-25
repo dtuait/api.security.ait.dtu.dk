@@ -1,0 +1,121 @@
+{% load i18n static %}
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <!-- static head content starts here -->
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" media="all" href="{% static 'myview/css/base.css' %}" />
+
+    <link rel="icon" href="{% static 'myview/img/artek_logo_absract_transparent_resized_favicon.ico' %}" type="image/x-icon" />
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+    <script src="{% static 'myview/js/base.js' %}" defer></script>
+    <title>{% block title %}Base Title{% endblock %}</title>
+    <!-- static head content ends here -->
+
+    <!-- dynamic head content starts here -->
+    {% block dynamic_head_content %}{% endblock %}
+    <!-- dynamic head content ends here -->
+</head>
+
+<body>
+
+    <!-- Bootstrap Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="{% url 'frontpage' %}">{% trans "Frontpage" %}</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                    <!-- Add additional nav items here as needed -->
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'schema-swagger-ui' %}">{% trans "Swagger API Documentation" %}</a>
+                        
+                    </li>
+                    {% if mfa_reset_url %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ mfa_reset_url }}">{% trans "MFA Reset" %}</a>
+                        </li>
+                    {% endif %}
+                    {% try %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'mfa-reset' %}">{% trans "MFA Reset" %}</a>
+                    </li>
+                    {% except NoReverseMatch %}
+                    <!-- 'mfa-reset' does not exist -->
+                    {% endtry %}
+                </ul>
+                <div class="d-flex">
+                    <a class="nav-link" href="{% if user.is_authenticated %}{% url 'cas_ng_logout' %}{% else %}{% url 'cas_ng_login' %}{% endif %}">
+                        {% if user.is_authenticated %}
+                        <span>{% trans "Sign out" %} ({{ user.username }})</span>
+                        {% else %}
+                        <span>{% trans "Sign in" %}</span>
+                        {% endif %}
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main id="main">
+        <div id="notifications-container"></div>
+        <!-- dynamic main-content starts here -->
+        {% block main-content %}{% endblock %}
+        <!-- dynamic main-content ends here -->
+    </main>
+
+    <!-- <footer>
+        <div class="footer-content">
+            <div class="box-left">
+            </div>
+            <div class="box-right">
+            </div>
+        </div>
+    </footer> -->
+
+    <footer>
+        <div class="footer-content">
+            <div class="box-left">
+                <!-- Other footer content -->
+            </div>
+            <div class="box-right">
+                <!-- Trigger modal button -->
+                <button type="button" class="btn btn-info" data-bs-toggle="modal" data-bs-target="#sourceCodeInfoModal">
+                    Source Code Info
+                </button>
+            </div>
+        </div>
+    </footer>
+
+
+    <!-- Source Code Info Modal -->
+<div class="modal fade" id="sourceCodeInfoModal" tabindex="-1" aria-labelledby="sourceCodeInfoModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="sourceCodeInfoModalLabel">Source Code Information</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p>Current Branch: {{ git_branch }}</p>
+          <p>Last Commit: {{ git_commit }}</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+</body>
+</html>

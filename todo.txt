@@ -20,3 +20,21 @@ Lav en rettighedsstyring som opfylder
     
 
 test commit 4
+
+
+
+
+
+
+23-03-2024
+Now you have completed that all endpoints works.
+
+Next you make the interface between ajaxview and these endpoints.
+When that works then make the graphics as originally.
+
+After this is done, make a model, that associates organizational units with a adgroupassotiation.
+
+Then it works, and you are done.
+
+01:43 24-04-2024
+Try to incoporate axios and cash into your javascript code

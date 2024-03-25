@@ -20,4 +20,5 @@ def execute_list_user_authentication_methods(user_id):
 
 def execute_delete_user_authentication_method(azure_user_principal_id ,authentication_method_id):
     response, status_code = delete_authentication_method(azure_user_principal_id, authentication_method_id)
+    # Response is empty and status code is 204
     return response, status_code
