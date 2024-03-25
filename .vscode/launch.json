@@ -1,7 +1,21 @@
 {
     "configurations": [
         {
-            "name": "Python: Runserver Live",
+            "name": "production_debug_true_settings_2fa",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/app-main/manage.py",
+            "args": [
+                "runserver",
+                "0.0.0.0:6081",
+                "--settings",
+                "app.production_debug_true_settings_2fa"
+            ],
+            "django": true,
+            "justMyCode": true
+        },
+        {
+            "name": "localhost_debug_true_settings",
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/app-main/manage.py",
@@ -14,6 +28,7 @@
             "django": true,
             "justMyCode": true
         },
+
         {
             "name": "Chromium",
             "runtimeExecutable": "C:\\Program Files\\chromium\\chrome-win\\chrome.exe",
