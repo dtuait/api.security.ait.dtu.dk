@@ -14,7 +14,7 @@ from django.utils.deprecation import MiddlewareMixin
 import re
 from django.core.exceptions import ObjectDoesNotExist
 import logging
-from django.contrib.auth import login, logout
+
 
 
 from django.shortcuts import redirect
@@ -75,31 +75,16 @@ class AccessControlMiddleware(MiddlewareMixin):
 
         # Token authentication
         token = request.META.get('HTTP_AUTHORIZATION')
-        user_temporarily_authenticated = False
         if token:
             try:
-                # Attempt to retrieve user by token
-                user = Token.objects.get(key=token).user
-                # Temporarily set user to request
-                request.user = user
-                user_temporarily_authenticated = True
+                request.user = Token.objects.get(key=token).user
             except ObjectDoesNotExist:
-                if token != 'Token <token>':
-                    logger = logging.getLogger(__name__)
-                    logger.info(f'Invalid token access attempt. Path: {request.path}, Token: {token[:10]}')
-                    return HttpResponseForbidden('Invalid token.')
+                logger = logging.getLogger(__name__)
+                logger.info(f'Invalid token access attempt. Path: {path}, Token: {token[:10]}')
+                return HttpResponseForbidden('Invalid token.')
 
-        # Proceed with the request if the user is authenticated (either by token or session)
         if request.user.is_authenticated:
-            response = self.get_response(request)
-            # If the user was temporarily authenticated for this request, consider revoking here
-            if user_temporarily_authenticated:
-                # Perform any necessary cleanup, e.g., logging out the user from the request
-                # Note: This is symbolic as the request lifecycle ends here
-                logout(request)
-            return response
-        else:
-            return HttpResponseForbidden('Authentication required.')
+            return self.get_response(request)
 
         return HttpResponseRedirect('/login/')
 
