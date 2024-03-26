@@ -38,3 +38,6 @@ Then it works, and you are done.
 
 01:43 24-04-2024
 Try to incoporate axios and cash into your javascript code
+
+
+win.dtu.dk/Institutter/SUS/Groups/IT/SUS-MFA-Reset

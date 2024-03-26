@@ -41,11 +41,11 @@ DEBUG = False
 # CAS_REDIRECT_URL = '/login-redirector/'
 
 AZURE_AD = {
-    'TENANT_ID': os.getenv('AZURE_TENENT_ID'),
+    'TENANT_ID': os.getenv('AZURE_TENANT_ID'),
     'CLIENT_ID': os.getenv('AIT_SOC_MSAL_VICRE_CLIENT_ID'),
-    'CLIENT_SECRET': os.getenv('AIT_SOC_MSAL_VICRE_CLIENT_SECRET'),
-    'REDIRECT_URI': 'https://api.security.ait.dtu.dk/myview/frontpage/', # Update with actual redirect URI
-    'AUTHORITY': f'https://login.microsoftonline.com/{os.getenv("AZURE_TENENT_ID")}',
+    'CLIENT_SECRET': os.getenv('AIT_SOC_MSAL_VICRE_MSAL_SECRET_VALUE'),
+    'REDIRECT_URI': 'https://api.security.ait.dtu.dk/auth/callback', # Update with actual redirect URI
+    'AUTHORITY': f'https://login.microsoftonline.com/{os.getenv("AZURE_TENANT_ID")}',
     'SCOPE': ['User.Read'] # Add other scopes if needed
 }
 
@@ -110,7 +110,6 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'myview.middleware.AccessControlMiddleware',
-    # 'django_cas_ng.middleware.CASMiddleware', # CAS Middleware is now commented out
 ]
 
 # try: 

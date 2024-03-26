@@ -26,71 +26,30 @@ from django.urls import reverse
 from django.views.generic.base import RedirectView
 from msal import ConfidentialClientApplication
 from django.shortcuts import redirect
-
-# @login_required
-# def cas_director(request):
-
-#         try:
-            
-#             if request.user.is_superuser:
-#                 return HttpResponseRedirect(reverse('admin:index'))  # Redirect to admin page
-#             elif request.user:
-#                 return HttpResponseRedirect('/myview/frontpage/')
-
-            
-#             HttpResponseRedirect('/myview/only-allowed-for-it-staff/')
-
-#         except ImportError:
-#             print("ADGroupAssociation model is not available for registration in the admin site.")
-#             HttpResponseRedirect('/myview/only-allowed-for-it-staff/')
-
-@login_required
-def msal_director(request):      
-    try:
-        
-        if request.user.is_superuser:
-            return HttpResponseRedirect(reverse('admin:index'))  # Redirect to admin page
-        elif request.user:
-            return HttpResponseRedirect('/myview/frontpage/')
-    
-        HttpResponseRedirect('/myview/only-allowed-for-it-staff/')
-
-    except ImportError:
-        print("ADGroupAssociation model is not available for registration in the admin site.")
-        HttpResponseRedirect('/myview/only-allowed-for-it-staff/') 
+from .views import msal_callback, msal_login, msal_director, msal_logout
+from dotenv import load_dotenv
+import os
+from django.views.static import serve
+from django.urls import re_path
+dotenv_path = '/usr/src/project/.devcontainer/.env'
+load_dotenv(dotenv_path=dotenv_path)
 
 
-def msal_login(request):
-    # Initialize the MSAL Confidential Client Application with the settings from your configuration
-    client_app = ConfidentialClientApplication(
-        settings.AZURE_AD['CLIENT_ID'],
-        authority=settings.AZURE_AD['AUTHORITY'],
-        client_credential=settings.AZURE_AD['CLIENT_SECRET'],
-    )
 
-    # Get the URL of the Microsoft login page
-    auth_url = client_app.get_authorization_request_url(
-        scopes=settings.AZURE_AD['SCOPE'],
-        redirect_uri=settings.AZURE_AD['REDIRECT_URI']
-    )
-    
-    # Redirect to the Microsoft login page
-    return redirect(auth_url)
-
-def msal_logout(request):
-    return redirect('https://login.microsoftonline.com/common/oauth2/v2.0/logout?post_logout_redirect_uri=https://api.security.ait.dtu.dk/myview/frontpage/')
 
 urlpatterns = [
-    # # cas login and logout
-    # path("login/", LoginView.as_view(), name="cas_ng_login"),
-    # path("login-redirector/", cas_director, name="cas_ng_login_redirector"),
-    # path("logout/", LogoutView.as_view(), name="cas_ng_logout"),
-
     path("login/", msal_login, name="msal_login"),
+    path('auth/callback/', msal_callback, name='msal_callback'),
     path("login-redirector/", msal_director, name="msal_login_redirector"),
     path("logout/", msal_logout, name="msal_logout"),
 
-    path('admin-3dbLnPXcGL4GLAw2cDgBm6F4LrS5VXTD/', admin.site.urls),
+    #  favicon.ico
+    re_path(r'^favicon\.ico$', serve, {
+    'path': 'myview/img/favicon.ico',
+    'document_root': settings.STATIC_ROOT,
+    }),
+
+    path('admin/', admin.site.urls, name='admin-panel'),
     
     # myview
     path('', RedirectView.as_view(url="myview/frontpage/", permanent=True)),
@@ -102,12 +61,6 @@ urlpatterns = [
     # playbook api 
     path('playbook/', include('playbook.urls')),
 
-    # sccm api
-    # path('sccm/', include('sccm.urls')),
-
-    # active directory api
-    # path('active_directory/', include('active_directory.urls')),
-    
 ]
 
 

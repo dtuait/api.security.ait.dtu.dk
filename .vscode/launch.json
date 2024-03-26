@@ -1,7 +1,7 @@
 {
     "configurations": [
         {
-            "name": "localhost_debug_true_settings",
+            "name": "ServerLive: localhost_debug_true_settings",
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/app-main/manage.py",
@@ -15,7 +15,7 @@
             "justMyCode": true
         },
         {
-            "name": "Chromium",
+            "name": "Browser: localhost",
             "runtimeExecutable": "C:\\Program Files\\chromium\\chrome-win\\chrome.exe",
             "request": "launch",
             "type": "msedge",
@@ -23,21 +23,31 @@
             "webRoot": "${workspaceFolder}/app-main/myview",
             "disableNetworkCache": true,
         },
-
         {
-            "name": "production_debug_true_settings_2fa",
+            "name": "ServerLive: production_settings",
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/app-main/manage.py",
             "args": [
                 "runserver",
-                "0.0.0.0:6081",
+                "0.0.0.0:8121",
                 "--settings",
-                "app.production_debug_true_settings_2fa"
+                "app.production_settings"
             ],
             "django": true,
             "justMyCode": true
         },
+        {
+            "name": "Browser: production",
+            "runtimeExecutable": "C:\\Program Files\\chromium\\chrome-win\\chrome.exe",
+            "request": "launch",
+            "type": "msedge",
+            "url": "https://api.security.ait.dtu.dk/myview/frontpage/",
+            "webRoot": "${workspaceFolder}/app-main/myview",
+            "disableNetworkCache": true,
+        },
+
+
     
         {
             "name": "utils.command",

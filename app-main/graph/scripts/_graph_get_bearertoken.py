@@ -10,7 +10,7 @@ import os
 def _generate_new_token():
     # Replace this with your actual logic to generate a new token
 
-    url = 'https://login.microsoftonline.com/' + os.getenv("AZURE_TENENT_ID") + '/oauth2/token'
+    url = 'https://login.microsoftonline.com/' + os.getenv("AZURE_TENANT_ID") + '/oauth2/token'
 
     data = {
         'resource': os.getenv("GRAPH_RESOURCE"),
