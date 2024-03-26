@@ -48,7 +48,7 @@
                     </li>
                 </ul>
                 <div class="d-flex">
-                    <a class="nav-link" href="{% if user.is_authenticated %}{% url 'cas_ng_logout' %}{% else %}{% url 'cas_ng_login' %}{% endif %}">
+                    <a class="nav-link" href="{% if user.is_authenticated %}{% url 'msal_logout' %}{% else %}{% url 'msal_login' %}{% endif %}">
                         {% if user.is_authenticated %}
                         <span>{% trans "Sign out" %} ({{ user.username }})</span>
                         {% else %}

@@ -36,11 +36,20 @@ SECRET_KEY = os.getenv('DJANGO_SECRET')
 DEBUG = False
 
 
-# CAS_SERVER_URL = 'https://auth.dtu.dk/dtu/' # no multifactor
-CAS_SERVER_URL = 'https://auth2.dtu.dk/dtu/' # with multifactor
-CAS_VERSION = '2'
-CAS_REDIRECT_URL = '/login-redirector/'
-# CAS_REDIRECT_URL = '/myview/mfa-reset/'
+# CAS_SERVER_URL = 'https://auth2.dtu.dk/dtu/' # with multifactor
+# CAS_VERSION = '2'
+# CAS_REDIRECT_URL = '/login-redirector/'
+
+AZURE_AD = {
+    'TENANT_ID': os.getenv('AZURE_TENENT_ID'),
+    'CLIENT_ID': os.getenv('AIT_SOC_MSAL_VICRE_CLIENT_ID'),
+    'CLIENT_SECRET': os.getenv('AIT_SOC_MSAL_VICRE_CLIENT_SECRET'),
+    'REDIRECT_URI': 'https://api.security.ait.dtu.dk/myview/frontpage/', # Update with actual redirect URI
+    'AUTHORITY': f'https://login.microsoftonline.com/{os.getenv("AZURE_TENENT_ID")}',
+    'SCOPE': ['User.Read'] # Add other scopes if needed
+}
+
+# 'HOST': os.getenv('MYSQL_HOST'),
 
 ALLOWED_HOSTS = [
     'localhost',
@@ -81,6 +90,17 @@ INSTALLED_APPS = [
     'misc',
 ]
 
+# MIDDLEWARE = [
+#     'django.middleware.security.SecurityMiddleware',
+#     'django.contrib.sessions.middleware.SessionMiddleware',
+#     'django.middleware.common.CommonMiddleware',
+#     'django.middleware.csrf.CsrfViewMiddleware',
+#     'django.contrib.auth.middleware.AuthenticationMiddleware',
+#     'django.contrib.messages.middleware.MessageMiddleware',
+#     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+#     'myview.middleware.AccessControlMiddleware',
+# ]
+
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -90,8 +110,8 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'myview.middleware.AccessControlMiddleware',
+    # 'django_cas_ng.middleware.CASMiddleware', # CAS Middleware is now commented out
 ]
-
 
 # try: 
 #     from myview.models import Endpoint

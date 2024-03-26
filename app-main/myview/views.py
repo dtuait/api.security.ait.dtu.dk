@@ -237,14 +237,8 @@ class MFAResetPageView(BaseView):
 class FrontpagePageView(BaseView):
     template_name = "myview/frontpage.html"
 
-
     def get(self, request, **kwargs):
         context = super().get_context_data(**kwargs)
-
-        # from myview.models import ADGroupAssociation
-        # ADGroupAssociation.sync_ad_groups(None)
-
-        # Your view logic here, accessible without login
         return render(request, self.template_name, context)
 
 
