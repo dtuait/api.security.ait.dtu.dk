@@ -50,7 +50,6 @@ class AccessControlMiddleware(MiddlewareMixin):
     def __call__(self, request):
         # Normalize the request path
         normalized_path = self.normalize_path(request.path)
-        path = request.path
 
         # # Check if the request path is in the whitelist
         # if any(re.match("^" + re.escape(whitelist_path), normalized_path) for whitelist_path in self.whitelist_paths):
@@ -75,6 +74,7 @@ class AccessControlMiddleware(MiddlewareMixin):
 
         # Token authentication
         token = request.META.get('HTTP_AUTHORIZATION')
+        user_token_is_valid = False
         user_temporarily_authenticated = False
         if token:
             try:
@@ -99,7 +99,4 @@ class AccessControlMiddleware(MiddlewareMixin):
                 logout(request)
             return response
         else:
-            return HttpResponseForbidden('Authentication required.')
-
-        return HttpResponseRedirect('/login/')
-
+            return redirect('/login/')
