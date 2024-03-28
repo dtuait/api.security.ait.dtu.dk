@@ -1,7 +1,5 @@
 from .settings import *
 
-DEBUG = False
-
 
 CAS_SERVER_URL = 'https://auth.dtu.dk/dtu/' # no multifactor
 

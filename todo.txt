@@ -41,3 +41,19 @@ Try to incoporate axios and cash into your javascript code
 
 
 win.dtu.dk/Institutter/SUS/Groups/IT/SUS-MFA-Reset
+
+
+
+
+Lav en onliner log som viser infomation hvem endpoints som besøges i authentikeret tilstand. Hvem der er, hvilken ip de kommer fra og timestamp
+
+Lav en if statement som kun lader dig og Dag authentikere. Skriv til Dag at han kan prøve, men at han kan resette alle brugere.
+
+Lav en model og logik som undersøger om den ad associations gruppe brugeren er med i, rent faktisk er medlem i den autentiske ad gruppe. Hvis ja
+Hvis ja; saa prøv og se om denne gruppe maa pille ved den bruger de ønsker at pille ved.
+
+Du skal lave en model som begrænser et endpoint.
+
+
+Paa forsiden skal du kunne generere et token og se hvilken endpoints du har adgang til. Herunder hvilke resourser
+

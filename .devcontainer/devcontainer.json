@@ -1,7 +1,7 @@
 
 {
     "name": "Dev container: my x-api.security.ait.dtu.dk",
-    "dockerComposeFile": "my-production-debugmode-docker-compose.yaml",
+    "dockerComposeFile": "my-development-docker-compose.yaml",
     "service": "xx-api-security-ait-dtu-dk-app-main",
     "workspaceFolder": "/usr/src/project",
     "customizations": {

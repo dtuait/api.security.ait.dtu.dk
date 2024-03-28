@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.http import HttpResponseForbidden, HttpResponseRedirect
 from django.utils.deprecation import MiddlewareMixin
 from .models import Endpoint
@@ -15,6 +16,8 @@ import re
 from django.core.exceptions import ObjectDoesNotExist
 import logging
 from django.contrib.auth import login, logout
+from django.contrib.auth import get_user_model, login
+from django.conf import settings
 
 
 from django.shortcuts import redirect
@@ -50,6 +53,33 @@ class AccessControlMiddleware(MiddlewareMixin):
     def __call__(self, request):
         # Normalize the request path
         normalized_path = self.normalize_path(request.path)
+
+
+        # Check for DEBUG mode to bypass regular authentication
+        if settings.DEBUG:
+            User = get_user_model()  # Get the user model
+            
+            # Check if the user is already authenticated and bypass login logic if so
+            if request.user.is_authenticated and normalized_path != '/admin/login/':
+                return self.get_response(request)
+            
+
+            # Specific logic for admin login page
+            if normalized_path == '/admin/login/':
+                admin_user, _ = User.objects.get_or_create(username='admin', defaults={'is_staff': True, 'is_superuser': True})
+                # Assuming 'admin' user exists with necessary permissions
+                admin_user.backend = 'django.contrib.auth.backends.ModelBackend'  # Specify the backend
+                login(request, admin_user)  # Log in as admin user
+                return redirect('/admin/')  # Redirect to the admin index page to avoid loop
+            
+            # For other paths, mock or create the user "adm-vicre"
+            else:
+                user, _ = User.objects.get_or_create(username='adm-vicre')
+                user.backend = 'django.contrib.auth.backends.ModelBackend'
+                login(request, user)  # Set the mocked user as the authenticated user on the request
+                return self.get_response(request)  # Proceed with the request
+
+
 
         # # Check if the request path is in the whitelist
         # if any(re.match("^" + re.escape(whitelist_path), normalized_path) for whitelist_path in self.whitelist_paths):

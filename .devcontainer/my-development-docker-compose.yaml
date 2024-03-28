@@ -7,7 +7,7 @@ version: '3.8'
 
 services:
   xx-api-security-ait-dtu-dk-app-main:
-    image: vicre/api-security-ait-dtu-dk-app-main:python-3.10-bullseye-django-4.2.x-18-03-2024-venv-myversion-1.0.2 # latest pip packages on date 18-03-2024
+    image: vicre/api-security-ait-dtu-dk-app-main:python-3.10-bullseye-django-4.2.11-27-03-2024-venv-myversion-1.0.3
     restart: always
     tty: true
     volumes:
@@ -16,6 +16,7 @@ services:
     networks:
       - shared_network
 
+##### only for production ####
   xx-api-security-ait-dtu-dk-httpd-service:
     image: vicre/api-security-ait-dtu-dk-httpd-service:httpd-2.4
     volumes:
@@ -24,6 +25,7 @@ services:
       - ../httpd-service/data/httpd.conf:/usr/local/apache2/conf/httpd.conf
     networks:
       - shared_network
+##### only for production ####
 
   xx-api-security-ait-dtu-dk-mariadb-service:
     image: mariadb:11.3.2
