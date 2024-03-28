@@ -102,7 +102,7 @@ function updateSessionStorage(data, prefix) {
 function setModal(triggerSelector, modalId, options = {}) {
   // this function assumes that each that a mudal is uniqie to a trigger
 
-
+  
   if ($('#' + modalId).length) {
     $('#' + modalId).remove();
   }
@@ -161,162 +161,6 @@ function setModal(triggerSelector, modalId, options = {}) {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-// function setModal(triggerSelector, modalContent, modalId) {
-//   // Check if the modal already exists, and remove it if it does
-//   if ($('#' + modalId).length) {
-//       $('#' + modalId).remove();
-//   }
-
-//   // Create the modal HTML with the provided content and a unique ID
-//   const modalHtml = `
-//       <div class="modal fade" id="${modalId}" tabindex="-1" aria-labelledby="${modalId}Label" aria-hidden="true">
-//           <div class="modal-dialog">
-//               <div class="modal-content">
-//                   <div class="modal-header">
-//                       <h5 class="modal-title" id="${modalId}Label">Modal Title</h5>
-//                       <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-//                   </div>
-//                   <div class="modal-body">
-//                       ${modalContent}
-//                   </div>
-//                   <div class="modal-footer">
-//                       <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-//                   </div>
-//               </div>
-//           </div>
-//       </div>
-//   `;
-
-//   // Append the modal to the body
-//   $('body').append(modalHtml);
-
-//   // Use Bootstrap to handle the modal
-//   const modalInstance = new bootstrap.Modal(document.getElementById(modalId), {
-//       keyboard: false
-//   });
-
-//   // Attach event listener to the trigger
-//   $(triggerSelector).on('click', function() {
-//       console.log('Trigger clicked');
-//       modalInstance.show();
-//   });
-
-//   // Dynamically attach event listeners to buttons inside the modal
-//   // $('#' + modalId + ' .modal-body').find('button[id]').each(function() {
-//   //     const buttonId = $(this).attr('id');
-//   //     // Example: Attach a click event listener to the button
-//   //     $(this).on('click', function() {
-//   //         console.log(buttonId + ' was clicked');
-//   //         // You can call a function here based on buttonId
-//   //     });
-//   // });
-// }
-
-
-
-
-// function setModal(triggerSelector, modalContent) {
-//   // Create the modal HTML with the provided content
-//   const modalHtml = `
-//       <div class="modal fade" id="dynamicModal" tabindex="-1" aria-labelledby="dynamicModalLabel" aria-hidden="true">
-//           <div class="modal-dialog">
-//               <div class="modal-content">
-//                   <div class="modal-header">
-//                       <h5 class="modal-title" id="dynamicModalLabel">Modal Title</h5>
-//                       <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-//                   </div>
-//                   <div class="modal-body">
-//                       ${modalContent}
-//                   </div>
-//                   <div class="modal-footer">
-//                       <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-//                   </div>
-//               </div>
-//           </div>
-//       </div>
-//   `;
-
-//   // Append the modal to the body
-//   $('body').append(modalHtml);
-
-//   // Use the Bootstrap modal JavaScript to handle the modal
-//   const modalInstance = new bootstrap.Modal(document.getElementById('dynamicModal'), {
-//       keyboard: false
-//   });
-
-//   // Attach event listener to the trigger
-//   $(triggerSelector).on('click', function() {
-//       modalInstance.show();
-//   });
-// }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// function showModal(id, title, message, onConfirm) {
-//   // Find modal elements
-//   const modal = document.getElementById(id);
-//   const modalTitle = modal.querySelector('.modal-title');
-//   const modalBody = modal.querySelector('.modal-body');
-//   const confirmBtn = modal.querySelector('#confirmAction');
-
-//   // Update the modal title and body
-//   modalTitle.textContent = title;
-//   modalBody.innerHTML = message; // Using innerHTML to support HTML content like links
-
-//   // Show the modal
-//   const bootstrapModal = new bootstrap.Modal(modal);
-//   bootstrapModal.show();
-
-//   if (onConfirm) {
-//       // If an onConfirm function is provided, set up the confirm button
-//       confirmBtn.style.display = 'inline-block'; // Make sure the button is visible
-//       const handleConfirmClick = () => {
-//           if (typeof onConfirm === 'function') {
-//               onConfirm();
-//           }
-//           bootstrapModal.hide();
-//       };
-
-//       // Ensure we don't stack event listeners
-//       confirmBtn.removeEventListener('click', handleConfirmClick);
-//       confirmBtn.addEventListener('click', handleConfirmClick);
-//   } else {
-//       // If no onConfirm is provided, hide the confirm button if it exists
-//       if (confirmBtn) confirmBtn.style.display = 'none';
-//   }
-// }
-
-
-
-
-
-
 function confirmCash() {
   try {
     const body = $('body'); // Use Cash to select the document body
@@ -365,7 +209,7 @@ function getCookie(name) {
 }
 
 
-
+// enables tips like this <i class="bi bi-question-circle-fill" data-bs-toggle="tooltip" data-bs-placement="right" title="Tooltip on right"></i>
 const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"][data-bs-html="true"]'))
 tooltipTriggerList.forEach(function (tooltipTriggerEl) {
   new bootstrap.Tooltip(tooltipTriggerEl, {

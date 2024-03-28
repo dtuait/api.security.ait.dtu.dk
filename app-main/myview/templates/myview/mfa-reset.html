@@ -37,50 +37,6 @@
     </div>
 </div>
 
-<!-- 
-<script>
-    const data = {
-        "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#users('vicre-test01%40dtudk.onmicrosoft.com')/authentication/methods",
-        "value": [
-            {
-                "@odata.type": "#microsoft.graph.passwordAuthenticationMethod",
-                "id": "28c10230-6103-485e-b985-444c60001490",
-                "password": null,
-                "createdDateTime": "2024-03-12T13:25:21Z"
-            },
-            {
-                "@odata.type": "#microsoft.graph.microsoftAuthenticatorAuthenticationMethod",
-                "id": "123e4441-eadf-4950-883d-fea123988824",
-                "displayName": "iPhone 12",
-                "deviceTag": "SoftwareTokenActivated",
-                "phoneAppVersion": "6.8.3",
-                "createdDateTime": null
-            }
-        ]
-    };
-
-    const container = $('#dataContainer');
-
-    data.value.forEach(item => {
-        const card = `
-            <div class="card my-2">
-                <div class="card-body">
-                    <h5 class="card-title">${item['@odata.type']}</h5>
-                    <p class="card-text">ID: ${item.id}</p>
-                    <p class="card-text">Created: ${item.createdDateTime || 'N/A'}</p>
-                    <button class="btn btn-danger">Remove</button>
-                    <button class="btn btn-info">Info</button>
-                </div>
-            </div>
-        `;
-
-        container.append(card);
-    });
-</script> -->
-
-
-
-
 <script src="{% static 'myview/js/mfa-reset.js' %}" defer></script>
 <link rel="stylesheet" type="text/css" media="all" href="{% static 'myview/css/mfa-reset.css' %}" />
 {% endblock %}

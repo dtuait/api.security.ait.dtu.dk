@@ -23,6 +23,9 @@ from django.utils.decorators import method_decorator
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_protect
 from django.urls import reverse, NoReverseMatch
+from django.contrib.auth.models import User
+import random
+import string
 
 
 @method_decorator(login_required, name='dispatch')
@@ -78,9 +81,14 @@ class AjaxView(BaseView):
             else:
                 # Return an error message if the user is not a superuser
                 return JsonResponse({'error': "You need superuser privileges to perform this action."}, status=403)
+        elif action == 'create_custom_token':
+            if request.user.is_authenticated:
+                return self.create_custom_token(request)
             
         else:
             return JsonResponse({'error': 'Invalid AJAX action'}, status=400)
+
+
 
     def sync_ad_groups(self, request):
         # Your logic here
@@ -89,7 +97,15 @@ class AjaxView(BaseView):
         return JsonResponse({'success': result})
 
 
-
+    def create_custom_token(self, request):
+        user = User.objects.get(username=request.user.username)
+        # Generate random string of length 255
+        random_string = ''.join(random.choices(string.ascii_letters + string.digits, k=255))
+        #
+        user.generate_new_custom_token()
+        token = Token.objects.get(user=user)
+        
+        return JsonResponse({'custom_token': token.key})
 
 
 

@@ -177,44 +177,6 @@ function displayAuthenticationMethod(container, authenticationMethod, userEmail)
    
    
    
-   
-    // Set the event listener for the delete confirmation button
-    // $('body').on('click', '#deleteConfirmButton', async function() {
-    //     // log
-    //     console.log('Delete button clicked for user:', userEmail, 'and method:', authenticationMethod.id);
-    //     let response;
-    //     try {
-    //     // i need the CURRENT user id and the CURRENT authentication method id
-    //     response = await deleteAuthenticationMethod(userEmail, authenticationMethod.id);
-    //     console.log('Response:', response);
-
-
-
-    //     } catch (error) {
-    //     console.error('Error deleting authentication method:', error);
-    //     // Optionally, show an error message to the user
-    //     } finally {
-    //     // Programmatically hide the modal after successful deletion
-    //     const deleteConfirmationModal = document.getElementById(`delete-${card.deleteButtonId}`);
-    //     const bootstrapModal = bootstrap.Modal.getInstance(deleteConfirmationModal);
-    //     bootstrapModal.hide();
-
-
-    //     const userLookup = await handleUserLookup();
-        
-    //     if (response.status === 204 && userLookup) {
-    //         displayNotification('The authentication method was successfully deleted.', 'success');
-    //     } else {
-    //         displayNotification('An unknown error occurred.', 'warning');
-    //     }
-
-
-    //     }
-
-    //     // 
-    //     // set the method id to delete
-    //     // setMethodIdToDelete(authenticationMethod.id);
-    // });
 }
 
 function prepareMethodDetails(method) {

@@ -18,6 +18,7 @@ import logging
 from django.contrib.auth import login, logout
 from django.contrib.auth import get_user_model, login
 from django.conf import settings
+from django.http import Http404
 
 
 from django.shortcuts import redirect
@@ -58,23 +59,47 @@ class AccessControlMiddleware(MiddlewareMixin):
         # Check for DEBUG mode to bypass regular authentication
         if settings.DEBUG:
             User = get_user_model()  # Get the user model
+
+            # if request.user.is_authenticated logout user
+
             
             # Check if the user is already authenticated and bypass login logic if so
-            if request.user.is_authenticated and normalized_path != '/admin/login/':
-                return self.get_response(request)
+            #if request.user.is_authenticated and normalized_path != '/admin/login/':
+             #   return self.get_response(request)
             
-
             # Specific logic for admin login page
-            if normalized_path == '/admin/login/':
-                admin_user, _ = User.objects.get_or_create(username='admin', defaults={'is_staff': True, 'is_superuser': True})
-                # Assuming 'admin' user exists with necessary permissions
+            if normalized_path.startswith('/admin'):
+                
+                if request.user.is_authenticated and request.user.username != 'admin':
+                    logout(request)
+
+
+                try:
+                    admin_user = User.objects.get(username='admin')
+                except User.DoesNotExist:
+                    raise Http404("Admin user does not exist")
+                
                 admin_user.backend = 'django.contrib.auth.backends.ModelBackend'  # Specify the backend
                 login(request, admin_user)  # Log in as admin user
-                return redirect('/admin/')  # Redirect to the admin index page to avoid loop
+                return self.get_response(request) # Redirect to the admin index page to avoid loop
+        
+
+            # # Specific logic for admin login page
+            # if normalized_path.startswith('/admin'):
+            #     admin_user, _ = User.objects.get_or_create(username='admin', defaults={'is_staff': True, 'is_superuser': True})
+            #     # Assuming 'admin' user exists with necessary permissions
+            #     admin_user.backend = 'django.contrib.auth.backends.ModelBackend'  # Specify the backend
+            #     login(request, admin_user)  # Log in as admin user
+            #     return redirect('/admin/')  # Redirect to the admin index page to avoid loop
             
             # For other paths, mock or create the user "adm-vicre"
             else:
-                user, _ = User.objects.get_or_create(username='adm-vicre')
+                if request.user.is_authenticated and request.user.username != 'adm-vicre':
+                    logout(request)
+                try:
+                    user = User.objects.get(username='adm-vicre')
+                except User.DoesNotExist:
+                    raise Http404("User does not exist")
                 user.backend = 'django.contrib.auth.backends.ModelBackend'
                 login(request, user)  # Set the mocked user as the authenticated user on the request
                 return self.get_response(request)  # Proceed with the request
