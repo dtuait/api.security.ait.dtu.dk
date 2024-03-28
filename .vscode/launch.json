@@ -15,6 +15,20 @@
             "justMyCode": true
         },
         {
+            "name": "ServerLive: localhost_debug_false_settings",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/app-main/manage.py",
+            "args": [
+                "runserver",
+                "0.0.0.0:6081",
+                "--settings",
+                "app.localhost_debug_false_settings"
+            ],
+            "django": true,
+            "justMyCode": true
+        },
+        {
             "name": "Browser: localhost",
             "runtimeExecutable": "C:\\Program Files\\chromium\\chrome-win\\chrome.exe",
             "request": "launch",

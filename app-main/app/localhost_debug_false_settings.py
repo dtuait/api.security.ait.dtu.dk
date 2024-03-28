@@ -1,4 +1,6 @@
-from WARNING_import_settings_with_DEBUG_enabled import *
+from .settings import *
+
+
 
 
 
