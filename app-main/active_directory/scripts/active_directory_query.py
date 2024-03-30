@@ -19,6 +19,14 @@ def active_directory_query(*, base_dn, search_filter, search_attributes=ALL_ATTR
     try:
         conn, message = active_directory_connect()
 
+        # cnvert limit to int
+        if limit is not None:
+            try:
+                limit = int(limit)
+            except ValueError:
+                print('Invalid limit value. Limit must be an integer.')
+                return []
+
         if not conn:
             print('Failed to connect to AD:', message)
             return []

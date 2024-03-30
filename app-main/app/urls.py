@@ -33,7 +33,7 @@ from django.views.static import serve
 from django.urls import re_path
 dotenv_path = '/usr/src/project/.devcontainer/.env'
 load_dotenv(dotenv_path=dotenv_path)
-from .views import AjaxView
+
 
 
 

@@ -9,41 +9,30 @@ $(document).ready(function() {
             
             clearInterval(checkExist);  // Clear interval once we've found the input
             // Attach your event listener here
-            let timeout = null;
+            input.on('input', async function() {
+                
 
-            input.on('input', function() {
-                // Clear the previous timeout if it exists
-                if (timeout !== null) {
-                    clearTimeout(timeout);
-                }
-            
-                // Set a new timeout
-                timeout = setTimeout(async function() {
-                    let formData = new FormData();
-                    formData.append('action', 'active_directory_query');
-                    formData.append('base_dn', 'DC=win,DC=dtu,DC=dk');
-                    formData.append('search_filter', `(&(objectClass=group)(cn=*${this.value}*))`);
-                    formData.append('search_attributes', 'cn,canonicalName,distinguishedName');
-                    formData.append('limit', '1');
-            
-                    let response;
-                    response = await restAjax('POST', '/myview/ajax/', formData);
-            
-                    console.log('Response:', response);
 
-                    let ad_groups = response.data;
+                console.log('Input changed!', this.value);
 
-                    // for each group in ad_groups print the group name
-                    for (let i = 0; i < ad_groups.length; i++) {
-                        // print cn, canonicalName, distinguishedName
-                        console.log(ad_groups[i].cn, ad_groups[i].canonicalName, ad_groups[i].distinguishedName);
-                    }
+                let formData = new FormData();
+                formData.append('action', 'active_directory_query');
+                // Append additional parameters required by the Django view
+                formData.append('base_dn', 'DC=win,DC=dtu,DC=dk');
+                // search_filter = '(objectClass=group)(cn=*' + this.value )'
+                // formData.append('search_filter', search_filter);
+                // formData.append('search_filter', `(objectClass=group)(cn=${this.value})`);
+                formData.append('search_filter', `(objectClass=group)(cn=*${this.value}*)`);
 
-                    // replace 
-            
-                    // Clear the timeout
-                    timeout = null;
-                }.bind(this), 2000);  // Wait for 2 seconds
+                formData.append('search_attributes', 'distinguishedName,sAMAccountName');
+                formData.append('limit', '5');
+
+                let response;
+                response = await restAjax('POST', '/myview/ajax/', formData);
+
+                console.log('Response:', response);
+
+
             });
 
         }

@@ -7,18 +7,14 @@ import os
 from dotenv import load_dotenv
 from datetime import datetime
 import pytz
-from ldap3 import Server, Connection, ALL, SUBTREE
-from utils.active_directory_query import active_directory_query
+from active_directory.scripts.active_directory_query import active_directory_query
 import string
 from django.contrib.auth.hashers import make_password, check_password
 import random
 from myview.models import ADGroupAssociation
 from utils.cronjob_update_endpoints import updateEndpoints
 import shutil
-from app_mod.models import CustomToken
-from rest_framework.authtoken.models import Token
 from django.contrib.auth.models import User
-from rest_framework.authtoken.models import Token
 
 
 class Command(BaseCommand):
@@ -40,9 +36,9 @@ class Command(BaseCommand):
             user = User.objects.get(username='adm-vicre')
             user.set_my_token(django_init_token)
 
-            django_init_token = os.getenv("DJANGO_ADM_DAST_INIT_TOKEN")
-            user = User.objects.get(username='adm-byg-dast')
-            user.set_my_token(django_init_token)
+            # django_init_token = os.getenv("DJANGO_ADM_DAST_INIT_TOKEN")
+            # user = User.objects.get(username='adm-byg-dast')
+            # user.set_my_token(django_init_token)
             
             # try:
             #     # Get the user
@@ -191,7 +187,7 @@ class Command(BaseCommand):
 
     def perform_ldap_search(self, base_dn, search_filter, search_attributes):
 
-        return active_directory_query(base_dn, search_filter, search_attributes)
+        return active_directory_query(base_dn=base_dn, search_filter=search_filter, search_attributes=search_attributes, limit=None)
    
 
 def run():

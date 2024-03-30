@@ -149,32 +149,32 @@ def msal_logout(request):
 
 
 
-# @method_decorator(login_required, name='dispatch')
-class AjaxView(View):
+# # @method_decorator(login_required, name='dispatch')
+# class AjaxView(View):
 
-    def post(self, request, *args, **kwargs):
-        # Extract an 'action' parameter from the POST request to determine which method to call
-        action = request.POST.get('action')
+#     def post(self, request, *args, **kwargs):
+#         # Extract an 'action' parameter from the POST request to determine which method to call
+#         action = request.POST.get('action')
 
-        # Check if the action matches one of your AJAX methods
-        if action == 'get_ad_groups':
+#         # Check if the action matches one of your AJAX methods
+#         if action == 'get_ad_groups':
 
-            if request.user.is_superuser:
-                return self.get_ad_groups(request)
-            else:
-                # Return an error message if the user is not a superuser
-                return JsonResponse({'error': "You need superuser privileges to perform this action."}, status=403)
+#             if request.user.is_superuser:
+#                 return self.get_ad_groups(request)
+#             else:
+#                 # Return an error message if the user is not a superuser
+#                 return JsonResponse({'error': "You need superuser privileges to perform this action."}, status=403)
 
             
-        else:
-            return JsonResponse({'error': 'Invalid AJAX action'}, status=400)
+#         else:
+#             return JsonResponse({'error': 'Invalid AJAX action'}, status=400)
 
 
-    def get_ad_groups(self, request):
-        # Get the list of AD groups associated with the user
-        # search for the user in the ADGroupAssociation model
+#     def get_ad_groups(self, request):
+#         # Get the list of AD groups associated with the user
+#         # search for the user in the ADGroupAssociation model
     
         
-        ad_groups = request.user.ad_groups.all()
-        ad_groups_list = [group.name for group in ad_groups]
-        return JsonResponse({'ad_groups': ad_groups_list})
+#         ad_groups = request.user.ad_groups.all()
+#         ad_groups_list = [group.name for group in ad_groups]
+#         return JsonResponse({'ad_groups': ad_groups_list})

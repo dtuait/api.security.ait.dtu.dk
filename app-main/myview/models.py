@@ -36,7 +36,7 @@ class ADGroupAssociation(BaseModel):
         search_attributes = ['cn', 'canonicalName', 'distinguishedName']
 
         try:
-            ad_groups = active_directory_query(base_dn, search_filter, search_attributes)
+            ad_groups = active_directory_query(base_dn=base_dn, search_filter=search_filter, search_attributes=search_attributes)
 
             ADGroupAssociation.objects.all().delete()
 
@@ -54,9 +54,9 @@ class ADGroupAssociation(BaseModel):
                 updated_groups = []
 
                 for group in ad_groups:
-                    cn = group.get('cn', '')
-                    canonical_name = group.get('canonicalName', '')
-                    distinguished_name = group.get('distinguishedName', '')
+                    cn = group['cn'][0] if group['cn'] else ''
+                    canonical_name = ['canonicalName'] if group['canonicalName'] else ''
+                    distinguished_name = ['distinguishedName'] if group['distinguishedName'] else ''
 
 
    
@@ -103,10 +103,10 @@ class ADGroupAssociation(BaseModel):
                 
 
                 for user in users:
-                    dn = user.get('distinguishedName')
-                    username = user.get('sAMAccountName', '').lower()  # Get 'sAMAccountName' from the current query
-                    first_name = user.get('givenName', '')
-                    last_name = user.get('sn', '')
+                    dn = user['distinguishedName'][0] if user['distinguishedName'] else ''
+                    username = user['sAMAccountName'][0].lower() if user['sAMAccountName'] else ''
+                    first_name = user['givenName'][0] if user['givenName'] else ''
+                    last_name = user['sn'][0] if user['sn'] else ''
 
                     if dn and username:
                         # Check if the user exists in Django, and if not, create a new user instance
