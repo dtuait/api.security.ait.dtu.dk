@@ -2,7 +2,7 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.contrib.auth import get_user_model
 from django.conf import settings
-from utils.active_directory_query import active_directory_query
+from active_directory.scripts.active_directory_query import active_directory_query
 from django.db import transaction
 from django.db.utils import IntegrityError
 from django.utils.translation import gettext_lazy as _
@@ -81,71 +81,6 @@ class ADGroupAssociation(BaseModel):
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    # # This function gets all AD groups and syncs them with the database
-    # def sync_ad_groups(self):
-    #     base_dn = "DC=win,DC=dtu,DC=dk"
-    #     search_filter = "(objectClass=group)"
-    #     search_attributes = ['cn', 'canonicalName', 'distinguishedName']
-
-    #     try:
-    #         ad_groups = active_directory_query(base_dn, search_filter, search_attributes)
-
-    #         with transaction.atomic():
-    #             # Fetch existing groups to identify new and to-be-deleted groups
-    #             existing_groups = {group.distinguished_name: group for group in ADGroupAssociation.objects.all()}
-    #             ad_group_dns = set()
-
-    #             new_groups = []
-    #             updated_groups = []
-
-    #             for group in ad_groups:
-    #                 cn = group.get('cn', '')
-    #                 canonical_name = group.get('canonicalName', '')
-    #                 distinguished_name = group.get('distinguishedName', '')
-
-    #                 # Track DNs of groups found in AD
-    #                 ad_group_dns.add(distinguished_name)
-
-    #                 if distinguished_name in existing_groups:
-    #                     # Prepare existing group for update
-    #                     existing_group = existing_groups[distinguished_name]
-    #                     existing_group.cn = cn
-    #                     existing_group.canonical_name = canonical_name
-    #                     updated_groups.append(existing_group)
-    #                     updated_groups.append(existing_group)
-    #                 else:
-    #                     # Prepare new group for creation
-    #                     new_group = ADGroupAssociation(cn=cn, canonical_name=canonical_name, distinguished_name=distinguished_name)
-    #                     new_groups.append(new_group)
-
-    #             # Bulk create new groups and bulk update existing groups
-    #             ADGroupAssociation.objects.bulk_create(new_groups)
-    #             ADGroupAssociation.objects.bulk_update(updated_groups, ['cn', 'canonical_name'])
-
-    #             # Delete groups that are no longer in AD
-    #             groups_to_delete = set(existing_groups.keys()) - ad_group_dns
-    #             ADGroupAssociation.objects.filter(distinguished_name__in=groups_to_delete).delete()
-
-    #         return True
-    #     except Exception as e:
-    #         print(f"An error occurred during sync ad groups operation: {e}")
-    #         return False
-
-
   
     def escape_ldap_filter_chars(self, s):
         escape_chars = {
@@ -202,7 +137,21 @@ class ADGroupAssociation(BaseModel):
                 # Perform the search on LDAP
                 current_members = active_directory_query(base_dn, search_filter, search_attributes)
 
+                # filter out all users that does not startwith adm- or contians -adm-
+                current_members = [user for user in current_members if user.get('sAMAccountName', '').lower().startswith('adm-') or '-adm-' in user.get('sAMAccountName', '').lower()]
+                
                 self.create_new_users_if_not_exists(current_members)
+
+                # remove all members from the group
+                self.members.clear()
+
+                # Fetch the current members of the group
+                for user in current_members:
+                    username = user.get('sAMAccountName', '').lower()
+                    user_instance = User.objects.filter(username=username).first()
+                    if user_instance:
+                        self.members.add(user_instance)
+                
 
                 
 
@@ -213,13 +162,15 @@ class ADGroupAssociation(BaseModel):
                 print(f"An error occurred during the LDAP operation: {e}")
 
     def __str__(self):
-        return self.canonical_name
+        return self.cn
 
     
     def add_member(self, user, admin_user):
         self.members.add(user)
         self.added_manually_by = admin_user
         self.save()
+
+
 
 
 
@@ -253,6 +204,18 @@ class Endpoint(BaseModel):
             return True, access_granting_groups  # Return True and the groups that grant access
         else:
             return False, None  # No access granted
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

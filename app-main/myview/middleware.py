@@ -55,6 +55,9 @@ class AccessControlMiddleware(MiddlewareMixin):
         # Normalize the request path
         normalized_path = self.normalize_path(request.path)
 
+        if normalized_path == '/favicon.ico/':
+            return self.get_response(request)
+
 
         # Check for DEBUG mode to bypass regular authentication
         if settings.DEBUG:
@@ -73,15 +76,20 @@ class AccessControlMiddleware(MiddlewareMixin):
                 if request.user.is_authenticated and request.user.username != 'admin':
                     logout(request)
 
+                if not request.user.is_authenticated:
 
-                try:
-                    admin_user = User.objects.get(username='admin')
-                except User.DoesNotExist:
-                    raise Http404("Admin user does not exist")
+                    try:
+                        admin_user = User.objects.get(username='admin')
+                    except User.DoesNotExist:
+                        raise Http404("Admin user does not exist")
+                    
+                    admin_user.backend = 'django.contrib.auth.backends.ModelBackend'  # Specify the backend
+                    login(request, admin_user)
+
                 
-                admin_user.backend = 'django.contrib.auth.backends.ModelBackend'  # Specify the backend
-                login(request, admin_user)  # Log in as admin user
-                return self.get_response(request) # Redirect to the admin index page to avoid loop
+                response = self.get_response(request)
+
+                return response
         
 
             # # Specific logic for admin login page

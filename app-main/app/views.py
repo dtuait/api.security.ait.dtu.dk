@@ -2,6 +2,7 @@ from django.shortcuts import render, redirect
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse, HttpResponseRedirect
 from django.urls import reverse
+from django.views import View
 import msal
 import os
 from dotenv import load_dotenv
@@ -12,6 +13,9 @@ from django.conf import settings
 from django.contrib.auth import login, logout
 dotenv_path = '/usr/src/project/.devcontainer/.env'
 load_dotenv(dotenv_path=dotenv_path)
+from django.utils.decorators import method_decorator
+from django.http import JsonResponse
+from django.contrib.auth.decorators import login_required
 
 def msal_callback(request):
     # The state should be passed to the authorization request and validated in the response.
@@ -134,7 +138,43 @@ def msal_login(request):
     return redirect(auth_url)
 
 def msal_logout(request):
+    
     logout(request)
     response = redirect('https://login.microsoftonline.com/common/oauth2/v2.0/logout?post_logout_redirect_uri=https://api.security.ait.dtu.dk/myview/frontpage/')
     response.delete_cookie('csrftoken')
     return response
+
+
+
+
+
+
+# @method_decorator(login_required, name='dispatch')
+class AjaxView(View):
+
+    def post(self, request, *args, **kwargs):
+        # Extract an 'action' parameter from the POST request to determine which method to call
+        action = request.POST.get('action')
+
+        # Check if the action matches one of your AJAX methods
+        if action == 'get_ad_groups':
+
+            if request.user.is_superuser:
+                return self.get_ad_groups(request)
+            else:
+                # Return an error message if the user is not a superuser
+                return JsonResponse({'error': "You need superuser privileges to perform this action."}, status=403)
+
+            
+        else:
+            return JsonResponse({'error': 'Invalid AJAX action'}, status=400)
+
+
+    def get_ad_groups(self, request):
+        # Get the list of AD groups associated with the user
+        # search for the user in the ADGroupAssociation model
+    
+        
+        ad_groups = request.user.ad_groups.all()
+        ad_groups_list = [group.name for group in ad_groups]
+        return JsonResponse({'ad_groups': ad_groups_list})

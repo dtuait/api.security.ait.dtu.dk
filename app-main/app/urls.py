@@ -33,7 +33,7 @@ from django.views.static import serve
 from django.urls import re_path
 dotenv_path = '/usr/src/project/.devcontainer/.env'
 load_dotenv(dotenv_path=dotenv_path)
-
+from .views import AjaxView
 
 
 
@@ -61,7 +61,15 @@ urlpatterns = [
     # playbook api 
     path('playbook/', include('playbook.urls')),
 
+    # active directory api
+    path('', include('active_directory.urls')),
+
+    # path('admin/app/ajax/', AjaxView.as_view(), name='admin-app-ajax'),
+
+
+
 ]
+
 
 
 if settings.DEBUG:

@@ -14,6 +14,16 @@
             "django": true,
             "justMyCode": true
         },
+
+        {
+            "name": "Browser: admin localhost",
+            "runtimeExecutable": "C:\\Program Files\\chromium\\chrome-win\\chrome.exe",
+            "request": "launch",
+            "type": "msedge",
+            "url": "http://localhost:6081/admin/",
+            "webRoot": "${workspaceFolder}/app-main",
+            "disableNetworkCache": true,
+        },
         {
             "name": "ServerLive: localhost_debug_false_settings",
             "type": "debugpy",
@@ -59,6 +69,19 @@
             "url": "https://api.security.ait.dtu.dk/myview/frontpage/",
             "webRoot": "${workspaceFolder}/app-main/myview",
             "disableNetworkCache": true,
+        },
+
+        {
+            "name": "active_directory.scripts.active_directory_query",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/app-main/manage.py",
+            "args": [
+                "runscript",
+                "active_directory.scripts.active_directory_query"
+            ],
+            "django": true,
+            "justMyCode": true
         },
 
 

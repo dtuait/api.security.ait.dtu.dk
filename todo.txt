@@ -41,7 +41,7 @@ Try to incoporate axios and cash into your javascript code
 
 
 win.dtu.dk/Institutter/SUS/Groups/IT/SUS-MFA-Reset
-
+SUS-MFA-Reset
 
 
 
@@ -57,3 +57,5 @@ Du skal lave en model som begrænser et endpoint.
 
 Paa forsiden skal du kunne generere et token og se hvilken endpoints du har adgang til. Herunder hvilke resourser
 
+
+SUS-MFA-Reset
