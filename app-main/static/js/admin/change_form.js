@@ -46,9 +46,10 @@ $(document).ready(function() {
 
                     // Assuming `id_ad_groups_from` is the select element for ad_groups
                     let selectElement = $('#id_ad_groups_from');
+                    // 
 
                     // Clear existing options
-                    selectElement.empty();
+                    // selectElement.empty();
 
                     // Add new options based on AJAX response
                     ad_groups.forEach(group => {
@@ -72,7 +73,7 @@ $(document).ready(function() {
                     console.log('Reloading page...');
 
                     // PARSE THE DATA AND RELOAD THE PAGE
-                    // location.reload();
+                    location.reload();
 
                                         // Clear the timeout
                     timeout = null;

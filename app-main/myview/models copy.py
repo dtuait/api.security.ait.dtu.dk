@@ -42,14 +42,25 @@ class ADGroupAssociation(BaseModel):
 
             ADGroupAssociation.objects.all().delete()
 
+            # sync the delta so that current_ad_association_groups has the same groups as ad_groups
+            # is the most effecient wayt two create a third variable that is the delta of the two lists
+            # then remove and create the delta? 
+
+
             with transaction.atomic():
+                # Fetch existing groups to identify new and to-be-deleted groups
+                existing_groups = {group.distinguished_name: group for group in ADGroupAssociation.objects.all()}
+                ad_group_dns = set()
 
                 new_groups = []
+                updated_groups = []
 
                 for group in ad_groups:
                     cn = group['cn'][0] if group['cn'][0] else ''
                     canonical_name = group['canonicalName'][0] if group['canonicalName'][0] else ''
                     distinguished_name = group['distinguishedName'][0] if group['distinguishedName'][0] else ''
+
+
    
                     # Prepare new group for creation
                     new_group = ADGroupAssociation(cn=cn, canonical_name=canonical_name, distinguished_name=distinguished_name)
@@ -57,6 +68,7 @@ class ADGroupAssociation(BaseModel):
 
                 # Bulk create new groups and bulk update existing groups
                 ADGroupAssociation.objects.bulk_create(new_groups)
+                ADGroupAssociation.objects.bulk_update(updated_groups, ['cn', 'canonical_name'])
 
 
             return True
@@ -125,10 +137,10 @@ class ADGroupAssociation(BaseModel):
 
             try:
                 # Perform the search on LDAP
-                current_members = active_directory_query(base_dn=base_dn, search_filter=search_filter, search_attributes=search_attributes)
+                current_members = active_directory_query(base_dn, search_filter, search_attributes)
 
                 # filter out all users that does not startwith adm- or contians -adm-
-                current_members = [user for user in current_members if user['sAMAccountName'][0].lower().startswith('adm-') or '-adm-' in user['sAMAccountName'][0].lower()]
+                current_members = [user for user in current_members if user.get('sAMAccountName', '').lower().startswith('adm-') or '-adm-' in user.get('sAMAccountName', '').lower()]
                 
                 self.create_new_users_if_not_exists(current_members)
 
@@ -137,7 +149,7 @@ class ADGroupAssociation(BaseModel):
 
                 # Fetch the current members of the group
                 for user in current_members:
-                    username = user['sAMAccountName'][0].lower()
+                    username = user.get('sAMAccountName', '').lower()
                     user_instance = User.objects.filter(username=username).first()
                     if user_instance:
                         self.members.add(user_instance)

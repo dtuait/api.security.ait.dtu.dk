@@ -63,6 +63,8 @@ class AccessControlMiddleware(MiddlewareMixin):
         if settings.DEBUG:
             User = get_user_model()  # Get the user model
 
+
+            # This is too prevent starting a new session, which deletes session variables.
             if normalized_path.startswith('/myview/ajax'):
                 return self.get_response(request)
 
