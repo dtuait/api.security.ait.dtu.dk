@@ -4,9 +4,9 @@
 <!-- The static is a template tag that is used to load the static template tag library. This library provides a way to reference static files, such as CSS, JavaScript, or image files, which are not tied to a particular instance of a model in your Django app. -->
 {% load i18n static %}
 
+
 {# title #}
 {% block title %}Front page{% endblock %}
-
 
 {% block dynamic_head_content %}
 
@@ -19,17 +19,44 @@
 {% block main-content %}
 
 
-{% if token %}
+<div class="container my-4">
+        
+        
+        <i class="bi bi-question-circle-fill" data-bs-toggle="tooltip" data-bs-placement="right" title="Requires superuser rights &lt;br&gt; The button is used if the AD group does not appear" data-bs-html="true"></i>
+        
+        {% if is_superuser %}
+        <button id="syncAdUsersBtn" class="btn btn-primary">
+        {% else %}
+        <button id="syncAdUsersBtn" class="btn btn-primary" disabled>
+        {% endif %}
+        Perform ADGroup Sync
+        <span id="loadingSpinner" class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="display: none;"></span>
+    </button>
 
 
-<!-- <div id="tokenDisplay">{{token}}</div> -->
-<!-- <button onclick="regenerateToken()">Regenerate Token</button> -->
-{% else %}
-<!-- <div id="tokenDisplay"></div> -->
-<!-- <button onclick="generateToken()">Generate Token</button> -->
-{% endif %}
 
 
-<!-- <script src="{% static 'myview/js/frontpage.js' %}" defer></script> -->
+<div class="container my-4"></div>
+    <!-- New button to generate a new token -->
+    <i class="bi bi-question-circle-fill" data-bs-toggle="tooltip" data-bs-placement="right" title="The token will only be displayed once!" data-bs-html="true"></i>
+    <button id="generateTokenBtn" class="btn btn-primary">
+        Generate New Token
+    </button>
+
+    <!-- Element to display the token -->
+    <pre id="tokenDisplay" style="white-space: pre-wrap; word-wrap: break-word;"></pre>
+    <!-- <button id="copyTokenBtn" class="btn btn-secondary" disabled>
+        <i class="fas fa-copy"></i>
+    </button> -->
+    <!-- Button to copy the token -->
+    <!-- <button id="copyTokenBtn" class="btn btn-secondary" disabled>
+        Copy Token
+    </button> -->
+
+</div>
+
+
+<script src="{% static 'myview/js/frontpage.js' %}" defer></script>
 <link rel="stylesheet" type="text/css" media="all" href="{% static 'myview/css/frontpage.css' %}" />
 {% endblock %}
+

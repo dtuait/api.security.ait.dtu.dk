@@ -13,8 +13,10 @@ git config --global user.email "vicre@dtu.dk"
 git config --global user.name "Victor Reipur"
 git config --global --add safe.directory /usr/src/project
 git config --global --add safe.directory /mnt/project
-git config --global --add safe.directory /usr/src/project/.docker-migrate
+git config --global --add safe.directory /usr/src/project/.devcontainer/.docker-migrate
+git config --global --add safe.directory /usr/src/project/.devcontainer/.docker-image-builder
 git config pull.rebase true
+# git submodule update --remote # gets the latest commit from the submodule
 
 # show current pip freeze
 echo "Show current pip freeze into requirements.txt"

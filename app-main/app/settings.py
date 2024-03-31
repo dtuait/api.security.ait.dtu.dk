@@ -36,10 +36,20 @@ SECRET_KEY = os.getenv('DJANGO_SECRET')
 DEBUG = False
 
 
-# CAS_SERVER_URL = 'https://auth.dtu.dk/dtu/' # no multifactor
-CAS_SERVER_URL = 'https://auth2.dtu.dk/dtu/' # with multifactor
-CAS_VERSION = '2'
-CAS_REDIRECT_URL = '/myview/mfa-reset/'
+# CAS_SERVER_URL = 'https://auth2.dtu.dk/dtu/' # with multifactor
+# CAS_VERSION = '2'
+# CAS_REDIRECT_URL = '/login-redirector/'
+
+AZURE_AD = {
+    'TENANT_ID': os.getenv('AZURE_TENANT_ID'),
+    'CLIENT_ID': os.getenv('AIT_SOC_MSAL_VICRE_CLIENT_ID'),
+    'CLIENT_SECRET': os.getenv('AIT_SOC_MSAL_VICRE_MSAL_SECRET_VALUE'),
+    'REDIRECT_URI': 'https://api.security.ait.dtu.dk/auth/callback', # Update with actual redirect URI
+    'AUTHORITY': f'https://login.microsoftonline.com/{os.getenv("AZURE_TENANT_ID")}',
+    'SCOPE': ['User.Read'] # Add other scopes if needed
+}
+
+# 'HOST': os.getenv('MYSQL_HOST'),
 
 ALLOWED_HOSTS = [
     'localhost',
@@ -80,10 +90,18 @@ INSTALLED_APPS = [
     'misc',
 ]
 
-MIDDLEWARE = [
-    # 'myview.middleware.OUAuthorizationMiddleware', # perminssion based on ad structure
-    # 'myview.middleware.EndpointAccessMiddleware', # define who access to endpoints
+# MIDDLEWARE = [
+#     'django.middleware.security.SecurityMiddleware',
+#     'django.contrib.sessions.middleware.SessionMiddleware',
+#     'django.middleware.common.CommonMiddleware',
+#     'django.middleware.csrf.CsrfViewMiddleware',
+#     'django.contrib.auth.middleware.AuthenticationMiddleware',
+#     'django.contrib.messages.middleware.MessageMiddleware',
+#     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+#     'myview.middleware.AccessControlMiddleware',
+# ]
 
+MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -93,6 +111,16 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'myview.middleware.AccessControlMiddleware',
 ]
+
+# try: 
+#     from myview.models import Endpoint
+
+#     MIDDLEWARE += ['myview.middleware.EndpointAccessMiddleware']
+
+# except ImportError:
+#     print("Endpoint model is not available for registration in the settings.py file.")
+#     pass
+
 
 ROOT_URLCONF = 'app.urls'
 
@@ -172,7 +200,9 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 STATIC_ROOT = os.path.join('/mnt/shared-project-data/django/staticfiles')
-
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, 'static'),
+]
 
 MEDIA_URL = 'media/'
 MEDIA_ROOT = os.path.join('/mnt/shared-project-data/django/mediafiles')
@@ -222,19 +252,19 @@ LOGGING = {
     },
     'handlers': {
         'console': {
-            'level': 'ERROR',
+            'level': 'INFO',
             'class': 'logging.StreamHandler',
         },
         'file': {
-            'level': 'ERROR',
+            'level': 'INFO',
             'class': 'logging.FileHandler',
-            'filename': 'django.log',
+            'filename': '/usr/src/project/app-main/django.log',
         },
     },
     'loggers': {
         'django': {
             'handlers': ['console', 'file'],
-            'level': 'ERROR',
+            'level': 'INFO',
             'propagate': True,
         },
     },

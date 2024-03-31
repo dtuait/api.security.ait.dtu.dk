@@ -1,4 +1,5 @@
 from django.forms import ValidationError
+from django.http import JsonResponse
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 import json
@@ -13,82 +14,7 @@ from .serializers import QuerySerializer
 from .services import execute_hunting_query, execute_get_user, execute_list_user_authentication_methods
 
 from rest_framework.decorators import action
-
-
-
-class HuntingQueryViewSet(viewsets.ViewSet):
-
-    authentication_classes = [TokenAuthentication]  # Require token authentication for this view
-    permission_classes = [IsAuthenticated]  # Require authenticated user for this view
-
-
-    autho_bearer_token = openapi.Parameter(
-        'Authorization',  # name of the header
-        in_=openapi.IN_HEADER,  # where the parameter is located
-        description="Required. Must be in the format 'Token \<token\>'.",
-        type=openapi.TYPE_STRING,  # type of the parameter
-        required=True  # if the header is required or not
-    )
-
-    content_type_parameter = openapi.Parameter(
-        'Content-Type',  # name of the header
-        in_=openapi.IN_HEADER,  # where the parameter is located
-        description="Required. Must be 'application/json'.",
-        type=openapi.TYPE_STRING,  # type of the parameter
-        required=True  # if the header is required or not
-    )
-
-    @swagger_auto_schema(
-        manual_parameters=[autho_bearer_token, content_type_parameter],
-        operation_description="""
-        Hunting query description
-        """,
-        responses={
-            200: 'ComputerInfoSerializer()',
-            400: 'Error: 1',
-            404: 'Error: 2',
-            500: 'Error: Internal server error'
-        },
-        request_body=openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            required=['Query'],
-            properties={
-                'Query': openapi.Schema(
-                    type=openapi.TYPE_STRING,
-                    example='<kql query>'
-                )
-            },
-        ),
-    )
-
-
-    @action(detail=False, methods=['post'], url_path='run-hunting-query')
-
-
-    def run_hunting_query(self, request):
-        try:
-            # serialize incoming data
-            serializer = QuerySerializer(data=request.data)
-
-            # Raise an exception if the data is not valid
-            serializer.is_valid(raise_exception=True)
-
-            # Extract the validated query
-            query = serializer.validated_data['Query']
-
-            # Execute the hunting query
-            response, status_code = execute_hunting_query(query)
-
-            # Return the response
-            return Response(response, status=status_code)
-        
-        except ValidationError as e:
-            # Handle validation errors from the serializer
-            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
-
-        except Exception as e:
-            # Handle other unforeseen exceptions
-            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+from rest_framework.authentication import SessionAuthentication, TokenAuthentication
 
 
 
@@ -99,24 +25,22 @@ class HuntingQueryViewSet(viewsets.ViewSet):
 
 
 
+class APIAuthBaseViewSet(viewsets.ViewSet):
+    # The 'authentication_classes' attribute is crucial for securing our API. It determines how incoming requests should be authenticated.
+    # In this case, we're using two authentication methods: SessionAuthentication and TokenAuthentication.
+    # SessionAuthentication is used for users who are authenticated via a web form and have an active session.
+    # TokenAuthentication is used for programmatic access to the API, where the client sends a token as part of the request.
+    # The order of the classes in the list matters. Django REST Framework will use the first class that successfully authenticates.
+    # This setup allows us to support both interactive browser-based usage of the API (via sessions) and programmatic usage (via tokens).
+    authentication_classes = [SessionAuthentication, TokenAuthentication]
 
 
 
 
 
+class GetUserViewSet(APIAuthBaseViewSet):
 
-
-
-
-
-
-
-class GetUserViewSet(viewsets.ViewSet):
-
-
-    authentication_classes = [TokenAuthentication]  # Require token authentication for this view
-    permission_classes = [IsAuthenticated]  # Require authenticated user for this view
-
+    
 
     autho_bearer_token = openapi.Parameter(
         'Authorization',  # name of the header        
@@ -141,6 +65,8 @@ class GetUserViewSet(viewsets.ViewSet):
         manual_parameters=[autho_bearer_token, user_path_param],
         operation_description="""
         Get the user info for the given username.
+
+        Microsoft Graph API documentation: https://learn.microsoft.com/en-us/graph/api/user-get?view=graph-rest-1.0&tabs=http
 
         Curl example: \n
         \t curl --location --request GET 'https://api.security.ait.dtu.dk/v1.0/graph/get-user/<user>'
@@ -211,13 +137,9 @@ class GetUserViewSet(viewsets.ViewSet):
 
 
 
-class ListUserAuthenticationMethodsViewSet(viewsets.ViewSet):
+class ListUserAuthenticationMethodsViewSet(APIAuthBaseViewSet):
 
 
-
-
-    authentication_classes = [TokenAuthentication]  # Require token authentication for this view
-    permission_classes = [IsAuthenticated]  # Require authenticated user for this view
 
 
     autho_bearer_token = openapi.Parameter(
@@ -247,24 +169,38 @@ class ListUserAuthenticationMethodsViewSet(viewsets.ViewSet):
         Microsoft Graph API documentation: https://learn.microsoft.com/en-us/graph/api/microsoftauthenticatorauthenticationmethod-list?view=graph-rest-1.0&tabs=http
         
         Response example using sms as mfa method:
+        Curl\n
+        ```
+        curl -X 'GET'
+        \t'http://localhost:6081/v1.0/graph/list/vicre-test01%40dtudk.onmicrosoft.com/authentication-methods'
+        \t-H 'accept: application/json'
+        \t-H 'Authorization: Token <token>'
+        \t-H 'X-CSRFToken: qfp3Ahr3MGnV0aERFcjdAjkCNPVp39m77Y3d72WuUUanpJzJrcXN9TIe86t5yFL2'
+        ```
+        Request URL\n
+        ```
+        http://localhost:6081/v1.0/graph/list/vicre-test01%40dtudk.onmicrosoft.com/authentication-methods`
+        ```
+        Reponse\n
         ```
         {
-            "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#users('vicre-test01%40dtudk.onmicrosoft.com')/authentication/methods",
-            "value": [
-                {
-                "@odata.type": "#microsoft.graph.phoneAuthenticationMethod",
-                "id": "3179e48a-750b-4051-897c-87b9720928f7",
-                "phoneNumber": "+45 24213819",
-                "phoneType": "mobile",
-                "smsSignInState": "notAllowedByPolicy"
-                },
-                {
-                "@odata.type": "#microsoft.graph.passwordAuthenticationMethod",
-                "id": "28c10230-6103-485e-b985-444c60001490",
-                "password": null,
-                "createdDateTime": "2024-03-12T13:25:21Z"
-                }
-            ]
+        "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#users('vicre-test01%40dtudk.onmicrosoft.com')/authentication/methods",
+        "value": [
+            {
+            "@odata.type": "#microsoft.graph.passwordAuthenticationMethod",
+            "id": "28c10230-6103-485e-b985-444c60001490",
+            "password": null,
+            "createdDateTime": "2024-03-12T13:25:21Z"
+            },
+            {
+            "@odata.type": "#microsoft.graph.microsoftAuthenticatorAuthenticationMethod",
+            "id": "123e4441-eadf-4950-883d-fea123988824",
+            "displayName": "iPhone 12",
+            "deviceTag": "SoftwareTokenActivated",
+            "phoneAppVersion": "6.8.3",
+            "createdDateTime": null
+            }
+        ]
         }
         ```
 
@@ -326,9 +262,7 @@ class ListUserAuthenticationMethodsViewSet(viewsets.ViewSet):
 
 
 
-class DeleteMfaViewSet(viewsets.ViewSet):
-    authentication_classes = [TokenAuthentication]  # Require token authentication for this view
-    permission_classes = [IsAuthenticated]  # Require authenticated user for this view
+class DeleteMfaViewSet(APIAuthBaseViewSet):
 
 
     autho_bearer_token = openapi.Parameter(
@@ -341,25 +275,52 @@ class DeleteMfaViewSet(viewsets.ViewSet):
     )
 
     user_path_param = openapi.Parameter(
-        'user',  # name of the path parameter
+        'user_id__or__user_principalname',  # name of the path parameter
         in_=openapi.IN_PATH,  # location of the parameter
-        description="The username for which the MFA solution will be deleted",
+        description="The username requested for deletion of MFA.",
         type=openapi.TYPE_STRING,  # type of the parameter
         required=True,  # if the path parameter is required
         default='vicre-test01@dtudk.onmicrosoft.com',  # default value
         override=True  # override the default value
     )
 
+    microsoft_authentication_method_id = openapi.Parameter(
+        'microsoft_authenticator_method_id',  # name of the path parameter
+        in_=openapi.IN_PATH,  # location of the parameter
+        description="The authentication method id for the MFA solution to be deleted",
+        type=openapi.TYPE_STRING,  # type of the parameter
+        required=True,  # if the path parameter is required
+        default=None,  # default value
+        override=True  # override the default value
+    )
+
     @swagger_auto_schema(
-        manual_parameters=[autho_bearer_token, user_path_param],
+        manual_parameters=[autho_bearer_token, user_path_param, microsoft_authentication_method_id],
         operation_description="""
         Incoming user MFA solutions will be deleted, thereby giving users space to re-enable MFA by deleting their MFA solution on the app, then visiting office.com and signing in with <user>@dtu.dk to re-enable MFA.
 
         Microsoft Graph API documentation: https://learn.microsoft.com/en-us/graph/api/microsoftauthenticatorauthenticationmethod-delete?view=graph-rest-1.0&tabs=http
 
-        Curl example: \n
-        \t curl --location --request DELETE 'https://api.security.ait.dtu.dk/graph/security/delete-mfa/<user>'
-        \t\t  --header 'Authorization: Token \<token\>'
+        How the call looks when calling microsoft api: https://graph.microsoft.com/v1.0/users/{azure_user_principal_id}/authentication/microsoftAuthenticatorMethods/{authentication_method_id}
+
+        
+
+        Curl:
+        ```
+        curl -X 'DELETE'
+            \t'http://localhost:6081/v1.0/graph/users/vicre-test01%40dtudk.onmicrosoft.com/authentication-methods/171397f2-804e-4664-8ede-c4b3adf6bbb0'
+            \t-H 'accept: application/json'
+            \t-H 'Authorization: Token <token>'
+            \t-H 'X-CSRFToken: zVFVMDNniqLL9sdWjjcsvYrOb4haiVgfgEj5joiOqEydy18O5jQ24yPqwlPQNrFa'
+        ```
+        Request URL
+        ```
+        http://localhost:6081/v1.0/graph/users/vicre-test01%40dtudk.onmicrosoft.com/authentication-methods/171397f2-804e-4664-8ede-c4b3adf6bbb0
+        ```
+        Response is 204 No content. This means that the request was successful and the MFA was deleted.       
+
+
+
         """,
         responses={
             204: 'Successfully deleted MFA', # No content - meaning the request was successful
@@ -374,14 +335,29 @@ class DeleteMfaViewSet(viewsets.ViewSet):
     @action(detail=False, methods=['delete'], url_path='delete-mfa')
 
 
-    def delete_mfa(self, request, user):
+    def delete_mfa(self, request, user_id__or__user_principalname, microsoft_authenticator_method_id):
+        from .services import execute_delete_user_authentication_method as delete_authentication_method
+
+        try:
+            response, status_code = delete_authentication_method(user_id__or__user_principalname, microsoft_authenticator_method_id)
+
+            # if the status code is 204, then the method was deleted successfully. Then create a response with the status code
+            if status_code == 204:
+                return Response(status=status.HTTP_204_NO_CONTENT)
+            else:
+                return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+            # return Response(response, status=status_code)
+
+
+            
+
+        except Exception as e:
+            # return JsonResponse({'status': 'error', 'message': 'Failed to delete authentication method.'}, status=403)
+            return Response({'status': 'error', 'message': 'You do not have permission to delete methods on this user'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         
 
-
-
-
-        return Response({'error': 'Not implemented'}, status=status.HTTP_501_NOT_IMPLEMENTED)
 
 
 
@@ -399,5 +375,119 @@ class DeleteMfaViewSet(viewsets.ViewSet):
 
 class UnlockMfaViewSet(viewsets.ViewSet):
     pass
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+class HuntingQueryViewSet(APIAuthBaseViewSet):
+
+
+    autho_bearer_token = openapi.Parameter(
+        'Authorization',  # name of the header
+        in_=openapi.IN_HEADER,  # where the parameter is located
+        description="Required. Must be in the format 'Token \<token\>'.",
+        type=openapi.TYPE_STRING,  # type of the parameter
+        required=True  # if the header is required or not
+    )
+
+    content_type_parameter = openapi.Parameter(
+        'Content-Type',  # name of the header
+        in_=openapi.IN_HEADER,  # where the parameter is located
+        description="Required. Must be 'application/json'.",
+        type=openapi.TYPE_STRING,  # type of the parameter
+        required=True  # if the header is required or not
+    )
+
+    @swagger_auto_schema(
+        manual_parameters=[autho_bearer_token, content_type_parameter],
+        operation_description="""
+        Hunting query description
+        """,
+        responses={
+            200: 'ComputerInfoSerializer()',
+            400: 'Error: 1',
+            404: 'Error: 2',
+            500: 'Error: Internal server error'
+        },
+        request_body=openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            required=['Query'],
+            properties={
+                'Query': openapi.Schema(
+                    type=openapi.TYPE_STRING,
+                    example='<kql query>'
+                )
+            },
+        ),
+    )
+
+
+    @action(detail=False, methods=['post'], url_path='run-hunting-query')
+
+
+    def run_hunting_query(self, request):
+        try:
+            # serialize incoming data
+            serializer = QuerySerializer(data=request.data)
+
+            # Raise an exception if the data is not valid
+            serializer.is_valid(raise_exception=True)
+
+            # Extract the validated query
+            query = serializer.validated_data['Query']
+
+            # Execute the hunting query
+            response, status_code = execute_hunting_query(query)
+
+            # Return the response
+            return Response(response, status=status_code)
+        
+        except ValidationError as e:
+            # Handle validation errors from the serializer
+            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+
+        except Exception as e:
+            # Handle other unforeseen exceptions
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 

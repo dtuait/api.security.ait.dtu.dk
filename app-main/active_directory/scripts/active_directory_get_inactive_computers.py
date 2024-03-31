@@ -1,4 +1,4 @@
-from utils import active_directory_connect
+from .active_directory_connect import active_directory_connect
 from ldap3.core.exceptions import LDAPKeyError
 from ldap3 import Server, Connection, SUBTREE, ALL_ATTRIBUTES, ALL
 from datetime import datetime, timedelta, timezone

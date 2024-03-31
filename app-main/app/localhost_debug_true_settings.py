@@ -1,9 +1,10 @@
-from .settings import *
-
-DEBUG = True
+from .WARNING_import_settings_with_DEBUG_enabled import *
 
 
-CAS_SERVER_URL = 'https://auth.dtu.dk/dtu/' # no multifactor
+
+
+
+# CAS_SERVER_URL = 'https://auth.dtu.dk/dtu/' # no multifactor
 
 
 

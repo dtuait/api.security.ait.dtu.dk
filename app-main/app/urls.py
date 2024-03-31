@@ -15,79 +15,61 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path, include, re_path
+from django.urls import path, include
 from django.views.generic import RedirectView
 from django.conf import settings
 from django.conf.urls.static import static
-from rest_framework import permissions
-from drf_yasg.views import get_schema_view
-from drf_yasg import openapi
-from app_mod.views import AdminCasLoginView
-import django_cas_ng.views
-from myview.views import FrontpagePageView
+from django_cas_ng.views import LoginView, LogoutView
+from django.contrib.auth.decorators import login_required
+from django.http import HttpResponseRedirect
+from django.urls import reverse
+from django.views.generic.base import RedirectView
+from msal import ConfidentialClientApplication
+from django.shortcuts import redirect
+from .views import msal_callback, msal_login, msal_director, msal_logout
+from dotenv import load_dotenv
+import os
+from django.views.static import serve
+from django.urls import re_path
+dotenv_path = '/usr/src/project/.devcontainer/.env'
+load_dotenv(dotenv_path=dotenv_path)
 
-# schema_view = get_schema_view(
-#    openapi.Info(
-#       title="API",
-#       default_version='v1',
-#       description="A simple API",
-#       terms_of_service="https://www.google.com/policies/terms/",
-#       contact=openapi.Contact(email="vicre@dtu.dk"),
-#       license=openapi.License(name="BSD License"),
-#    ),
-#    public=True,
-#    permission_classes=(permissions.AllowAny,),
-# )
+
+
 
 urlpatterns = [
+    path("login/", msal_login, name="msal_login"),
+    path('auth/callback/', msal_callback, name='msal_callback'),
+    path("login-redirector/", msal_director, name="msal_login_redirector"),
+    path("logout/", msal_logout, name="msal_logout"),
 
-    # redirect '' to 'my-view/frontpage'¨
-    # path('', include('myview.urls')),
-    # path('', include('myview.urls')),
-    # redirect root URL to pubs/publist
-    # path('', RedirectView.as_view(url="myview/frontpage/", permanent=True)),
-     path('', FrontpagePageView.as_view(), name='frontpage'),
+    #  favicon.ico
+    re_path(r'^favicon\.ico$', serve, {
+    'path': 'myview/img/favicon.ico',
+    'document_root': settings.STATIC_ROOT,
+    }),
 
-    # admin panel 
-    path('admin-3dbLnPXcGL4GLAw2cDgBm6F4LrS5VXTD/', admin.site.urls),
-    # path('admin-cas-login/', AdminCasLoginView.as_view(), name='admin-cas-login'),
-
-    # cas login and logout
-    path("login/", django_cas_ng.views.LoginView.as_view(), name="cas_ng_login"),
-    path("logout/", django_cas_ng.views.LogoutView.as_view(), name="cas_ng_logout"),
+    path('admin/', admin.site.urls, name='admin-panel'),
+    
+    # myview
+    path('', RedirectView.as_view(url="myview/frontpage/", permanent=True)),
+    path('myview/', include('myview.urls')),
 
     # graph api
     path('', include('graph.urls')),
 
-    # sccm api
-    # path('sccm/', include('sccm.urls')),
-
-    # active directory api
-    # path('active_directory/', include('active_directory.urls')),
-
     # playbook api 
     path('playbook/', include('playbook.urls')),
 
-    # panel for 
-    path('myview/', include('myview.urls')),
+    # active directory api
+    path('', include('active_directory.urls')),
+
+    # path('admin/app/ajax/', AjaxView.as_view(), name='admin-app-ajax'),
 
 
-
-    
-    # # # misc api
-    # path('misc/', include('misc.urls')),,
-
-    #swagger ui
-    # path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
-    
-    # redoc
-    # path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
-
-
-    
-    # path('', include('myview.urls')),
 
 ]
+
 
 
 if settings.DEBUG:

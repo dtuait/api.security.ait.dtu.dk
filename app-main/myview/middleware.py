@@ -1,348 +1,168 @@
-from django.http import HttpResponseForbidden
+from django.conf import settings
+from django.http import HttpResponseForbidden, HttpResponseRedirect
 from django.utils.deprecation import MiddlewareMixin
-from .models import EndpointPermission, Endpoint
+from .models import Endpoint
+from rest_framework.authentication import SessionAuthentication, TokenAuthentication
+
+
+
+
+from rest_framework.authtoken.models import Token
+from django.contrib.auth.models import User
+from django.http import HttpResponseForbidden
+from rest_framework.authentication import TokenAuthentication, get_authorization_header
+from django.utils.deprecation import MiddlewareMixin
+import re
+from django.core.exceptions import ObjectDoesNotExist
+import logging
+from django.contrib.auth import login, logout
+from django.contrib.auth import get_user_model, login
+from django.conf import settings
+from django.http import Http404
+
+
+from django.shortcuts import redirect
+
+def get_client_ip(request):
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        ip = x_forwarded_for.split(',')[0]
+    else:
+        ip = request.META.get('REMOTE_ADDR')
+    return ip
 
 class AccessControlMiddleware(MiddlewareMixin):
     def __init__(self, get_response):
         self.get_response = get_response
-        # Initialize the list of paths to exclude from checks
-        self.excluded_paths = [
-            '/admin',  # Exclude all Django admin paths
-            '/accounts/login/',  # Exclude login page
-            # Add any other paths you want to exclude
-            '/myview',
-            '/login/',
+        self.whitelist_paths = [
+            '/favicon.ico',
+            '/login/', 
             '/logout/',
-            # '/myview/swagger/',
+            '/auth/callback/',
         ]
         super().__init__(get_response)
 
+    def normalize_path(self, path):
+        """Normalize the request path to ensure consistent matching."""
+        # Strip query parameters
+        path = path.split('?')[0]
+        # Ensure a consistent use of trailing slash
+        if not path.endswith('/'):
+            path += '/'
+        return path
+    
     def __call__(self, request):
-        path = request.path
-        method = request.method.lower()
+        # Normalize the request path
+        normalized_path = self.normalize_path(request.path)
 
-        # Check if the path is in the excluded paths
-        if any(path.startswith(excluded_path) for excluded_path in self.excluded_paths):
+        if normalized_path == '/favicon.ico/':
             return self.get_response(request)
 
-        # Check if user is authenticated
-        if not request.user.is_authenticated:
-            return HttpResponseForbidden('You must be logged in to access this endpoint')
 
-        # Special handling for root users and 'any' endpoint
-        if request.user.is_superuser:
+        # Check for DEBUG mode to bypass regular authentication
+        if settings.DEBUG:
+            User = get_user_model()  # Get the user model
+
+
+            # This is too prevent starting a new session, which deletes session variables.
+            if normalized_path.startswith('/myview/ajax'):
+                return self.get_response(request)
+
+            
+            # Check if the user is already authenticated and bypass login logic if so
+            #if request.user.is_authenticated and normalized_path != '/admin/login/':
+             #   return self.get_response(request)
+            
+            # Specific logic for admin login page
+            if normalized_path.startswith('/admin'):
+                
+                if request.user.is_authenticated and request.user.username != 'admin':
+                    logout(request)
+
+                if not request.user.is_authenticated:
+
+                    try:
+                        admin_user = User.objects.get(username='admin')
+                    except User.DoesNotExist:
+                        raise Http404("Admin user does not exist")
+                    
+                    admin_user.backend = 'django.contrib.auth.backends.ModelBackend'  # Specify the backend
+                    login(request, admin_user)
+
+                
+                response = self.get_response(request)
+
+                return response
+        
+
+            # # Specific logic for admin login page
+            # if normalized_path.startswith('/admin'):
+            #     admin_user, _ = User.objects.get_or_create(username='admin', defaults={'is_staff': True, 'is_superuser': True})
+            #     # Assuming 'admin' user exists with necessary permissions
+            #     admin_user.backend = 'django.contrib.auth.backends.ModelBackend'  # Specify the backend
+            #     login(request, admin_user)  # Log in as admin user
+            #     return redirect('/admin/')  # Redirect to the admin index page to avoid loop
+            
+            # For other paths, mock or create the user "adm-vicre"
+            else:
+                if request.user.is_authenticated and request.user.username != 'adm-vicre':
+                    logout(request)
+                try:
+                    user = User.objects.get(username='adm-vicre')
+                except User.DoesNotExist:
+                    raise Http404("User does not exist")
+                user.backend = 'django.contrib.auth.backends.ModelBackend'
+                login(request, user)  # Set the mocked user as the authenticated user on the request
+                return self.get_response(request)  # Proceed with the request
+
+
+
+        # # Check if the request path is in the whitelist
+        # if any(re.match("^" + re.escape(whitelist_path), normalized_path) for whitelist_path in self.whitelist_paths):
+        #     return self.get_response(request)
+        # Initialize a variable to track if the path is in the whitelist
+        path_is_whitelisted = False
+
+        # Iterate through each path in the whitelist
+        for whitelist_path in self.whitelist_paths:
+            # Use re.match to see if the start of the normalized path matches the whitelist path
+            # re.escape is used to escape any special characters in whitelist_path so they are treated as literals
+            if re.match("^" + re.escape(whitelist_path), normalized_path):
+                # If a match is found, set path_is_whitelisted to True and break out of the loop
+                path_is_whitelisted = True
+                break  # We found a match, no need to check further paths
+
+        # After checking all paths, if the path is in the whitelist
+        if path_is_whitelisted:
+            # Allow the request to proceed to the view
             return self.get_response(request)
         
-        
-        # Check access in EndpointPermission
-        try:
-            endpoint = Endpoint.objects.get(path=path, method=method)
-            permission = EndpointPermission.objects.get(user_profile=request.user.userprofile, endpoint=endpoint)
-            if not permission.can_access:
-                return HttpResponseForbidden('You do not have access to this endpoint')
-        except (Endpoint.DoesNotExist, EndpointPermission.DoesNotExist):
-            return HttpResponseForbidden('Endpoint not found or access not defined')
 
-        return self.get_response(request)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# from django.http import HttpResponseForbidden
-# from django.utils.deprecation import MiddlewareMixin
-# from .models import EndpointPermission, Endpoint
-
-# class AccessControlMiddleware(MiddlewareMixin):
-#     def __call__(self, request):
-#         # Extract the request path and method
-#         path = request.path
-#         method = request.method.lower()
-
-#         # Check if user is authenticated
-#         if not request.user.is_authenticated:
-#             return HttpResponseForbidden('You must be logged in to access this endpoint')
-
-#         # Special handling for root users and 'any' endpoint
-#         if request.user.is_superuser and (path == 'any' or method == 'any'):
-#             return self.get_response(request)
-
-#         # Check access in EndpointPermission
-#         try:
-#             endpoint = Endpoint.objects.get(path=path, method=method)
-#             permission = EndpointPermission.objects.get(user_profile=request.user.userprofile, endpoint=endpoint)
-#             if not permission.can_access:
-#                 return HttpResponseForbidden('You do not have access to this endpoint')
-#         except (Endpoint.DoesNotExist, EndpointPermission.DoesNotExist):
-#             return HttpResponseForbidden('Endpoint not found or access not defined')
-
-#         return self.get_response(request)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# from django.http import JsonResponse
-# from rest_framework.authtoken.models import Token
-# from utils.get_computer_ou import get_computer_ou
-# from .models import UserProfile
-# from dotenv import load_dotenv
-# import os
-# from django.http import HttpResponseForbidden
-# from django.core.cache import cache
-# from django.http import HttpResponseForbidden
-# from .models import UserProfile, EndpointPermission
-
-
-
-
-
-
-# class EndpointAccessMiddleware:
-#     def __init__(self, get_response):
-#         self.get_response = get_response
-
-#     def __call__(self, request):
-#         # Attempt to retrieve user access info from cache
-#         user_access_key = f"user_{request.user.id}_access"
-#         user_access = cache.get(user_access_key)
-
-#         if user_access is None:
-#             user_profile, created = UserProfile.objects.get_or_create(user=request.user)
-#             # Use select_related or prefetch_related as necessary here
-            
-#             # Check general endpoint access
-#             if not user_profile.has_endpoint_access(request.path, request.method):
-#                 return HttpResponseForbidden('Access denied')
-            
-#             # If the endpoint has custom access control (e.g., organizational units)
-#             if self.has_custom_access_control(request, user_profile):
-#                 return HttpResponseForbidden('Access denied')
-            
-#             # Cache the user's access for next time
-#             cache.set(user_access_key, True, timeout=300)  # Adjust timeout as needed
-
-#         response = self.get_response(request)
-#         return response
-
-#     def has_custom_access_control(self, request, user_profile):
-#         # Implement checks for organizational units or other custom access controls
-#         # Example: Check if user's organizational units match the endpoint's requirements
-#         # Return True if access should be denied, False otherwise
-#         pass
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# class MyPermissions:
-    # define access to endpoints - if access is not defined, then no access is given.
-        # - sccm/computer/v1-0-1/[{{computername}}]
-            # - dast's token only have access to computers under
-                # OU=SUS,OU=Institutter,DC=win,DC=dtu,DC=dk
-                # OU=BYG,OU=Institutter,DC=win,DC=dtu,DC=dk
-
-        # - azure/graph/security/run-hunting-query
-            # this is a endpoint where only GA should have access
-
-
-        # - active-directory/computer/[{{computername}}]
-            # - dast's token only have access to computers under
-                # OU=SUS,OU=Institutter,DC=win,DC=dtu,DC=dk
-                # OU=BYG,OU=Institutter,DC=win,DC=dtu,DC=dk
-        # - active-directory/user/[{{username}}]
-            # - dast's token only have access to computers under
-                # OU=SUS,OU=Institutter,DC=win,DC=dtu,DC=dk
-                # OU=BYG,OU=Institutter,DC=win,DC=dtu,DC=dk
-
-# If an endpoint can be limited to only access relevant groups of computers, users, etc. Then the endpoint can be distrubuted to none GA, users.
-
-# Forexample defender endpoint should allow a user to able to isolate machines that is under his wing.
-# Dag should be able to delegate who can login and isolate machines, in his fleet.
-# defender/machineactions/isolate/{{computername}}
-# defender/machineactions/unisolate/{{computername}}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# class EndpointAccessMiddleware:
-#     def __init__(self, get_response):
-#         self.get_response = get_response
-
-#     def __call__(self, request):
-#         # Code to be executed for each request before
-#         # the view (and later middleware) are called.
-#         response = self.process_view(request, None, None, None)
-#         if response is not None:
-#             return response
-
-#         response = self.get_response(request)
-
-#         # Code to be executed for each request/response after
-#         # the view is called.
-        
-#         return response
-
-#     def process_view(self, request, view_func, view_args, view_kwargs):
-#         # check if endpoint (e.g., '/sccm/computer/v1-0-1/DTU-8CC0140FG8/') starts with '/sccm/'
-#         endpoint = request.path
-#         if endpoint.startswith('/sccm/'):
-#             # If it starts with /sccm/, no need to check the database
-#             return None
-
-#         user = request.user
-
-#         # Check if the endpoint exists in the database and if the user has access
-#         try:
-#             parts = endpoint.strip('/').split('/')
-#             app_endpoint = parts[0] if parts else None
-
-#             access = EndpointAccess.objects.get(user=user, endpoint=app_endpoint)
-#             if not access.can_access:
-#                 return HttpResponseForbidden("You do not have access to this endpoint")
-
-#         except EndpointAccess.DoesNotExist:
-#             # Handle case where the endpoint is not in the database
-#             # You may want to return a Forbidden response or handle it differently
-#             return HttpResponseForbidden("Endpoint not configured")
-
-#         # If no response has been returned yet, continue processing the request
-#         return None
+        # Token authentication
+        token = request.META.get('HTTP_AUTHORIZATION')
+        user_token_is_valid = False
+        user_temporarily_authenticated = False
+        if token:
+            try:
+                # Attempt to retrieve user by token
+                user = Token.objects.get(key=token).user
+                # Temporarily set user to request
+                request.user = user
+                user_temporarily_authenticated = True
+            except ObjectDoesNotExist:
+                if token != 'Token <token>':
+                    logger = logging.getLogger(__name__)
+                    logger.info(f'Invalid token access attempt. Path: {request.path}, Token: {token[:10]}')
+                    return HttpResponseForbidden('Invalid token.')
+
+        # Proceed with the request if the user is authenticated (either by token or session)
+        if request.user.is_authenticated:
+            response = self.get_response(request)
+            # If the user was temporarily authenticated for this request, consider revoking here
+            if user_temporarily_authenticated:
+                # Perform any necessary cleanup, e.g., logging out the user from the request
+                # Note: This is symbolic as the request lifecycle ends here
+                logout(request)
+            return response
+        else:
+            return redirect('/login/')

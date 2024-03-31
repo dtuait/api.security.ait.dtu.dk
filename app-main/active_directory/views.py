@@ -1,73 +1,106 @@
+from ldap3 import ALL_ATTRIBUTES
 from rest_framework import viewsets, status
 from rest_framework.response import Response
-# from .models import Item
-# from .serializers import ItemSerializer, ComputerInfoSerializer
-# from sccm.scripts.sccm_get_computer_info import get_computer_info
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.permissions import IsAuthenticated
 from drf_yasg import openapi
 from .services import get_inactive_computers
+from graph.views import APIAuthBaseViewSet
+from rest_framework.decorators import action
+from .services import execute_active_directory_query
 
 
 
-class ADComputerViewSet(viewsets.ViewSet):
-    authentication_classes = [TokenAuthentication]  # Require token authentication for this view
-    permission_classes = [IsAuthenticated]  # Require authenticated user for this view
 
 
-    header_parameter = openapi.Parameter(
-        'Authorization',  # name of the header
-        in_=openapi.IN_HEADER,  # where the parameter is located
-        description="Type: Token \<token\>",
-        type=openapi.TYPE_STRING,  # type of the parameter
-        required=True  # if the header is required or not
-    )
+
+
+
+
+
+
+class ActiveDirectoryQueryViewSet(APIAuthBaseViewSet):
 
     @swagger_auto_schema(
-        manual_parameters=[header_parameter],
-        operation_description="""
-        Retrieve AD computers
-        
-        You can only query computers under this OU: <ou_variable>
-
-        Curl example: \n
-        \t curl --location 'https://api.security.ait.dtu.dk/active-directory/computer/v1-0-0/<str:computer_name>/'
-        \t\t  --header 'Authorization: Token \<token\>'
-        
-
-        """,
-        responses={
-            # 200: ComputerInfoSerializer(),
-            400: 'Error: Computer name must be provided.',
-            404: 'Error: No computer found with given name',
-            500: 'Error: Internal server error'
-        },
-
+        method='get',
+        operation_description="""Query Active Directory based on given criteria. This endpoint allows querying for
+        Active Directory objects with flexibility in specifying which attributes to return, applying filters, and
+        pagination control. The synergy between the parameters allows for tailored queries. For instance, 'base_dn'
+        specifies the starting point within the AD structure. 'search_filter' narrows down the objects based on
+        specified conditions. 'search_attributes' controls which attributes of the objects are retrieved, and 'limit'
+        provides pagination capability. 'excluded_attributes' can further refine the returned data by excluding
+        specified attributes from the response, enhancing query efficiency and relevance.""",
+        manual_parameters=[
+            openapi.Parameter(
+                name='base_dn',
+                in_=openapi.IN_QUERY,
+                description="Base DN for search. Example: 'DC=win,DC=dtu,DC=dk'",
+                type=openapi.TYPE_STRING,
+                required=True,
+                default='DC=win,DC=dtu,DC=dk'
+            ),
+            openapi.Parameter(
+                name='search_filter',
+                in_=openapi.IN_QUERY,
+                description="LDAP search filter. Example: '(objectClass=user)'",
+                type=openapi.TYPE_STRING,
+                required=True,
+                default='(objectClass=user)'
+            ),
+            openapi.Parameter(
+                name='search_attributes',
+                in_=openapi.IN_QUERY,
+                description="Comma-separated list of attributes to retrieve, or 'ALL_ATTRIBUTES' to fetch all. Example: 'cn,mail'",
+                type=openapi.TYPE_STRING,
+                required=False,
+                default='ALL_ATTRIBUTES'
+            ),
+            openapi.Parameter(
+                name='limit',
+                in_=openapi.IN_QUERY,
+                description="Limit for number of results. Example: 100",
+                type=openapi.TYPE_INTEGER,
+                required=False,
+                default=100
+            ),
+            openapi.Parameter(
+                name='excluded_attributes',
+                in_=openapi.IN_QUERY,
+                description="Comma-separated list of attributes to exclude from the results. Default is 'thumbnailPhoto'. Example: 'thumbnailPhoto,someOtherAttribute'",
+                type=openapi.TYPE_STRING,
+                required=False,
+                default='thumbnailPhoto'
+            ),
+        ],
+        responses={200: 'Successful response with the queried data'}
     )
 
+    @action(detail=False, methods=['get'], url_path='query')
+    def query(self, request):
+        base_dn = request.query_params.get('base_dn')
+        search_filter = request.query_params.get('search_filter')
+        search_attributes = request.query_params.get('search_attributes', ALL_ATTRIBUTES)
+        limit = request.query_params.get('limit', None)
+        excluded_attributes = request.query_params.get('excluded_attributes', 'thumbnailPhoto').split(',')
 
-    def retrieve(self, request, computer_name=None):
-        # Check if the computer_name is None, or is an empty string, or with only spaces
-        if computer_name is None or computer_name.strip() == "":
-            return Response({"error": "Computer name must be provided."}, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Get the computer info
-        # computer_info, error = get_computer_info(computer_name)
+        if limit is not None:
+            limit = int(limit)
 
-        # if error startswith "No computer found with name"
-        # if error:
-        #     if error.startswith("No computer found with name"):
-        #         return Response({"error": error}, status=status.HTTP_404_NOT_FOUND)
-        #     elif error.startswith("Internal server error"):
-        #         return Response({"error": error}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        #     else:
-        #         return Response({"error": error}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        if search_attributes == 'ALL_ATTRIBUTES':
+            search_attributes = ALL_ATTRIBUTES
+        else:
+            search_attributes = search_attributes.split(',')
 
-        # return Response(computer_info, status=status.HTTP_200_OK)
-        return Response({"error": "Not implemented"}, status=status.HTTP_501_NOT_IMPLEMENTED)
-    
+        results = execute_active_directory_query(
+            base_dn=base_dn,
+            search_filter=search_filter,
+            search_attributes=search_attributes,
+            limit=limit,
+            excluded_attributes=excluded_attributes
+        )
 
+        return Response(results)
 
 
 
