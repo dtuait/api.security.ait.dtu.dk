@@ -63,13 +63,21 @@ try:
         def formfield_for_manytomany(self, db_field, request, **kwargs):
             if db_field.name == "ad_groups":
                 selected_ad_groups = request.session.get('ajax_change_form_update_form_ad_groups', []) 
-                if selected_ad_groups:
-                    # Extracting 'distinguishedName' from each group as it's a unique identifier in AD
-                    distinguishedNames = [group['distinguishedName'] for group in selected_ad_groups]
 
-                    # Filter the queryset by 'distinguished_name', which should match the AD's distinguishedName
-                    kwargs["queryset"] = db_field.related_model.objects.filter(distinguished_name__in=distinguishedNames)
-                    del request.session['ajax_change_form_update_form_ad_groups']
+                if selected_ad_groups:
+                    # len(selected_ad_groups) >> 100
+                    # selected_ad_groups[0]['distinguishedName'] >> CN=MEK-SN-Test,OU=Distribution group,OU=CME,OU=Institutter,DC=win,DC=dtu,DC=dk
+                    # selected_ad_groups[0]['canonicalName'] >> win.dtu.dk/Institutter/CME/Distribution group/MEK-SN-Test
+                    # selected_ad_groups[0]['cn'] >> MEK-SN-Test
+
+                    # Filter the queryset to only include the selected ad groups- here is the model
+                    # class Endpoint(BaseModel):
+                    #     path = models.CharField(max_length=255, unique=True)
+                    #     method = models.CharField(max_length=6, blank=True, default='')
+                    #     ad_groups = models.ManyToManyField('ADGroupAssociation', related_name='endpoints')
+
+                    #
+                    kwargs["queryset"] = db_field.related_model.objects.filter(pk__in=selected_ad_groups) # does not seem to work
                 else:
                     kwargs["queryset"] = db_field.related_model.objects.all()[:100]
             return super().formfield_for_manytomany(db_field, request, **kwargs)

@@ -13,6 +13,12 @@ from django.contrib.auth.models import User
 from active_directory.scripts.active_directory_query import active_directory_query
 from ldap3 import ALL_ATTRIBUTES
 from rest_framework.response import Response
+import json
+from django.shortcuts import redirect
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 @method_decorator(login_required, name='dispatch')
 class BaseView(View):
@@ -85,8 +91,31 @@ class AjaxView(BaseView):
             result = active_directory_query(base_dn=base_dn, search_filter=search_filter, search_attributes=search_attributes, limit=limit)
             # return Response(result)
             return JsonResponse(result, safe=False)
-            # return JsonResponse hello world from active directory query
         
+        elif action == 'ajax_change_form_update_form_ad_groups':
+            # Extract ad_groups = [] from the POST request
+            ad_groups = request.POST.getlist('ad_groups')
+            # convert ad_groups[0] into a list. The data is JSON encoded in the POST request
+            ad_groups = json.loads(ad_groups[0])
+
+            path = request.POST.get('path')
+
+    
+            # logger.info(f"Session data before setting ad_groups: {request.session.items()}")
+
+            request.session['ajax_change_form_update_form_ad_groups'] = ad_groups
+
+            # logger.info(f"Session data after setting ad_groups: {request.session.items()}")
+                    
+            request.session.save()
+
+            # reload the page
+            # return redirect(path) # '/admin/myview/endpoint/1/change/'
+
+
+            return JsonResponse({'success': 'Form updated'})
+
+    
         
             
         else:

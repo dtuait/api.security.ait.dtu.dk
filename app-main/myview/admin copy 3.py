@@ -64,12 +64,12 @@ try:
             if db_field.name == "ad_groups":
                 selected_ad_groups = request.session.get('ajax_change_form_update_form_ad_groups', []) 
                 if selected_ad_groups:
-                    # Extracting 'distinguishedName' from each group as it's a unique identifier in AD
-                    distinguishedNames = [group['distinguishedName'] for group in selected_ad_groups]
+                    # Assuming 'cn' is a unique identifier in ADGroupAssociation that matches the 'cn' in selected_ad_groups
+                    identifiers = [group['distinguishedName'] for group in selected_ad_groups]
 
-                    # Filter the queryset by 'distinguished_name', which should match the AD's distinguishedName
-                    kwargs["queryset"] = db_field.related_model.objects.filter(distinguished_name__in=distinguishedNames)
-                    del request.session['ajax_change_form_update_form_ad_groups']
+                    # Update the queryset to filter by these identifiers.
+                    # Ensure your ADGroupAssociation model has a field that corresponds to these identifiers (e.g., a 'name' field).
+                    kwargs["queryset"] = db_field.related_model.objects.filter(name__in=identifiers)
                 else:
                     kwargs["queryset"] = db_field.related_model.objects.all()[:100]
             return super().formfield_for_manytomany(db_field, request, **kwargs)

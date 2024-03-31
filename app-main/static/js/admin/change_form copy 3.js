@@ -19,17 +19,12 @@ $(document).ready(function() {
             
                 // Set a new timeout
                 timeout = setTimeout(async function() {
-                    // only run if the input is not empty
-                    if (this.value === '' || this.value === null || this.value === undefined) {
-                        return;
-                    }
-
                     let formData = new FormData();
                     formData.append('action', 'active_directory_query');
                     formData.append('base_dn', 'DC=win,DC=dtu,DC=dk');
                     formData.append('search_filter', `(&(objectClass=group)(cn=*${this.value}*))`);
                     formData.append('search_attributes', 'cn,canonicalName,distinguishedName');
-                    formData.append('limit', '100');
+                    formData.append('limit', '1');
             
                     let response;
                     response = await restAjax('POST', '/myview/ajax/', formData);
@@ -39,10 +34,10 @@ $(document).ready(function() {
                     let ad_groups = response.data;
 
                     // for each group in ad_groups print the group name
-                    // for (let i = 0; i < ad_groups.length; i++) {
-                    //     // print cn, canonicalName, distinguishedName
-                    //     console.log(ad_groups[i].cn, ad_groups[i].canonicalName, ad_groups[i].distinguishedName);
-                    // }
+                    for (let i = 0; i < ad_groups.length; i++) {
+                        // print cn, canonicalName, distinguishedName
+                        console.log(ad_groups[i].cn, ad_groups[i].canonicalName, ad_groups[i].distinguishedName);
+                    }
 
                     // Assuming `id_ad_groups_from` is the select element for ad_groups
                     let selectElement = $('#id_ad_groups_from');
@@ -52,28 +47,9 @@ $(document).ready(function() {
 
                     // Add new options based on AJAX response
                     ad_groups.forEach(group => {
-                        let option = new Option(group.cn, group.cn); // Set both the display text and the value to group.cn
-                        option.setAttribute('title', group.distinguishedName); // Use distinguishedName as the title, if necessary
-                        selectElement.append(option);
+                        let option = new Option(group.cn, group.distinguishedName); // Assuming distinguishedName is the value you store in the database
+                        selectElement.append($(option));
                     });
-
-                    // empty formData as new formData will be created in the next iteration
-
-                    formData = null;
-                    formData = new FormData();
-                    formData.append('action', 'ajax_change_form_update_form_ad_groups');
-                    formData.append('ad_groups', JSON.stringify(ad_groups));
-                    formData.append('path', window.location.pathname);
-                    response = await restAjax('POST', '/myview/ajax/', formData);
-
-
-
-                    // how can i reload the page
-                    console.log('Reloading page...');
-
-                    // PARSE THE DATA AND RELOAD THE PAGE
-                    // location.reload();
-
                                         // Clear the timeout
                     timeout = null;
                 }.bind(this), 2000);  // Wait for 2 seconds

@@ -63,7 +63,8 @@ class AccessControlMiddleware(MiddlewareMixin):
         if settings.DEBUG:
             User = get_user_model()  # Get the user model
 
-            # if request.user.is_authenticated logout user
+            if normalized_path.startswith('/myview/ajax'):
+                return self.get_response(request)
 
             
             # Check if the user is already authenticated and bypass login logic if so

@@ -252,11 +252,11 @@ LOGGING = {
     },
     'handlers': {
         'console': {
-            'level': 'ERROR',
+            'level': 'INFO',
             'class': 'logging.StreamHandler',
         },
         'file': {
-            'level': 'ERROR',
+            'level': 'INFO',
             'class': 'logging.FileHandler',
             'filename': '/usr/src/project/app-main/django.log',
         },
@@ -264,7 +264,7 @@ LOGGING = {
     'loggers': {
         'django': {
             'handlers': ['console', 'file'],
-            'level': 'ERROR',
+            'level': 'INFO',
             'propagate': True,
         },
     },
