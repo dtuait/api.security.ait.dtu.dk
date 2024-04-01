@@ -1,29 +1,18 @@
 from django.conf import settings
-from django.http import HttpResponseForbidden, HttpResponseRedirect
-from django.utils.deprecation import MiddlewareMixin
-from .models import Endpoint
-from rest_framework.authentication import SessionAuthentication, TokenAuthentication
-
-
-
-from django.http import HttpResponseServerError
-from rest_framework.authtoken.models import Token
+from django.contrib.auth import get_user_model, login, logout
 from django.contrib.auth.models import User
-from django.http import HttpResponseForbidden
-from rest_framework.authentication import TokenAuthentication, get_authorization_header
-from django.utils.deprecation import MiddlewareMixin
-import re
 from django.core.exceptions import ObjectDoesNotExist
-import logging
-from django.contrib.auth import login, logout
-from django.contrib.auth import get_user_model, login
-from django.conf import settings
-from django.http import Http404
-
-
+from django.http import HttpResponseForbidden, HttpResponseRedirect, HttpResponseServerError, Http404
 from django.shortcuts import redirect
+from django.utils.deprecation import MiddlewareMixin
+from rest_framework.authtoken.models import Token
+from rest_framework.authentication import TokenAuthentication, get_authorization_header
+import logging
+import re
+from .models import Endpoint
 
 def get_client_ip(request):
+    """Utility function to extract client's IP from request."""
     x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
     if x_forwarded_for:
         ip = x_forwarded_for.split(',')[0]
@@ -34,187 +23,177 @@ def get_client_ip(request):
 class AccessControlMiddleware(MiddlewareMixin):
     def __init__(self, get_response):
         self.get_response = get_response
+        # Define paths that do not require access control
         self.whitelist_paths = [
             '/favicon.ico',
             '/login/', 
             '/logout/',
             '/auth/callback/',
+            '/admin/',
+            '/myview/'
         ]
         super().__init__(get_response)
 
-
     def normalize_path(self, path):
-        """Normalize the request path to ensure consistent matching.
-        This includes stripping query parameters, ensuring consistent use of trailing slash,
-        and replacing variable segments within curly brackets with a placeholder."""
-        
-        # Strip query parameters
+        """Normalize the request path to ensure consistent matching."""
+        # Strip query parameters and ensure trailing slash
         path = path.split('?')[0]
-        
-        # Replace variable segments with a single slash (placeholder)
-        path = re.sub(r"/\{[^}]*\}", "/", path)
-        
-        # Ensure there are no double slashes as a result of variable segment replacement
-        path = re.sub(r"/+", "/", path)
-        
-        # Ensure a consistent use of trailing slash
         if not path.endswith('/'):
             path += '/'
-            
         return path
     
     def compare_paths(self, endpoint_path, request_path):
-        """Compare the endpoint path with variable placeholders to the actual request path."""
-        # Convert endpoint path placeholders into a regex pattern
-        pattern = re.sub(r'{[^}]*}', '[^/]+', endpoint_path)
-        # Ensure pattern matches the entire path segment correctly
-        pattern = '^' + pattern.replace('/', '\/') + '$'
+        """Compare endpoint path with placeholders against the actual request path."""
+        print(f"Original endpoint path: {endpoint_path}")
+        print(f"Original request path: {request_path}")
         
-        # Normalize request path
-        normalized_request_path = self.normalize_path(request_path)
+        # Replace placeholders in endpoint path with regex pattern
+        pattern = re.sub(r'\{[^}]*\}', '[^/]+', endpoint_path)
+        print(f"Pattern after placeholder replacement: {pattern}")
         
-        # Check if the normalized request path matches the pattern
-        if re.match(pattern, normalized_request_path):
-            return True
-        else:
-            return False
-    
+        # Add regex for start and optional trailing slash
+        pattern = '^' + pattern + '/?$'
+        print(f"Final regex pattern: {pattern}")
+        
+        # Compile the pattern
+        compiled_pattern = re.compile(pattern)
+        
+        # Check if request path matches the pattern
+        match = compiled_pattern.match(request_path) is not None
+        print(f"Does the request path match the pattern? {'Yes' if match else 'No'}")
+        
+        return match
+
+
     def __call__(self, request):
-        # Normalize the request path
+        # Normalize request path for consistent handling
         normalized_request_path = self.normalize_path(request.path)
         token = request.META.get('HTTP_AUTHORIZATION')
 
+        # Directly proceed with favicon requests
         if normalized_request_path == '/favicon.ico/':
             return self.get_response(request)
 
-
-        # Check for DEBUG mode to bypass regular authentication
-        if settings.DEBUG and not token:
-            User = get_user_model()  # Get the user model
-
-
-            # This is too prevent starting a new session, which deletes session variables.
-            if normalized_request_path.startswith('/myview/ajax'):
-                return self.get_response(request)
-
-            
-            # Check if the user is already authenticated and bypass login logic if so
-            #if request.user.is_authenticated and normalized_request_path != '/admin/login/':
-             #   return self.get_response(request)
-            
-            # Specific logic for admin login page
-            if normalized_request_path.startswith('/admin'):
-                
-                if request.user.is_authenticated and request.user.username != 'admin':
-                    logout(request)
-
-                if not request.user.is_authenticated:
-
-                    try:
-                        admin_user = User.objects.get(username='admin')
-                    except User.DoesNotExist:
-                        raise Http404("Admin user does not exist")
-                    
-                    admin_user.backend = 'django.contrib.auth.backends.ModelBackend'  # Specify the backend
-                    login(request, admin_user)
-
-                
-                response = self.get_response(request)
-
-                return response
-        
-
-            # # Specific logic for admin login page
-            # if normalized_request_path.startswith('/admin'):
-            #     admin_user, _ = User.objects.get_or_create(username='admin', defaults={'is_staff': True, 'is_superuser': True})
-            #     # Assuming 'admin' user exists with necessary permissions
-            #     admin_user.backend = 'django.contrib.auth.backends.ModelBackend'  # Specify the backend
-            #     login(request, admin_user)  # Log in as admin user
-            #     return redirect('/admin/')  # Redirect to the admin index page to avoid loop
-            
-            # For other paths, mock or create the user "adm-vicre"
-            else:
-                if request.user.is_authenticated and request.user.username != 'adm-vicre':
-                    logout(request)
-                try:
-                    user = User.objects.get(username='adm-vicre')
-                except User.DoesNotExist:
-                    raise Http404("User does not exist")
-                user.backend = 'django.contrib.auth.backends.ModelBackend'
-                login(request, user)  # Set the mocked user as the authenticated user on the request
-                return self.get_response(request)  # Proceed with the request
-
-
-
-        # # Check if the request path is in the whitelist
-        # if any(re.match("^" + re.escape(whitelist_path), normalized_request_path) for whitelist_path in self.whitelist_paths):
-        #     return self.get_response(request)
-        # Initialize a variable to track if the path is in the whitelist
-        path_is_whitelisted = False
-
-        # Iterate through each path in the whitelist
-        for whitelist_path in self.whitelist_paths:
-            # Use re.match to see if the start of the normalized path matches the whitelist path
-            # re.escape is used to escape any special characters in whitelist_path so they are treated as literals
-            if re.match("^" + re.escape(whitelist_path), normalized_request_path):
-                # If a match is found, set path_is_whitelisted to True and break out of the loop
-                path_is_whitelisted = True
-                break  # We found a match, no need to check further paths
-
-        # After checking all paths, if the path is in the whitelist
-        if path_is_whitelisted:
-            # Allow the request to proceed to the view
+        # Handle whitelist paths to bypass access control
+        if any(normalized_request_path.startswith(whitelist_path) for whitelist_path in self.whitelist_paths):
             return self.get_response(request)
-        
 
-        # Token authentication
-        if token:
-            try:
-                # Attempt to retrieve user by token
-                user = Token.objects.get(key=token).user
-                request.user = user
-            except ObjectDoesNotExist:
-                if token != 'Token <token>':
-                    logger = logging.getLogger(__name__)
-                    logger.info(f'Invalid token access attempt. Path: {request.path}, Token: {token[:10]}')
-                    return HttpResponseForbidden('Invalid token.')
+        # DEBUG mode: Mock authentication for testing without actual credentials
+        if settings.DEBUG and not token:
+            self.handle_debug_mode(request, normalized_request_path)
+            return self.get_response(request)
 
-        # Proceed with the request if the user is authenticated (either by token or session)
+        # Authenticate user based on token, if provided
+        if token and not token.startswith('Token <token>'):
+            if not self.authenticate_by_token(request, token):
+                return HttpResponseForbidden('Invalid token.')
+
+
+        # check for enpoint access
         if request.user.is_authenticated:
-            try:
-                # Retrieve the endpoint object based on the path and method. 
-                # Adjust 'normalized_request_path' and 'request.method' as necessary based on your routing.
-                # endpoint = Endpoint.objects.get(path=normalized_request_path, method=request.method.upper())
-                has_access = False
-                endpoints = Endpoint.objects.all()
+            if not self.authorize_request(request, normalized_request_path):
+                return HttpResponseForbidden('You do not have access to this endpoint.')      
+                
+            # limit the user only access to ressouces 
+            return self.get_response(request)
+
+        # For unauthenticated users, redirect to login
+        return redirect('/login/')
 
 
-                # Example usage
-                endpoint_path = "/graph/v1.0/users/{user_id__or__user_principalname}/authentication-methods/{microsoft_authenticator_method_id}/"
-                request_path = "/graph/v1.0/users/dummy@dtu.dk/authentication-methods/aslfdsaælfdsælk12/"
-                normalized_request_path = self.normalize_path(request_path)
-                if self.compare_paths(endpoint_path, normalized_request_path):
-                    print("You have access!")
-                else:
-                    print("Access denied.")
-                # foreach print endpoint
-                for endpoint in endpoints:
-                    endpoint_path = endpoint.path
-                    
-                    # Ensure both paths start with a slash for consistent comparison
-                    if not normalized_request_path.startswith("/"):
-                        normalized_request_path = f"/{normalized_request_path}"
 
-                    if not endpoint.path.startswith("/"):
-                        endpoint_path = f"/{endpoint.path}"
 
-                    if self.compare_paths(endpoint_path, normalized_request_path):
-                        # print("You have access!")
-                        return self.get_response(request)
-                    else:
-                        pass
 
-            except Endpoint.DoesNotExist:
-                return HttpResponseServerError('Something went wrong')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    def handle_debug_mode(self, request, normalized_request_path):
+        """Handles user authentication in DEBUG mode without actual credentials."""
+        # Use Django's get_user_model to support custom user models
+        User = get_user_model()
+
+        # Prevent starting a new session for AJAX calls in '/myview/ajax', 
+        # which could delete session variables.
+        if normalized_request_path.startswith('/myview/ajax'):
+            return  # Just return, let the main __call__ method continue execution
+
+        # Logic for handling admin login page access
+        if normalized_request_path.startswith('/admin'):
+            # If a user is already logged in but is not the admin, log them out
+            if request.user.is_authenticated and request.user.username != 'admin':
+                logout(request)
+
+            # If no user is authenticated, log in as the admin user
+            if not request.user.is_authenticated:
+                try:
+                    admin_user = User.objects.get(username='admin')
+                except User.DoesNotExist:
+                    raise Http404("Admin user does not exist")
+
+                admin_user.backend = 'django.contrib.auth.backends.ModelBackend'  # Specify the backend
+                login(request, admin_user)  # Log in as admin user
+
+            # After handling admin access, let the main __call__ method continue execution
+            return
+
+        # For other paths in debug mode, you might want to mock or auto-login a default user
+        # This example auto-logs in a user named 'adm-vicre', similar to your other logic
         else:
-            return redirect('/login/')
+            # Log out the current user if they are not 'adm-vicre'
+            if request.user.is_authenticated and request.user.username != 'adm-vicre':
+                logout(request)
+
+            # Attempt to get or create the 'adm-vicre' user
+            try:
+                user = User.objects.get(username='adm-vicre')
+            except User.DoesNotExist:
+                raise Http404("User does not exist")
+
+            # Set the backend and log in the 'adm-vicre' user
+            user.backend = 'django.contrib.auth.backends.ModelBackend'
+            login(request, user)  # Set the mocked user as the authenticated user on the request
+
+    def authenticate_by_token(self, request, token):
+        """Authenticate user based on provided token."""
+        try:
+            user = Token.objects.get(key=token).user
+            request.user = user
+            return True
+        except ObjectDoesNotExist:
+            logger = logging.getLogger(__name__)
+            logger.info(f'Invalid token access attempt. Path: {request.path}, Token: {token[:10]}')
+            return False
+
+    def authorize_request(self, request, normalized_request_path):
+        """Check if the user has access to the requested endpoint."""
+        ad_groups = request.user.ad_groups.all()
+        endpoints = Endpoint.objects.filter(ad_groups__in=ad_groups)
+        for endpoint in endpoints:
+            endpoint_path = self.normalize_path(endpoint.path)
+            if self.compare_paths(endpoint_path, normalized_request_path):
+                return True  # Access is granted
+        return False  # No matching endpoint found, access denied

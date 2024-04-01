@@ -64,26 +64,16 @@ try:
             if db_field.name == "ad_groups":
                 selected_ad_groups = request.session.get('ajax_change_form_update_form_ad_groups', [])
 
-                associated_ad_groups = ADGroupAssociation.objects.filter(endpoints__isnull=False).distinct()
-
-                # Initial queryset based on selected ad groups or all associated groups
                 if selected_ad_groups:
                     distinguishedNames = [group['distinguishedName'][0] for group in selected_ad_groups]
-                    initial_queryset = db_field.related_model.objects.filter(distinguished_name__in=distinguishedNames)
-                else:
-                    initial_queryset = db_field.related_model.objects.all()
-
-                # Get IDs from both querysets
-                initial_ids = set(initial_queryset.values_list('id', flat=True))
-                associated_ids = set(associated_ad_groups.values_list('id', flat=True))
-
-                # Combine IDs and filter for unique objects
-                all_ids = initial_ids | associated_ids
-                combined_queryset = db_field.related_model.objects.filter(id__in=all_ids).distinct()
-
-                kwargs["queryset"] = combined_queryset
+                    kwargs["queryset"] = db_field.related_model.objects.filter(distinguished_name__in=distinguishedNames)
+                    # del request.session['ajax_change_form_update_form_ad_groups']
+                else:                    
+                    associated_ad_groups = ADGroupAssociation.objects.filter(endpoints__isnull=False).distinct()
+                    kwargs["queryset"] = associated_ad_groups                
 
                 return super().formfield_for_manytomany(db_field, request, **kwargs)
+
 
         def has_delete_permission(self, request, obj=None):
             return False
