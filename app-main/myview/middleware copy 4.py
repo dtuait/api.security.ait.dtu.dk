@@ -63,22 +63,6 @@ class AccessControlMiddleware(MiddlewareMixin):
             
         return path
     
-    def compare_paths(self, endpoint_path, request_path):
-        """Compare the endpoint path with variable placeholders to the actual request path."""
-        # Convert endpoint path placeholders into a regex pattern
-        pattern = re.sub(r'{[^}]*}', '[^/]+', endpoint_path)
-        # Ensure pattern matches the entire path segment correctly
-        pattern = '^' + pattern.replace('/', '\/') + '$'
-        
-        # Normalize request path
-        normalized_request_path = self.normalize_path(request_path)
-        
-        # Check if the normalized request path matches the pattern
-        if re.match(pattern, normalized_request_path):
-            return True
-        else:
-            return False
-    
     def __call__(self, request):
         # Normalize the request path
         normalized_request_path = self.normalize_path(request.path)
@@ -187,34 +171,48 @@ class AccessControlMiddleware(MiddlewareMixin):
                 # endpoint = Endpoint.objects.get(path=normalized_request_path, method=request.method.upper())
                 has_access = False
                 endpoints = Endpoint.objects.all()
-
-
-                # Example usage
-                endpoint_path = "/graph/v1.0/users/{user_id__or__user_principalname}/authentication-methods/{microsoft_authenticator_method_id}/"
-                request_path = "/graph/v1.0/users/dummy@dtu.dk/authentication-methods/aslfdsaælfdsælk12/"
-                normalized_request_path = self.normalize_path(request_path)
-                if self.compare_paths(endpoint_path, normalized_request_path):
-                    print("You have access!")
-                else:
-                    print("Access denied.")
                 # foreach print endpoint
                 for endpoint in endpoints:
-                    endpoint_path = endpoint.path
-                    
+
+                    normalized_endpoint_path = self.normalize_path(f"/{endpoint.path}")
+
                     # Ensure both paths start with a slash for consistent comparison
                     if not normalized_request_path.startswith("/"):
                         normalized_request_path = f"/{normalized_request_path}"
 
-                    if not endpoint.path.startswith("/"):
-                        endpoint_path = f"/{endpoint.path}"
+                        
 
-                    if self.compare_paths(endpoint_path, normalized_request_path):
-                        # print("You have access!")
-                        return self.get_response(request)
-                    else:
-                        pass
+                    # Compare the request path with the endpoint path
+                    if normalized_request_path.startswith(normalized_endpoint_path) and request.method.lower() == endpoint.method.lower():
+                        print("You have access!")
+                        has_access = True
+                        # response = self.get_response(request)
+                        # return response
+                        
 
+
+                    # >> get /active-directory/query
+                    # >> get /graph/get-user/{user}
+                    # >> get /graph/list/{user_id__or__user_principalname}/authentication-methods
+                    # >> delete /graph/users/{user_id__or__user_principalname}/authentication-methods/{microsoft_authenticator_method_id}
+                    # print(f'{request.method.lower()} {normalized_request_path}') >> /v1.0/graph/get-user/vicre@dtu.dk/ get /v1.0/graph/get-user/vicre@dtu.dk/
+                    # HOW DO I COMPARE THEM TO SEE IF THEY MATCH?
+
+                # Check if the user is a member of any AD group that has access to this endpoint.
+                # This checks across all AD groups the user belongs to if any of them are linked to the endpoint.
+                # user_ad_groups = request.user.ad_groups.all()
+                # if not endpoint.ad_groups.filter(pk__in=user_ad_groups).exists():
+                #     # User is authenticated but not authorized to access the endpoint
+                #     return HttpResponseForbidden("You do not have access to this endpoint.")
+            
             except Endpoint.DoesNotExist:
+                # If the endpoint is not found, it may be a public endpoint or an error in endpoint configuration.
+                # Decide on how to handle such cases. For example, you can allow the request to proceed,
+                # log a warning, or block access as a security measure.
                 return HttpResponseServerError('Something went wrong')
+                
+
+            # Continue with the request processing if access is granted
+
         else:
             return redirect('/login/')
