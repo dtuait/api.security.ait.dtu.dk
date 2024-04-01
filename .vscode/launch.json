@@ -62,6 +62,15 @@
             "justMyCode": true
         },
         {
+            "name": "Browser: production_settings",
+            "runtimeExecutable": "C:\\Program Files\\chromium\\chrome-win\\chrome.exe",
+            "request": "launch",
+            "type": "msedge",
+            "url": "https://api.security.ait.dtu.dk/myview/frontpage/",
+            "webRoot": "${workspaceFolder}/app-main/myview",
+            "disableNetworkCache": true,
+        },
+        {
             "name": "Browser: production",
             "runtimeExecutable": "C:\\Program Files\\chromium\\chrome-win\\chrome.exe",
             "request": "launch",
