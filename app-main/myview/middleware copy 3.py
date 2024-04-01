@@ -6,7 +6,7 @@ from rest_framework.authentication import SessionAuthentication, TokenAuthentica
 
 
 
-from django.http import HttpResponseServerError
+
 from rest_framework.authtoken.models import Token
 from django.contrib.auth.models import User
 from django.http import HttpResponseForbidden
@@ -42,49 +42,21 @@ class AccessControlMiddleware(MiddlewareMixin):
         ]
         super().__init__(get_response)
 
-
     def normalize_path(self, path):
-        """Normalize the request path to ensure consistent matching.
-        This includes stripping query parameters, ensuring consistent use of trailing slash,
-        and replacing variable segments within curly brackets with a placeholder."""
-        
+        """Normalize the request path to ensure consistent matching."""
         # Strip query parameters
         path = path.split('?')[0]
-        
-        # Replace variable segments with a single slash (placeholder)
-        path = re.sub(r"/\{[^}]*\}", "/", path)
-        
-        # Ensure there are no double slashes as a result of variable segment replacement
-        path = re.sub(r"/+", "/", path)
-        
         # Ensure a consistent use of trailing slash
         if not path.endswith('/'):
             path += '/'
-            
         return path
-    
-    def compare_paths(self, endpoint_path, request_path):
-        """Compare the endpoint path with variable placeholders to the actual request path."""
-        # Convert endpoint path placeholders into a regex pattern
-        pattern = re.sub(r'{[^}]*}', '[^/]+', endpoint_path)
-        # Ensure pattern matches the entire path segment correctly
-        pattern = '^' + pattern.replace('/', '\/') + '$'
-        
-        # Normalize request path
-        normalized_request_path = self.normalize_path(request_path)
-        
-        # Check if the normalized request path matches the pattern
-        if re.match(pattern, normalized_request_path):
-            return True
-        else:
-            return False
     
     def __call__(self, request):
         # Normalize the request path
-        normalized_request_path = self.normalize_path(request.path)
+        normalized_path = self.normalize_path(request.path)
         token = request.META.get('HTTP_AUTHORIZATION')
 
-        if normalized_request_path == '/favicon.ico/':
+        if normalized_path == '/favicon.ico/':
             return self.get_response(request)
 
 
@@ -94,16 +66,16 @@ class AccessControlMiddleware(MiddlewareMixin):
 
 
             # This is too prevent starting a new session, which deletes session variables.
-            if normalized_request_path.startswith('/myview/ajax'):
+            if normalized_path.startswith('/myview/ajax'):
                 return self.get_response(request)
 
             
             # Check if the user is already authenticated and bypass login logic if so
-            #if request.user.is_authenticated and normalized_request_path != '/admin/login/':
+            #if request.user.is_authenticated and normalized_path != '/admin/login/':
              #   return self.get_response(request)
             
             # Specific logic for admin login page
-            if normalized_request_path.startswith('/admin'):
+            if normalized_path.startswith('/admin'):
                 
                 if request.user.is_authenticated and request.user.username != 'admin':
                     logout(request)
@@ -125,7 +97,7 @@ class AccessControlMiddleware(MiddlewareMixin):
         
 
             # # Specific logic for admin login page
-            # if normalized_request_path.startswith('/admin'):
+            # if normalized_path.startswith('/admin'):
             #     admin_user, _ = User.objects.get_or_create(username='admin', defaults={'is_staff': True, 'is_superuser': True})
             #     # Assuming 'admin' user exists with necessary permissions
             #     admin_user.backend = 'django.contrib.auth.backends.ModelBackend'  # Specify the backend
@@ -147,7 +119,7 @@ class AccessControlMiddleware(MiddlewareMixin):
 
 
         # # Check if the request path is in the whitelist
-        # if any(re.match("^" + re.escape(whitelist_path), normalized_request_path) for whitelist_path in self.whitelist_paths):
+        # if any(re.match("^" + re.escape(whitelist_path), normalized_path) for whitelist_path in self.whitelist_paths):
         #     return self.get_response(request)
         # Initialize a variable to track if the path is in the whitelist
         path_is_whitelisted = False
@@ -156,7 +128,7 @@ class AccessControlMiddleware(MiddlewareMixin):
         for whitelist_path in self.whitelist_paths:
             # Use re.match to see if the start of the normalized path matches the whitelist path
             # re.escape is used to escape any special characters in whitelist_path so they are treated as literals
-            if re.match("^" + re.escape(whitelist_path), normalized_request_path):
+            if re.match("^" + re.escape(whitelist_path), normalized_path):
                 # If a match is found, set path_is_whitelisted to True and break out of the loop
                 path_is_whitelisted = True
                 break  # We found a match, no need to check further paths
@@ -183,38 +155,40 @@ class AccessControlMiddleware(MiddlewareMixin):
         if request.user.is_authenticated:
             try:
                 # Retrieve the endpoint object based on the path and method. 
-                # Adjust 'normalized_request_path' and 'request.method' as necessary based on your routing.
-                # endpoint = Endpoint.objects.get(path=normalized_request_path, method=request.method.upper())
+                # Adjust 'normalized_path' and 'request.method' as necessary based on your routing.
+                # endpoint = Endpoint.objects.get(path=normalized_path, method=request.method.upper())
                 has_access = False
                 endpoints = Endpoint.objects.all()
-
-
-                # Example usage
-                endpoint_path = "/graph/v1.0/users/{user_id__or__user_principalname}/authentication-methods/{microsoft_authenticator_method_id}/"
-                request_path = "/graph/v1.0/users/dummy@dtu.dk/authentication-methods/aslfdsaælfdsælk12/"
-                normalized_request_path = self.normalize_path(request_path)
-                if self.compare_paths(endpoint_path, normalized_request_path):
-                    print("You have access!")
-                else:
-                    print("Access denied.")
                 # foreach print endpoint
                 for endpoint in endpoints:
-                    endpoint_path = endpoint.path
-                    
-                    # Ensure both paths start with a slash for consistent comparison
-                    if not normalized_request_path.startswith("/"):
-                        normalized_request_path = f"/{normalized_request_path}"
+                    print(endpoint)
+                    print(f'requested path: {request.method.lower()} {normalized_path}')
+                    print(f'testing path: {endpoint.path}')
 
-                    if not endpoint.path.startswith("/"):
-                        endpoint_path = f"/{endpoint.path}"
+        
 
-                    if self.compare_paths(endpoint_path, normalized_request_path):
-                        # print("You have access!")
-                        return self.get_response(request)
-                    else:
-                        pass
+                    # >> get /active-directory/query
+                    # >> get /graph/get-user/{user}
+                    # >> get /graph/list/{user_id__or__user_principalname}/authentication-methods
+                    # >> delete /graph/users/{user_id__or__user_principalname}/authentication-methods/{microsoft_authenticator_method_id}
+                    # print(f'{request.method.lower()} {normalized_path}') >> /v1.0/graph/get-user/vicre@dtu.dk/ get /v1.0/graph/get-user/vicre@dtu.dk/
+                    # HOW DO I COMPARE THEM TO SEE IF THEY MATCH?
 
+                # Check if the user is a member of any AD group that has access to this endpoint.
+                # This checks across all AD groups the user belongs to if any of them are linked to the endpoint.
+                # user_ad_groups = request.user.ad_groups.all()
+                # if not endpoint.ad_groups.filter(pk__in=user_ad_groups).exists():
+                #     # User is authenticated but not authorized to access the endpoint
+                #     return HttpResponseForbidden("You do not have access to this endpoint.")
+            
             except Endpoint.DoesNotExist:
-                return HttpResponseServerError('Something went wrong')
+                # If the endpoint is not found, it may be a public endpoint or an error in endpoint configuration.
+                # Decide on how to handle such cases. For example, you can allow the request to proceed,
+                # log a warning, or block access as a security measure.
+                pass
+
+            # Continue with the request processing if access is granted
+            response = self.get_response(request)
+            return response
         else:
             return redirect('/login/')

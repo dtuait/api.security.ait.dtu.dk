@@ -169,7 +169,6 @@ class Endpoint(BaseModel):
     path = models.CharField(max_length=255, unique=True)
     method = models.CharField(max_length=6, blank=True, default='')
     ad_groups = models.ManyToManyField('ADGroupAssociation', related_name='endpoints')
-
     def __str__(self):
         return f"{self.method} {self.path}" if self.method else self.path
 
