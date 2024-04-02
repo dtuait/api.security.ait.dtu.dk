@@ -8,15 +8,17 @@ class MyviewConfig(AppConfig):
 
 
     def ready(self):
-        # Ensure server is running in development mode before running the script.
-        from django.conf import settings
-        call_command('runscript', 'utils.cronjob_update_endpoints')
-        # if settings.DEBUG:
-        #     try:
+        pass
+
+        # # Ensure server is running in development mode before running the script.
+        # from django.conf import settings
+        # call_command('runscript', 'utils.cronjob_update_endpoints')
+        # # if settings.DEBUG:
+        # #     try:
                 
-        #         # call_command('runscript', 'utils.create_new_database')
-        #         pass
-        #     except:
-        #         pass  # Handle any expected exceptions or log errors as needed
+        # #         # call_command('runscript', 'utils.create_new_database')
+        # #         pass
+        # #     except:
+        # #         pass  # Handle any expected exceptions or log errors as needed
 
     

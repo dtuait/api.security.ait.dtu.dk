@@ -71,7 +71,7 @@ try:
                     distinguishedNames = [group['distinguishedName'][0] for group in selected_ad_groups]
                     initial_queryset = db_field.related_model.objects.filter(distinguished_name__in=distinguishedNames)
                 else:
-                    initial_queryset = db_field.related_model.objects.all()
+                    initial_queryset = db_field.related_model.objects.all()[:100]
 
                 # Get IDs from both querysets
                 initial_ids = set(initial_queryset.values_list('id', flat=True))

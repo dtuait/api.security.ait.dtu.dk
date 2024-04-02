@@ -5,7 +5,7 @@ console.log('MFA Reset JS loaded');
 
 
 async function getUserAuthenticationMethods(userEmail) {
-    const url = `/v1.0/graph/list/${encodeURIComponent(userEmail)}/authentication-methods`;
+    const url = `/graph/v1.0/list/${encodeURIComponent(userEmail)}/authentication-methods`;
 
     try {
         const response = await restAjax('GET', url);

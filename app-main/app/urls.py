@@ -59,7 +59,7 @@ urlpatterns = [
     path('', include('graph.urls')),
 
     # playbook api 
-    path('playbook/', include('playbook.urls')),
+    path('', include('playbook.urls')),
 
     # active directory api
     path('', include('active_directory.urls')),

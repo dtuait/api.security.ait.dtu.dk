@@ -6,6 +6,6 @@ from .views import SCCMViewSet_1_0_1
 
 urlpatterns = [
     # path('', include(router.urls)),
-    path('computer/v1-0-1/<str:computer_name>/', SCCMViewSet_1_0_1.as_view({'get': 'get_computerinfo'})),
+    path('sccm/computer/v1-0-1/<str:computer_name>/', SCCMViewSet_1_0_1.as_view({'get': 'get_computerinfo'})),
 ]
 
