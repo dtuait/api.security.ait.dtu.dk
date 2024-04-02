@@ -76,6 +76,7 @@ class AccessControlMiddleware(MiddlewareMixin):
 
         # Handle whitelist paths to bypass access control
         if any(normalized_request_path.startswith(whitelist_path) for whitelist_path in self.whitelist_paths):
+
             # If debug is true, skip /admin, because it needs special handling
             if settings.DEBUG and normalized_request_path.startswith('/admin'):
                 pass
@@ -95,16 +96,57 @@ class AccessControlMiddleware(MiddlewareMixin):
 
         # check for enpoint access
         if request.user.is_authenticated:
+
             # Check if the user has access to the requested endpoint
+
             if not self.authorize_request(request, normalized_request_path):
                 return HttpResponseForbidden('You do not have access to this endpoint.')      
                 
             # limit the user only access to ressouces 
+
             # Check if the user has access to the requested resource
             return self.get_response(request)
 
         # For unauthenticated users, redirect to login
         return redirect('/login/')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+            return self.get_response(request)
+
+        # For unauthenticated users, redirect to login
+        return redirect('/login/')
+
 
 
 
@@ -167,6 +209,8 @@ class AccessControlMiddleware(MiddlewareMixin):
             return
 
 
+
+
         # For other paths in debug mode, you might want to mock or auto-login a default user
         # This example auto-logs in a user named 'adm-vicre', similar to your other logic
         else:
@@ -198,11 +242,13 @@ class AccessControlMiddleware(MiddlewareMixin):
     def authorize_request(self, request, normalized_request_path):
         """Check if the user has access to the requested endpoint."""
 
+
         # allow access to superuser
         if request.user.is_superuser:
             return True
 
         # Validate access to mortal users
+
         ad_groups = request.user.ad_groups.all()
         endpoints = Endpoint.objects.filter(ad_groups__in=ad_groups)
         for endpoint in endpoints:

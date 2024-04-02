@@ -8,6 +8,7 @@ class MyviewConfig(AppConfig):
 
 
     def ready(self):
+
         pass
 
         # # Ensure server is running in development mode before running the script.
@@ -20,5 +21,3 @@ class MyviewConfig(AppConfig):
         # #         pass
         # #     except:
         # #         pass  # Handle any expected exceptions or log errors as needed
-
-    
