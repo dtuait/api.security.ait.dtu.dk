@@ -76,6 +76,11 @@ class AjaxView(BaseView):
         elif action == 'create_custom_token':
             if request.user.is_authenticated:
                 return self.create_custom_token(request)
+            
+
+
+
+
         elif action == 'active_directory_query':
             # Extract the parameters from the POST request
             base_dn = request.POST.get('base_dn')
@@ -92,6 +97,11 @@ class AjaxView(BaseView):
             # return Response(result)
             return JsonResponse(result, safe=False)
         
+
+        
+
+
+
         elif action == 'ajax_change_form_update_form_ad_groups':
             # Extract ad_groups = [] from the POST request
             ad_groups = request.POST.getlist('ad_groups')

@@ -20,18 +20,21 @@
  * @param {string} url - The URL endpoint.
  * @param {Object|FormData} data - The data to be sent. Pass an object for JSON, FormData for form data.
  * @param {Object} headers - Optional. Additional headers to send.
- * @returns {Promise<Object>} The response data or an error object.
  */
 async function restAjax(method, url, data = {}, headers = {}) {
   
   let response;
   try {
-      // Determine if the data is FormData or JSON, and adjust headers accordingly
-      const isFormData = data instanceof FormData;
-      if (!isFormData && !(data instanceof URLSearchParams) && data !== null && Object.keys(data).length !== 0) {
-          data = JSON.stringify(data); // Convert data to JSON string if it's an object
-          headers['Content-Type'] = 'application/json'; // Set appropriate content type for JSON
+    // Determine if the data is FormData or JSON, and adjust headers accordingly
+    const isFormData = data instanceof FormData;
+    if (!isFormData && !(data instanceof URLSearchParams)) {
+      if (data !== null) {
+        // Assume JSON if not FormData or URLSearchParams      
+        data = JSON.stringify(data);
+        headers['Content-Type'] = 'application/json';
       }
+    }
+
 
     // Add CSRF token for Django compatibility
     const csrfToken = document.cookie.match(/csrftoken=([\w-]+)/)?.[1];
@@ -52,7 +55,6 @@ async function restAjax(method, url, data = {}, headers = {}) {
     console.error('AJAX request failed:', error);
   }
 }
-
 
 
 
