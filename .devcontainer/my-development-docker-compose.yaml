@@ -7,7 +7,7 @@ version: '3.8'
 
 services:
   xx-api-security-ait-dtu-dk-app-main:
-    image: vicre/api-security-ait-dtu-dk-app-main:python-3.10-bullseye-django-4.2.11-27-03-2024-venv-myversion-1.0.3
+    image: dtuait/api-security-ait-dtu-dk-app-main:python-3.10-bullseye-django-4.2.11-27-03-2024-venv-myversion-1.0.5
     restart: always
     tty: true
     volumes:
@@ -18,7 +18,7 @@ services:
 
 ##### only for production ####
   xx-api-security-ait-dtu-dk-httpd-service:
-    image: vicre/api-security-ait-dtu-dk-httpd-service:httpd-2.4
+    image: dtuait/api-security-ait-dtu-dk-httpd-service:httpd-2.4-myversion-1.0.0
     volumes:
       - ../shared-project-data:/mnt/shared-project-data
       - ../httpd-service/data/virtualhosts:/usr/local/apache2/conf/virtualhosts
