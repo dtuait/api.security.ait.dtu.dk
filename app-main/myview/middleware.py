@@ -140,45 +140,6 @@ class AccessControlMiddleware(MiddlewareMixin):
 
 
 
-
-
-            return self.get_response(request)
-
-        # For unauthenticated users, redirect to login
-        return redirect('/login/')
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     def handle_debug_mode(self, request, normalized_request_path):
         """Handles user authentication in DEBUG mode without actual credentials."""
         # Use Django's get_user_model to support custom user models
