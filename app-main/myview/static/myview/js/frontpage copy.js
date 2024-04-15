@@ -79,67 +79,7 @@ async function createCustomToken() {
     console.log('Custom Token:', response.data);
 }
 
-// function displayTokenModal(token) {
-//     const tokenModalId = 'tokenDisplayModal';
-//     setModal(null, tokenModalId, {
-//         modalContent: 'modal-content',
-//         title: 'Your New Token',
-//         body: `<p>Your new token is:</p><pre style="white-space: pre-wrap; word-wrap: break-word;">${token}</pre>`,
-//         footer: `<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>`
-//     });
 
-//     // Trigger modal display immediately
-
-
-//     try {
-//         $('#tokenDisplayModal').modal('show');
-//     } catch (error) {
-//         console.error("An error occurred while trying to display the modal: ", error);
-//     }
-// }
-
-
-function confirmSyncAdUsersBtndisplaySubModal(token) {
-    const subModalId = 'tokenDisplayModal';
-    const modalHtml = `
-    <div class="modal fade" id="${subModalId}" tabindex="-1" aria-labelledby="${subModalId}Label" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="${subModalId}Label">Your New Token</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p>Your new token is:</p>
-                <pre id="token">${token}</pre>
-                <button id="copyButton" type="button" class="btn btn-primary">Copy Token</button>
-                <span id="copyMessage" style="display: none;">Copied!</span>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<script>
-document.getElementById('copyButton').addEventListener('click', function() {
-    var token = document.getElementById('token').innerText;
-    navigator.clipboard.writeText(token);
-
-    var copyMessage = document.getElementById('copyMessage');
-    copyMessage.style.display = 'inline';
-    setTimeout(function() {
-        copyMessage.style.display = 'none';
-    }, 800);  // Message will disappear after 2 seconds
-});
-</script>
-    `;
-    $('body').append(modalHtml);
-
-    const subModalInstance = new bootstrap.Modal(document.getElementById(subModalId));
-    subModalInstance.show();
-}
 
 
 setModal(`#generateTokenBtn`, `generateTokenBtnModal`, {
@@ -173,9 +113,13 @@ setModal(`#generateTokenBtn`, `generateTokenBtnModal`, {
             } finally {
                 if (response.status === 200) {
                     displayNotification('Token generated successfully!', 'success');
-                    confirmSyncAdUsersBtndisplaySubModal(response.data.custom_token);
+                    // Display the token in the modal
+                    // <pre id="tokenDisplay" style="white-space: pre-wrap; word-wrap: break-word;">response.data.custom_token</pre>
+                    let token = response.data.custom_token;
+                    $('#tokenDisplay').text(token);
 
 
+                    
 
                 } else if (response.error) {
                     displayNotification(response.error, 'warning');
@@ -185,11 +129,11 @@ setModal(`#generateTokenBtn`, `generateTokenBtnModal`, {
             }
 
             }
-            
-        },
+        }
     ]
-})
+});
 
+            
 
 
 // $(document).ready(function() {

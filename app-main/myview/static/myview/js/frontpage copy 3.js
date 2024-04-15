@@ -79,66 +79,17 @@ async function createCustomToken() {
     console.log('Custom Token:', response.data);
 }
 
-// function displayTokenModal(token) {
-//     const tokenModalId = 'tokenDisplayModal';
-//     setModal(null, tokenModalId, {
-//         modalContent: 'modal-content',
-//         title: 'Your New Token',
-//         body: `<p>Your new token is:</p><pre style="white-space: pre-wrap; word-wrap: break-word;">${token}</pre>`,
-//         footer: `<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>`
-//     });
+function displayTokenModal(token) {
+    const tokenModalId = 'tokenDisplayModal';
+    setModal(null, tokenModalId, {
+        modalContent: 'modal-content',
+        title: 'Your New Token',
+        body: `<p>Your new token is:</p><pre style="white-space: pre-wrap; word-wrap: break-word;">${token}</pre>`,
+        footer: `<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>`
+    });
 
-//     // Trigger modal display immediately
-
-
-//     try {
-//         $('#tokenDisplayModal').modal('show');
-//     } catch (error) {
-//         console.error("An error occurred while trying to display the modal: ", error);
-//     }
-// }
-
-
-function confirmSyncAdUsersBtndisplaySubModal(token) {
-    const subModalId = 'tokenDisplayModal';
-    const modalHtml = `
-    <div class="modal fade" id="${subModalId}" tabindex="-1" aria-labelledby="${subModalId}Label" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="${subModalId}Label">Your New Token</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p>Your new token is:</p>
-                <pre id="token">${token}</pre>
-                <button id="copyButton" type="button" class="btn btn-primary">Copy Token</button>
-                <span id="copyMessage" style="display: none;">Copied!</span>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<script>
-document.getElementById('copyButton').addEventListener('click', function() {
-    var token = document.getElementById('token').innerText;
-    navigator.clipboard.writeText(token);
-
-    var copyMessage = document.getElementById('copyMessage');
-    copyMessage.style.display = 'inline';
-    setTimeout(function() {
-        copyMessage.style.display = 'none';
-    }, 800);  // Message will disappear after 2 seconds
-});
-</script>
-    `;
-    $('body').append(modalHtml);
-
-    const subModalInstance = new bootstrap.Modal(document.getElementById(subModalId));
-    subModalInstance.show();
+    // Trigger modal display immediately
+    $('#' + tokenModalId).modal('show');
 }
 
 
@@ -154,41 +105,30 @@ setModal(`#generateTokenBtn`, `generateTokenBtnModal`, {
             selector: '#confirmSyncAdUsersBtn',
             event: 'click',
             handler: async function () {
-
-
-            
-            let formData = new FormData();     
-            formData.append('action', 'create_custom_token');       
-            
-            let response;
-            
-            try {
-                response = await restAjax('POST', '/myview/ajax/', formData);
-                const modalElement = document.getElementById('generateTokenBtnModal');
-                const modalInstance = bootstrap.Modal.getInstance(modalElement);
-                modalInstance.hide();
-
-            } catch (error) {
-                console.log('Error:', error);
-            } finally {
-                if (response.status === 200) {
-                    displayNotification('Token generated successfully!', 'success');
-                    confirmSyncAdUsersBtndisplaySubModal(response.data.custom_token);
-
-
-
-                } else if (response.error) {
-                    displayNotification(response.error, 'warning');
-                } else {
-                    displayNotification('An unknown error occurred.', 'warning');
+                let formData = new FormData();
+                formData.append('action', 'create_custom_token');
+                
+                let response;
+                try {
+                    response = await restAjax('POST', '/myview/ajax/', formData);
+                    const modalInstance = bootstrap.Modal.getInstance(document.getElementById('generateTokenBtnModal'));
+                    modalInstance.hide();
+                    
+                    if (response.status === 200) {
+                        displayTokenModal(response.data.custom_token);
+                        displayNotification('Token generated successfully!', 'success');
+                    } else if (response.error) {
+                        displayNotification(response.error, 'warning');
+                    } else {
+                        displayNotification('An unknown error occurred.', 'warning');
+                    }
+                } catch (error) {
+                    console.log('Error:', error);
                 }
             }
-
-            }
-            
-        },
+        }
     ]
-})
+});
 
 
 

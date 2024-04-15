@@ -168,6 +168,24 @@ class AccessControlMiddleware(MiddlewareMixin):
                 admin_user.backend = 'django.contrib.auth.backends.ModelBackend'  # Specify the backend
                 login(request, admin_user)  # Log in as admin user
 
+        # if /myview/ is requested, log in as the 'adm-vicre' user
+        elif normalized_request_path.startswith('/myview/'):
+            # If a user is already logged in but is not 'adm-vicre', log them out
+            if request.user.is_authenticated and request.user.username != 'adm-vicre':
+                logout(request)
+
+            # If no user is authenticated, log in as the 'adm-vicre' user
+            if not request.user.is_authenticated:
+                try:
+                    user = User.objects.get(username='adm-vicre')
+                except User.DoesNotExist:
+                    raise Http404("User does not exist")
+
+                user.backend = 'django.contrib.auth.backends.ModelBackend'
+                login(request, user)  # Log in as the 'adm-vicre' user
+                
+                                
+
             # After handling admin access, let the main __call__ method continue execution
             return
 

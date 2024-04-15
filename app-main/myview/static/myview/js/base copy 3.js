@@ -55,31 +55,6 @@ async function restAjax(method, url, data = {}, headers = {}) {
 
 
 
-async function restAPI(method, endpoint, data = {}) {
-  // const proto = window.location.protocol;
-  const baseUrl = `${window.location.protocol}//${window.location.hostname}:${window.location.port}`;
-  const url = `${baseUrl}${endpoint}`;
-
-  // Call the restAjax function
-  const response = await restAjax(method, url, data);
-
-  // Check if the response was successful
-  if (response && response.status >= 200 && response.status < 300) {
-    // If the response was successful, return the data
-    return response.data;
-  } else {
-    // If the response was not successful, throw an error
-    throw new Error(`Request to ${url} failed with status ${response.status}`);
-  }
-}
-
-// Usage:
-// restAPI('get', '/active-directory/v1.0/query');
-// restAPI('get', '/graph/v1.0/get-user/{user}');
-// restAPI('get', '/graph/v1.0/list/{user_id__or__user_principalname}/authentication-methods');
-// restAPI('delete', '/graph/v1.0/users/{user_id__or__user_principalname}/authentication-methods/{microsoft_authenticator_method_id}');
-
-
 
 
 function printCurlCommand(url, csrfToken, formData) {
@@ -123,66 +98,67 @@ function updateSessionStorage(data, prefix) {
  * 
  * @param {string} triggerSelector - Selector for the element that triggers the modal.
  * @param {string} modalId - Unique ID for the modal.
- * @param {Object} options - Optional settings for modal customization.
+ * @param {Object} options - Optional settings for modal customization including sub modals.
  */
 function setModal(triggerSelector, modalId, options = {}) {
-  // this function assumes that each that a mudal is uniqie to a trigger
-
-  
   if ($('#' + modalId).length) {
-    $('#' + modalId).remove();
+    $('#' + modalId).remove(); // Ensure no duplicate modals
   }
 
-  // if options are provided, use them to update the modal
+  // Decompose options with defaults
+  const {modalType = 'modal-dialog', modalContent = 'modal-content', title = 'Default Modal Title',
+         body = 'Default Modal Body', footer = `<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>`,
+         eventListeners = []} = options;
 
-  const modalType = options.modalType || 'modal-dialog'
-  const modalContent = options.modalContent || 'modal-content';
-  const modalTitle = options.title || 'Default Modal Title';
-  const modalBody = options.body || 'Default Modal Body';
-  const modalFooter = options.footer || `<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>`;
-  const eventListeners = options.eventListeners || []; // This will be an array of event listener descriptions
-
-  // Create the modal HTML with the provided content and a unique ID
-  const modalHtml = `
-      <div class="modal fade" id="${modalId}" tabindex="-1" aria-labelledby="${modalId}Label" aria-hidden="true">
-          <div class="${modalType}">
-              <div class="${modalContent}">
-                  <div class="modal-header">
-                      <h5 class="modal-title" id="${modalId}Label">${modalTitle}</h5>
-                      <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                  </div>
-                  <div class="modal-body">
-                      ${modalBody}
-                  </div>
-                  <div class="modal-footer">
-                      ${modalFooter}
-                  </div>
-              </div>
-          </div>
-      </div>
-  `;
-
-  // Append the modal to the body
+  const modalHtml = createModalHtml(modalId, modalType, modalContent, title, body, footer);
   $('body').append(modalHtml);
+
   const modalInstance = new bootstrap.Modal(document.getElementById(modalId), { keyboard: false });
-  // // Use Bootstrap to handle the modal
-  // const modalInstance = new bootstrap.Modal(document.getElementById(modalId), {
-  //   keyboard: false
-  // });
 
-  // Attach event listeners specified in options
-  eventListeners.forEach(({selector, event, handler}) => {
-    // remove existing event listeners to prevent multiple bindings
-    $(document).off(event, `#${modalId} ${selector}`).on(event, `#${modalId} ${selector}`, handler);
-    // $(document).on(event, `#${modalId} ${selector}`, handler);
+  attachEventListeners(modalId, eventListeners);
+
+  if (triggerSelector) {
+    $(triggerSelector).off('click').on('click', function () {
+      modalInstance.show();
+    });
+  }
+}
+
+function createModalHtml(modalId, modalType, modalContent, title, body, footer) {
+  return `
+    <div class="modal fade" id="${modalId}" tabindex="-1" aria-labelledby="${modalId}Label" aria-hidden="true">
+        <div class="${modalType}">
+            <div class="${modalContent}">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="${modalId}Label">${title}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    ${body}
+                </div>
+                <div class="modal-footer">
+                    ${footer}
+                </div>
+            </div>
+        </div>
+    </div>
+  `;
+}
+
+function attachEventListeners(modalId, eventListeners) {
+  eventListeners.forEach(({selector, event, handler, subModalOptions}) => {
+    // Optional subModal support
+    if (subModalOptions) {
+      const modifiedHandler = function() {
+        handler.apply(this, arguments); // Execute original handler
+        // Create subModal
+        setModal(null, subModalOptions.id, subModalOptions);
+      };
+      $(document).off(event, `#${modalId} ${selector}`).on(event, `#${modalId} ${selector}`, modifiedHandler);
+    } else {
+      $(document).off(event, `#${modalId} ${selector}`).on(event, `#${modalId} ${selector}`, handler);
+    }
   });
-
-  // Detach existing click events to prevent multiple bindings
-  $(triggerSelector).off('click').on('click', function () {
-    console.log('Trigger clicked');
-    modalInstance.show();
-  });
-
 }
 
 

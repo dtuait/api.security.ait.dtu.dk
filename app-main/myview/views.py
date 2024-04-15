@@ -5,7 +5,7 @@ from rest_framework.authtoken.models import Token
 from django.shortcuts import render
 from django.shortcuts import render
 from .forms import UserLookupForm
-from .models import ADGroupAssociation
+from .models import ADGroupAssociation, Endpoint
 import subprocess
 from django.utils.decorators import method_decorator
 from django.contrib.auth.decorators import login_required
@@ -42,11 +42,14 @@ class BaseView(View):
 
     def get_context_data(self, **kwargs):
         branch, commit = self.get_git_info()
+        user_ad_groups = self.request.user.ad_group_members.all()
+        user_endpoints = Endpoint.objects.filter(ad_groups__in=user_ad_groups).prefetch_related('ad_groups').distinct()
         context = {
             'base_template': self.base_template,
             'git_branch': branch,
             'git_commit': commit,
             'is_superuser': self.request.user.is_superuser,
+            'user_endpoints': user_endpoints,
         }
 
         return context
@@ -163,14 +166,16 @@ class AjaxView(BaseView):
 
 
 
+# from django.contrib.auth.decorators import login_required
+# from django.utils.decorators import method_decorator
+
+
+@method_decorator(login_required, name='dispatch')
 class FrontpagePageView(BaseView):
     template_name = "myview/frontpage.html"
-
     def get(self, request, **kwargs):
         context = super().get_context_data(**kwargs)
         return render(request, self.template_name, context)
-
-
 
 
 
