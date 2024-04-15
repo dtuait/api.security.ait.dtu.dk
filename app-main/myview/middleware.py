@@ -74,14 +74,14 @@ class AccessControlMiddleware(MiddlewareMixin):
         if normalized_request_path == '/favicon.ico/':
             return self.get_response(request)
 
-        # Handle whitelist paths to bypass access control
-        if any(normalized_request_path.startswith(whitelist_path) for whitelist_path in self.whitelist_paths):
+        # # Handle whitelist paths to bypass access control
+        # if any(normalized_request_path.startswith(whitelist_path) for whitelist_path in self.whitelist_paths):
 
-            # If debug is true, skip /admin, because it needs special handling
-            if settings.DEBUG and normalized_request_path.startswith('/admin'):
-                pass
-            else:
-                return self.get_response(request)
+        #     # If debug is true, skip /admin, because it needs special handling
+        #     if settings.DEBUG and normalized_request_path.startswith('/admin'):
+        #         pass
+        #     else:
+        #         return self.get_response(request)
 
         # DEBUG mode: Mock authentication for testing without actual credentials
         if settings.DEBUG and not token:

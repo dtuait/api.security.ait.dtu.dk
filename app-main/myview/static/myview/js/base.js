@@ -55,29 +55,29 @@ async function restAjax(method, url, data = {}, headers = {}) {
 
 
 
-async function restAPI(method, endpoint, data = {}) {
-  // const proto = window.location.protocol;
-  const baseUrl = `${window.location.protocol}//${window.location.hostname}:${window.location.port}`;
-  const url = `${baseUrl}${endpoint}`;
+// async function restAPI(method, endpoint, data = {}) {
+//   // const proto = window.location.protocol;
+//   const baseUrl = `${window.location.protocol}//${window.location.hostname}:${window.location.port}`;
+//   const url = `${baseUrl}${endpoint}`;
 
-  // Call the restAjax function
-  const response = await restAjax(method, url, data);
+//   // Call the restAjax function
+//   const response = await restAjax(method, url, data);
 
-  // Check if the response was successful
-  if (response && response.status >= 200 && response.status < 300) {
-    // If the response was successful, return the data
-    return response.data;
-  } else {
-    // If the response was not successful, throw an error
-    throw new Error(`Request to ${url} failed with status ${response.status}`);
-  }
-}
+//   // Check if the response was successful
+//   if (response && response.status >= 200 && response.status < 300) {
+//     // If the response was successful, return the data
+//     return response.data;
+//   } else {
+//     // If the response was not successful, throw an error
+//     throw new Error(`Request to ${url} failed with status ${response.status}`);
+//   }
+// }
 
-// Usage:
-// restAPI('get', '/active-directory/v1.0/query');
-// restAPI('get', '/graph/v1.0/get-user/{user}');
-// restAPI('get', '/graph/v1.0/list/{user_id__or__user_principalname}/authentication-methods');
-// restAPI('delete', '/graph/v1.0/users/{user_id__or__user_principalname}/authentication-methods/{microsoft_authenticator_method_id}');
+// // Usage:
+// // restAPI('get', '/active-directory/v1.0/query');
+// // restAPI('get', '/graph/v1.0/get-user/{user}');
+// // restAPI('get', '/graph/v1.0/list/{user_id__or__user_principalname}/authentication-methods');
+// // restAPI('delete', '/graph/v1.0/users/{user_id__or__user_principalname}/authentication-methods/{microsoft_authenticator_method_id}');
 
 
 
