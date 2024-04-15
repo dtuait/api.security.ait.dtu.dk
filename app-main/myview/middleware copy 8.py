@@ -202,40 +202,38 @@ class AccessControlMiddleware(MiddlewareMixin):
             logger.info(f'Invalid token access attempt. Path: {request.path}, Token: {token[:10]}')
             return False
 
-
-
     def is_user_authorized_for_endpoint(self, request, normalized_request_path):
         """Check if the user has access to the requested endpoint."""
 
-        # Allow access to superuser
+
+        # allow access to superuser
         if request.user.is_superuser:
             return True
 
-        # Check if the user is authorized for the endpoint
-        if self.is_user_authorized(request.user, normalized_request_path):
-            return True
-
-        # If no endpoint is found, try perform the sync 
-        from active_directory.services import execute_active_directory_query
-        base_dn = "DC=win,DC=dtu,DC=dk"
-        search_filter = f"(sAMAccountName={request.user.username})"
-        search_attributes = ['memberOf']
-        ad_groups = execute_active_directory_query(base_dn=base_dn, search_filter=search_filter, search_attributes=search_attributes)
-        from app.views import sync_user_ad_groups
-        sync_user_ad_groups(request.user, ad_groups)
-
-        # Check if the user is authorized for the endpoint again
-        if self.is_user_authorized(request.user, normalized_request_path):
-            return True
-
-        return False  # No matching endpoint found, access denied
-
-    def is_user_authorized(self, user, normalized_request_path):
-        """Check if the user is authorized for the endpoint."""
-        ad_groups = user.ad_group_members.all()
+        # Validate access to mortal users
+        ad_groups = request.user.ad_group_members.all()
         endpoints = Endpoint.objects.filter(ad_groups__in=ad_groups)
         for endpoint in endpoints:
             endpoint_path = self.normalize_path(endpoint.path)
             if self.compare_paths(endpoint_path, normalized_request_path):
                 return True  # Access is granted
-        return False
+            
+
+        # if no endpoint is found, try perform the sync 
+        from active_directory.services import execute_active_directory_query
+        base_dn = "DC=win,DC=dtu,DC=dk"
+        search_filter = f"(sAMAccountName={request.user.username})"
+        search_attributes = ['memberOf']
+        ad_groups = execute_active_directory_query(base_dn=base_dn, search_filter=search_filter, search_attributes=search_attributes)
+        from app.views import sync_ad_groups
+        sync_ad_groups(request.user, ad_groups)
+
+        # Validate access to mortal users
+        ad_groups = request.user.ad_group_members.all()
+        endpoints = Endpoint.objects.filter(ad_groups__in=ad_groups)
+        for endpoint in endpoints:
+            endpoint_path = self.normalize_path(endpoint.path)
+            if self.compare_paths(endpoint_path, normalized_request_path):
+                return True  # Access is granted
+
+        return False  # No matching endpoint found, access denied

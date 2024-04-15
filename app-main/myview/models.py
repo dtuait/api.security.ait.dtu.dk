@@ -14,11 +14,26 @@ class BaseModel(models.Model):
     class Meta:
         abstract = True
 
+
+class ADOrganizationalUnitAssociation(BaseModel):
+    distinguished_name = models.CharField(max_length=1024)
+    members = models.ManyToManyField(User, related_name='ad_organizational_unit_members')
+    def __str__(self):
+        return self.distinguished_name
+
+
+class Resource(BaseModel):
+    resource_path = models.CharField(max_length=255, unique=True)
+    ad_groups = models.ManyToManyField('ADGroupAssociation', related_name='resources')
+
+    def __str__(self):
+        return self.resource_path
+
 class ADGroupAssociation(BaseModel):
     cn = models.CharField(max_length=255, verbose_name="Common Name")
     canonical_name = models.CharField(max_length=1024)
     distinguished_name = models.CharField(max_length=1024)
-    members = models.ManyToManyField(User, related_name='ad_groups')
+    members = models.ManyToManyField(User, related_name='ad_group_members')
     def __str__(self):
         return self.cn
 
@@ -29,9 +44,7 @@ class ADGroupAssociation(BaseModel):
 
 
 
-
-
-  # This function gets all AD groups and syncs them with the database
+    # This function gets all AD groups and syncs them with the database
     def sync_ad_groups(self):
         base_dn = "DC=win,DC=dtu,DC=dk"
         search_filter = "(objectClass=group)"
@@ -39,6 +52,11 @@ class ADGroupAssociation(BaseModel):
 
         try:
             ad_groups = active_directory_query(base_dn=base_dn, search_filter=search_filter, search_attributes=search_attributes)
+
+            # Extract the associations into a dictionary
+            associations = {}
+            for group in ADGroupAssociation.objects.prefetch_related('endpoints'):
+                associations[group.cn] = [endpoint.id for endpoint in group.endpoints.all()]
 
             ADGroupAssociation.objects.all().delete()
 
@@ -57,6 +75,10 @@ class ADGroupAssociation(BaseModel):
 
                 # Bulk create new groups and bulk update existing groups
                 ADGroupAssociation.objects.bulk_create(new_groups)
+
+                # Reapply the associations
+                for group in ADGroupAssociation.objects.filter(cn__in=associations.keys()):
+                    group.endpoints.set(Endpoint.objects.filter(id__in=associations[group.cn]))
 
 
             return True
@@ -181,7 +203,7 @@ class Endpoint(BaseModel):
             return False, None  # No access since the endpoint does not exist.
 
         # Check if the user is in any group that is associated with the endpoint.
-        user_groups = user.ad_groups.all()
+        user_groups = user.ad_group_members.all()
         access_granting_groups = []
         for group in user_groups:
             if endpoint.ad_groups.filter(pk=group.pk).exists():

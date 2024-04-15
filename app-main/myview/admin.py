@@ -28,11 +28,13 @@ try:
         def has_delete_permission(self, request, obj=None):
             return False
 
-        def save_related(self, request, form, formsets, change):
-            super().save_related(request, form, formsets, change)
-            # After saving the form and related objects, sync the group members
-            if 'members' in form.changed_data:
-                form.instance.sync_ad_group_members()
+        # def save_related(self, request, form, formsets, change):
+        #     # super().save_related(request, form, formsets, change)
+        #     # # After saving the form and related objects, sync the group members
+        #     # if 'members' in form.changed_data:
+        #     #     form.instance.sync_ad_group_members()
+        #     pass
+
 
 
 
@@ -95,3 +97,49 @@ except ImportError:
     pass
 
 
+# try:
+#     from .models import Resource
+
+#     @admin.register(Resource)
+#     class ResourceAdmin(admin.ModelAdmin):
+#         list_display = ('resource_path',)
+#         search_fields = ('resource_path',)
+#         filter_horizontal = ('ad_groups',)  # Provides a more user-friendly widget for ManyToMany relations
+#         readonly_fields = ('resource_path',)
+
+#         # Use custom formfield for ManyToMany field to include filter interface
+#         formfield_overrides = {
+#             models.ManyToManyField: {'widget': FilteredSelectMultiple("Ad groups", is_stacked=False)},
+#         }
+
+#         def formfield_for_manytomany(self, db_field, request, **kwargs):
+#             if db_field.name == "ad_group_members":
+#                 selected_ad_groups = request.session.get('ajax_change_form_update_form_ad_groups', [])
+
+#                 associated_ad_groups = ADGroupAssociation.objects.filter(resources__isnull=False).distinct()
+
+#                 # Initial queryset based on selected ad groups or all associated groups
+#                 if selected_ad_groups:
+#                     distinguishedNames = [group['distinguishedName'][0] for group in selected_ad_groups]
+#                     initial_queryset = db_field.related_model.objects.filter(distinguished_name__in=distinguishedNames)
+#                 else:
+#                     initial_queryset = db_field.related_model.objects.all()[:100]
+
+#                 # Get IDs from both querysets
+#                 initial_ids = set(initial_queryset.values_list('id', flat=True))
+#                 associated_ids = set(associated_ad_groups.values_list('id', flat=True))
+
+#                 # Combine IDs and filter for unique objects
+#                 all_ids = initial_ids | associated_ids
+#                 combined_queryset = db_field.related_model.objects.filter(id__in=all_ids).distinct()
+
+#                 kwargs["queryset"] = combined_queryset
+
+#                 return super().formfield_for_manytomany(db_field, request, **kwargs)
+
+#         def has_delete_permission(self, request, obj=None):
+#             return False
+
+# except ImportError:
+#     print("Resource model is not available for registration in the admin site.")
+#     pass

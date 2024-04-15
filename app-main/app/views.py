@@ -80,8 +80,54 @@ def msal_callback(request):
                 # Specify the backend explicitly
                 user.backend = 'django.contrib.auth.backends.ModelBackend'
 
+
+                # Get group members of the user 
+                # search_filter (sAMAccountName=adm-vicre)
+                # search_attributes = ['memberOf']
+                from active_directory.services import execute_active_directory_query
+                base_dn = "DC=win,DC=dtu,DC=dk"
+                search_filter = f"(sAMAccountName={username})"
+                search_attributes = ['memberOf']
+                ad_groups = execute_active_directory_query(base_dn=base_dn, search_filter=search_filter, search_attributes=search_attributes)
+
+                # Sync the user with the AD groups
+                sync_user_ad_groups(user, ad_groups)
+                # from myview.models import ADGroupAssociation
+                # for distinguished_name in ad_groups[0]['memberOf']:
+                #     # Try to find the group in the ADGroupAssociation model
+                #     try:
+                #         print(distinguished_name)
+                #         group = ADGroupAssociation.objects.get(distinguished_name=distinguished_name)
+                #         # Check if user if member of the group if not run sync ad group members
+                #         if not user.ad_group_members.filter(cn=group.cn).exists():
+                #             print("User is not a member of the group.")
+                #             # Mayne this should be async?
+                #             group.sync_ad_group_members()
+                #             print("Done syncing group members for group: ", group.name)
+                #         else:
+                #             print("Skipping sync group members for group: ", group.name)
+                        
+                #     except ADGroupAssociation.DoesNotExist:
+                #         print(f"ADGroupAssociation with name {distinguished_name} does not exist.")
+                #     # If the group exists, add the user to the group
+
+
+                    # except Exception as e:
+                    #     # If the group does not exist, create it
+                    #     print(f"An error occurred: {e}")
+
+
+
+                    
+                # if 'members' in form.changed_data:
+                #     form.instance.sync_ad_group_members()
+                
+
                 # Now log the user in
                 login(request, user)
+
+
+
 
                 if user.is_superuser:
                     return HttpResponseRedirect(reverse('admin:index'))
@@ -146,6 +192,29 @@ def msal_logout(request):
 
 
 
+
+from myview.models import ADGroupAssociation
+def sync_user_ad_groups(user, ad_groups):
+    for distinguished_name in ad_groups[0]['memberOf']:
+        # Try to find the group in the ADGroupAssociation model
+        try:
+            print(distinguished_name)
+            group = ADGroupAssociation.objects.get(distinguished_name=distinguished_name)
+            # Check if user if member of the group if not run sync ad group members
+            if not user.ad_group_members.filter(cn=group.cn).exists():
+                print("User is not a member of the group.")
+                # Mayne this should be async?
+                group.sync_ad_group_members()
+                print("Done syncing group members for group: ", group.cn)
+            else:
+                print("Skipping sync group members for group: ", group.cn)
+
+        except ADGroupAssociation.DoesNotExist:
+            print(f"ADGroupAssociation with distinguished_name {distinguished_name} does not exist.")
+            
+        except Exception as e:
+            # If the group does not exist, create it
+            print(f"An error occurred: {e}")
 
 
 
