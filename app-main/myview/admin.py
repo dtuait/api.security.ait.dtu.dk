@@ -156,6 +156,8 @@ try:
             selected_items = request.session.get(f'ajax_change_form_update_form_{db_field.name}', [])
             associated_items = model_class.objects.filter(endpoints__isnull=False).distinct()
 
+            # get or create all ou groups that does not already exist in the database
+
             if selected_items:
                 distinguished_names = [item['distinguishedName'][0] for item in selected_items]
                 initial_queryset = db_field.related_model.objects.filter(distinguished_name__in=distinguished_names)
@@ -169,6 +171,10 @@ try:
 
             kwargs["queryset"] = combined_queryset
             return super().formfield_for_manytomany(db_field, request, **kwargs)
+        
+        # tilføj hvad der skal ske når du trykker på safe knappen
+                # slet alle ad grupper som ikke har en relation til et endpoint
+
 
         def has_delete_permission(self, request, obj=None):
             return False
