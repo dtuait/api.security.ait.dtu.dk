@@ -36,8 +36,8 @@ class Command(BaseCommand):
             self.startmigrate(None,None)
             self.createsuperuser(None,None)
             self.createnormalusers(None,None)
-            self.createalladgroups(None,None)
-            self.createallous(None,None)
+            # self.createalladgroups(None,None)
+            # self.createallous(None,None)
 
             # # Restore the associations
             #  #           Reapply the associations

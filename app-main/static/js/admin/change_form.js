@@ -61,12 +61,12 @@ $(document).ready(function() {
                     // Assuming `id_ad_groups_from` is the select element for ad_groups
                     let selectElement = $('#id_ad_groups_from');
     
-                    // Add new options based on AJAX response
-                    ad_groups.forEach(group => {
-                        let option = new Option(group.cn, group.cn); // Set both the display text and the value to group.cn
-                        option.setAttribute('title', group.distinguishedName); // Use distinguishedName as the title, if necessary
-                        selectElement.append(option);
-                    });
+                    // // Add new options based on AJAX response
+                    // ad_groups.forEach(group => {
+                    //     let option = new Option(group.cn, group.cn); // Set both the display text and the value to group.cn
+                    //     option.setAttribute('title', group.distinguishedName); // Use distinguishedName as the title, if necessary
+                    //     selectElement.append(option);
+                    // });
 
                     formData = null;
                     formData = new FormData();
