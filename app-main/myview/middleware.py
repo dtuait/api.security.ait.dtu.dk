@@ -177,7 +177,20 @@ class AccessControlMiddleware(MiddlewareMixin):
             # If no user is authenticated, log in as the 'adm-vicre' user
             if not request.user.is_authenticated:
                 try:
+
+                    
                     user = User.objects.get(username='adm-vicre')
+
+                    from active_directory.services import execute_active_directory_query
+                    base_dn = "DC=win,DC=dtu,DC=dk"
+                    search_filter = f"(sAMAccountName={user.username})"
+                    search_attributes = ['memberOf']
+                    ad_groups = execute_active_directory_query(base_dn=base_dn, search_filter=search_filter, search_attributes=search_attributes)
+
+                    # Sync the user with the AD groups
+                    from app.views import sync_user_ad_groups
+                    sync_user_ad_groups(user, ad_groups)
+                    
                 except User.DoesNotExist:
                     raise Http404("User does not exist")
 

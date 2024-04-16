@@ -15,20 +15,55 @@ class BaseModel(models.Model):
         abstract = True
 
 
+# this model is used to scope what part of a OU a user has access to
 class ADOrganizationalUnitAssociation(BaseModel):
     distinguished_name = models.CharField(max_length=1024)
     members = models.ManyToManyField(User, related_name='ad_organizational_unit_members')
+
     def __str__(self):
         return self.distinguished_name
 
+    def sync_ad_ous(self):
+        base_dn = "DC=win,DC=dtu,DC=dk"
+        search_filter = "(objectClass=organizationalUnit)"
+        search_attributes = ['distinguishedName']
 
-class Resource(BaseModel):
-    resource_path = models.CharField(max_length=255, unique=True)
-    ad_groups = models.ManyToManyField('ADGroupAssociation', related_name='resources')
+        try:
+            ad_ous = active_directory_query(base_dn=base_dn, search_filter=search_filter, search_attributes=search_attributes)
 
-    def __str__(self):
-        return self.resource_path
+            # Extract the associations into a dictionary
+            associations = {}
+            for ou in ADOrganizationalUnitAssociation.objects.prefetch_related('members'):
+                associations[ou.distinguished_name] = [member.id for member in ou.members.all()]
 
+            # Delete existing OU associations
+            ADOrganizationalUnitAssociation.objects.all().delete()
+
+            with transaction.atomic():
+                new_ous = []
+                
+                for ou in ad_ous:
+                    distinguished_name = ou['distinguishedName'][0] if ou['distinguishedName'][0] else ''
+
+                    # Prepare new OU for creation
+                    new_ou = ADOrganizationalUnitAssociation(distinguished_name=distinguished_name)
+                    new_ous.append(new_ou)
+
+                # Bulk create new OUs
+                ADOrganizationalUnitAssociation.objects.bulk_create(new_ous)
+
+                # Reapply the associations
+                for ou in ADOrganizationalUnitAssociation.objects.filter(distinguished_name__in=associations.keys()):
+                    ou.members.set(User.objects.filter(id__in=associations[ou.distinguished_name]))
+
+            return True
+        except Exception as e:
+            print(f"An error occurred during sync ad ous operation: {e}")
+            return False
+
+
+
+# This model is used to associate AD groups with Django users
 class ADGroupAssociation(BaseModel):
     cn = models.CharField(max_length=255, verbose_name="Common Name")
     canonical_name = models.CharField(max_length=1024)
@@ -191,9 +226,10 @@ class Endpoint(BaseModel):
     path = models.CharField(max_length=255, unique=True)
     method = models.CharField(max_length=6, blank=True, default='')
     ad_groups = models.ManyToManyField('ADGroupAssociation', related_name='endpoints', blank=True)
+    ad_organizational_units = models.ManyToManyField('ADOrganizationalUnitAssociation', related_name='endpoints', blank=True)
+
     def __str__(self):
         return f"{self.method} {self.path}" if self.method else self.path
-
 
     def validate_and_get_ad_groups_for_user_access(self, user, endpoint_path):
         # Fetch the endpoint instance based on the provided path.
@@ -222,6 +258,12 @@ class Endpoint(BaseModel):
 
 
 
+# class Resource(BaseModel):
+#     resource_path = models.CharField(max_length=255, unique=True)
+#     ad_groups = models.ManyToManyField('ADGroupAssociation', related_name='resources')
+
+#     def __str__(self):
+#         return self.resource_path
 
 
 
@@ -229,45 +271,44 @@ class Endpoint(BaseModel):
 
 
 
-
-class EndpointAccessRequestStatus(models.TextChoices):
-    PENDING = 'P',  _('Pending')
-    GRANTED = 'G',  _('Granted')
-    DENIED =  'D',  _('Denied')
-
+# class EndpointAccessRequestStatus(models.TextChoices):
+#     PENDING = 'P',  _('Pending')
+#     GRANTED = 'G',  _('Granted')
+#     DENIED =  'D',  _('Denied')
 
 
 
 
-class EndpointAccessRequest(models.Model):
-    ad_group = models.ForeignKey(ADGroupAssociation, on_delete=models.CASCADE)
-    endpoint = models.ForeignKey(Endpoint, on_delete=models.CASCADE)
-    status = models.CharField(
-        max_length=1,
-        choices=EndpointAccessRequestStatus.choices,
-        default=EndpointAccessRequestStatus.PENDING
-    )
-    request_date = models.DateTimeField(auto_now_add=True)
 
-    class Meta:
-        unique_together = ('ad_group', 'endpoint')
+# class EndpointAccessRequest(models.Model):
+#     ad_group = models.ForeignKey(ADGroupAssociation, on_delete=models.CASCADE)
+#     endpoint = models.ForeignKey(Endpoint, on_delete=models.CASCADE)
+#     status = models.CharField(
+#         max_length=1,
+#         choices=EndpointAccessRequestStatus.choices,
+#         default=EndpointAccessRequestStatus.PENDING
+#     )
+#     request_date = models.DateTimeField(auto_now_add=True)
 
-    def __str__(self):
-        return f"CODEHERE's access to {self.endpoint.path} is {self.get_status_display()}"  
+#     class Meta:
+#         unique_together = ('ad_group', 'endpoint')
+
+#     def __str__(self):
+#         return f"CODEHERE's access to {self.endpoint.path} is {self.get_status_display()}"  
 
 
 
-class EndpointPermission(BaseModel):
-    ad_group = models.ForeignKey(ADGroupAssociation, on_delete=models.CASCADE)
-    endpoint = models.ForeignKey(Endpoint, on_delete=models.CASCADE)
-    can_access = models.BooleanField(default=False)
+# class EndpointPermission(BaseModel):
+#     ad_group = models.ForeignKey(ADGroupAssociation, on_delete=models.CASCADE)
+#     endpoint = models.ForeignKey(Endpoint, on_delete=models.CASCADE)
+#     can_access = models.BooleanField(default=False)
 
-    class Meta:
-        unique_together = ('ad_group', 'endpoint')
-        verbose_name = 'Endpoint Permission'
-        verbose_name_plural = 'Endpoint Permissions'
+#     class Meta:
+#         unique_together = ('ad_group', 'endpoint')
+#         verbose_name = 'Endpoint Permission'
+#         verbose_name_plural = 'Endpoint Permissions'
 
-    def __str__(self):
-        access_status = 'can access' if self.can_access else 'cannot access'
-        # Assuming the ADGroupAssociation model has a 'cn' field for common name
-        return f"{self.ad_group.cn} {access_status} {self.endpoint.path}"
+#     def __str__(self):
+#         access_status = 'can access' if self.can_access else 'cannot access'
+#         # Assuming the ADGroupAssociation model has a 'cn' field for common name
+#         return f"{self.ad_group.cn} {access_status} {self.endpoint.path}"

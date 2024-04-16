@@ -100,43 +100,7 @@ $(document).ready(function() {
                     if (this.value === '' || this.value === null || this.value === undefined) {
                         return;
                     }
-
-                    let formData = new FormData();
-                    formData.append('action', 'active_directory_query');
-                    formData.append('base_dn', 'DC=win,DC=dtu,DC=dk');
-                    formData.append('search_filter', `(&(objectClass=organizationalUnit)(ou=*${this.value}*))`); // Modified for OU
-                    formData.append('search_attributes', 'distinguishedName');
-                    formData.append('limit', '100');
-
-                    let response;
-                    response = await restAjax('POST', '/myview/ajax/', formData);
-
-                    console.log('Response:', response);
-
-                    let ad_ous = response.data;
-
-                    // Assuming `id_ad_ous_from` is the select element for ad_ous
-                    let selectElement = $('#id_ad_ous_from');
-
-                    // Add new options based on AJAX response
-                    ad_ous.forEach(ou => {
-                        let option = new Option(ou.ou, ou.ou); // Set both the display text and the value to ou.ou
-                        option.setAttribute('title', ou.distinguishedName); // Use distinguishedName as the title, if necessary
-                        selectElement.append(option);
-                    });
-
-                    formData = new FormData();
-                    formData.append('action', 'ajax_change_form_update_form_ad_ous');
-                    formData.append('ad_ous', JSON.stringify(ad_ous));
-                    formData.append('path', window.location.pathname);
-                    response = await restAjax('POST', '/myview/ajax/', formData);
-
-                    // how can i reload the page
-                    console.log('Reloading page...');
-
-                    // PARSE THE DATA AND RELOAD THE PAGE
-                    location.reload();
-
+                    console.log("Hello world");
                     // Clear the timeoutGroup
                     timeoutGroup = null;
                 }.bind(this), 2000);  // Wait for 2 seconds

@@ -111,8 +111,6 @@ class AjaxView(BaseView):
             # convert ad_groups[0] into a list. The data is JSON encoded in the POST request
             ad_groups = json.loads(ad_groups[0])
 
-            path = request.POST.get('path')
-
     
             # logger.info(f"Session data before setting ad_groups: {request.session.items()}")
 
@@ -129,7 +127,22 @@ class AjaxView(BaseView):
             return JsonResponse({'success': 'Form updated'})
 
     
-        
+        elif action == 'ajax_change_form_update_form_ad_ous':
+            # Extract ad_ous from the POST request
+            ad_ous = request.POST.getlist('ad_ous')
+            # convert ad_ous[0] into a list. The data is JSON encoded in the POST request
+            ad_ous = json.loads(ad_ous[0])
+
+            # logger.info(f"Session data before setting ad_ous: {request.session.items()}")
+
+            request.session['ajax_change_form_update_form_ad_ous'] = ad_ous
+
+            # logger.info(f"Session data after setting ad_ous: {request.session.items()}")
+
+            request.session.save()
+
+            return JsonResponse({'success': 'Form updated'})
+
             
         else:
             return JsonResponse({'error': 'Invalid AJAX action'}, status=400)
