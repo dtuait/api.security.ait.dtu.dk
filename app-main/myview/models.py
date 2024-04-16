@@ -184,8 +184,10 @@ class ADGroupAssociation(BaseModel):
                 # Perform the search on LDAP
                 current_members = active_directory_query(base_dn=base_dn, search_filter=search_filter, search_attributes=search_attributes)
 
-                # filter out all users that does not startwith adm- or contians -adm-
-                current_members = [user for user in current_members if user['sAMAccountName'][0].lower().startswith('adm-') or '-adm-' in user['sAMAccountName'][0].lower()]
+                
+
+                # # filter out all users that does not startwith adm- or contians -adm-
+                # current_members = [user for user in current_members if user['sAMAccountName'][0].lower().startswith('adm-') or '-adm-' in user['sAMAccountName'][0].lower()]
                 
                 self.create_new_users_if_not_exists(current_members)
 

@@ -74,19 +74,11 @@ class AccessControlMiddleware(MiddlewareMixin):
         if normalized_request_path == '/favicon.ico/':
             return self.get_response(request)
 
-        # # Handle whitelist paths to bypass access control
-        # if any(normalized_request_path.startswith(whitelist_path) for whitelist_path in self.whitelist_paths):
-
-        #     # If debug is true, skip /admin, because it needs special handling
-        #     if settings.DEBUG and normalized_request_path.startswith('/admin'):
-        #         pass
-        #     else:
-        #         return self.get_response(request)
 
         # DEBUG mode: Mock authentication for testing without actual credentials
         if settings.DEBUG and not token:
             self.handle_debug_mode(request, normalized_request_path)
-            return self.get_response(request)
+            # return self.get_response(request)
 
         # Authenticate user based on token, if provided
         if token and not token.startswith('Token <token>'):
@@ -96,6 +88,17 @@ class AccessControlMiddleware(MiddlewareMixin):
 
         # check for enpoint access
         if request.user.is_authenticated:
+
+
+            # Handle whitelist paths to bypass access control
+            if any(normalized_request_path.startswith(whitelist_path) for whitelist_path in self.whitelist_paths):
+
+                # If debug is true, skip /admin, because it needs special handling
+                if settings.DEBUG and normalized_request_path.startswith('/admin'):
+                    pass
+                else:
+                    return self.get_response(request)
+
 
             # Check if the user has access to the requested endpoint
             if not self.is_user_authorized_for_endpoint(request, normalized_request_path):
@@ -171,11 +174,13 @@ class AccessControlMiddleware(MiddlewareMixin):
         # if /myview/ is requested, log in as the 'adm-vicre' user
         elif normalized_request_path.startswith('/myview/'):
             # If a user is already logged in but is not 'adm-vicre', log them out
-            if request.user.is_authenticated and request.user.username != 'adm-vicre':
-                logout(request)
+            # if request.user.is_authenticated and request.user.username == 'adm-vicre':
+            logout(request)
 
             # If no user is authenticated, log in as the 'adm-vicre' user
             if not request.user.is_authenticated:
+
+
                 try:
 
                     
@@ -189,7 +194,7 @@ class AccessControlMiddleware(MiddlewareMixin):
 
                     # Sync the user with the AD groups
                     from app.views import sync_user_ad_groups
-                    sync_user_ad_groups(user, ad_groups)
+                    sync_user_ad_groups(user, ad_groups, True)
                     
                 except User.DoesNotExist:
                     raise Http404("User does not exist")
