@@ -243,23 +243,26 @@ class AccessControlMiddleware(MiddlewareMixin):
         # Allow access to superuser
         if request.user.is_superuser:
             return True
+        
+        
+
 
         # Check if the user is authorized for the endpoint
+        from myview.models import ADGroupAssociation
+        ADGroupAssociation.sync_user_ad_groups(request.user)
         if self.is_user_authorized(request.user, normalized_request_path):
             return True
 
-        # If no endpoint is found, try perform the sync 
-        from active_directory.services import execute_active_directory_query
-        base_dn = "DC=win,DC=dtu,DC=dk"
-        search_filter = f"(sAMAccountName={request.user.username})"
-        search_attributes = ['memberOf']
-        ad_groups = execute_active_directory_query(base_dn=base_dn, search_filter=search_filter, search_attributes=search_attributes)
-        from app.views import sync_user_ad_groups
-        sync_user_ad_groups(request.user, ad_groups)
+        # # If no endpoint is found, try perform the sync 
+        # from active_directory.services import execute_active_directory_query
+        # base_dn = "DC=win,DC=dtu,DC=dk"
+        # search_filter = f"(sAMAccountName={request.user.username})"
+        # search_attributes = ['memberOf']
+        # ad_groups = execute_active_directory_query(base_dn=base_dn, search_filter=search_filter, search_attributes=search_attributes)
 
-        # Check if the user is authorized for the endpoint again
-        if self.is_user_authorized(request.user, normalized_request_path):
-            return True
+        # # Check if the user is authorized for the endpoint again
+        # if self.is_user_authorized(request.user, normalized_request_path):
+        #     return True
 
         return False  # No matching endpoint found, access denied
 
@@ -272,3 +275,4 @@ class AccessControlMiddleware(MiddlewareMixin):
             if self.compare_paths(endpoint_path, normalized_request_path):
                 return True  # Access is granted
         return False
+    
