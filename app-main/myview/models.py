@@ -76,8 +76,35 @@ class ADGroupAssociation(BaseModel):
 
 
 
+    def sync_user_ad_groups(username):
+        from active_directory.services import execute_active_directory_query
+        from django.contrib.auth import get_user_model
 
+        User = get_user_model()
+        user = User.objects.get(username=username)
 
+        base_dn = "DC=win,DC=dtu,DC=dk"
+        search_filter = f"(sAMAccountName={username})"
+        search_attributes = ['memberOf']
+        ad_groups = execute_active_directory_query(base_dn=base_dn, search_filter=search_filter, search_attributes=search_attributes)
+        ad_groups_association = user.ad_group_members.all()
+
+        ad_groups_set = set(group['memberOf'][0] for group in ad_groups)
+
+        for group in ad_groups_association:
+            if group.distinguished_name in ad_groups_set:
+                ADGroupAssociation.sync_ad_group_members(group)
+        
+        ADGroupAssociation.delete_unused_groups()         
+
+        # refresh and update the database or models here so next lines of code gets the latest data
+        user.refresh_from_db()    
+                    
+
+    @staticmethod
+    def delete_unused_groups():
+        unused_ad_groups = ADGroupAssociation.objects.filter(endpoints__isnull=True)
+        unused_ad_groups.delete()
 
     # This function gets all AD groups and syncs them with the database
     def sync_ad_groups(self):

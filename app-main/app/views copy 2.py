@@ -87,28 +87,32 @@ def msal_callback(request):
                 # Now log the user in
                 login(request, user)
 
-                from myview.models import ADGroupAssociation
-                ADGroupAssociation.sync_user_ad_groups(user)
+                # Get group members of the user 
+                from active_directory.services import execute_active_directory_query
+                base_dn = "DC=win,DC=dtu,DC=dk"
+                search_filter = f"(sAMAccountName={username})"
+                search_attributes = ['memberOf']
+                ad_groups = execute_active_directory_query(base_dn=base_dn, search_filter=search_filter, search_attributes=search_attributes)
+                ad_groups_association = user.ad_group_members.all()
+                # ad_groups_association[0].distinguished_name >> 'CN=SUS-MFA-Reset,OU=IT,OU=Groups,OU=SUS,OU=Institutter,DC=win,DC=dtu,DC=dk'
+                # ad_groups[0]['memberOf'][0] >> 'CN=SUS-MFA-Reset,OU=IT,OU=Groups,OU=SUS,OU=Institutter,DC=win,DC=dtu,DC=dk'
 
+
+                # Assuming 'user' is the User instance
                 
-                # # Get group members of the user 
-                # from active_directory.services import execute_active_directory_query
-                # base_dn = "DC=win,DC=dtu,DC=dk"
-                # search_filter = f"(sAMAccountName={username})"
-                # search_attributes = ['memberOf']
-                # ad_groups = execute_active_directory_query(base_dn=base_dn, search_filter=search_filter, search_attributes=search_attributes)
-                # ad_groups_association = user.ad_group_members.all()
-                # # ad_groups_association[0].distinguished_name >> 'CN=SUS-MFA-Reset,OU=IT,OU=Groups,OU=SUS,OU=Institutter,DC=win,DC=dtu,DC=dk'
-                # # ad_groups[0]['memberOf'][0] >> 'CN=SUS-MFA-Reset,OU=IT,OU=Groups,OU=SUS,OU=Institutter,DC=win,DC=dtu,DC=dk'
-                # # 
-                # # if the user is member of a ad_group that exist in the ADGroupAssociation model then sync that groups members
-                # # Convert ad_groups to a set for faster lookup
-                # ad_groups_set = set(group['memberOf'][0] for group in ad_groups)
-
                 # for group in ad_groups_association:
-                #     if group.distinguished_name in ad_groups_set:
-                #         # Sync the members of the group
-                #         ADGroupAssociation.sync_ad_group_members(group)
+                #     print(group.cn)
+
+                # Sync the user's AD groups
+                # This model is used to associate AD groups with Django users
+                # class ADGroupAssociation(BaseModel):
+                #     cn = models.CharField(max_length=255, verbose_name="Common Name")
+                #     canonical_name = models.CharField(max_length=1024)
+                #     distinguished_name = models.CharField(max_length=1024)
+                #     members = models.ManyToManyField(User, related_name='ad_group_members')
+                #     def __str__(self):
+                #         return self.cn
+
 
                 
 
@@ -204,27 +208,6 @@ def sync_user_ad_groups(user, ad_groups, sync_ad_group_members=False):
         except Exception as e:
             # If the group does not exist, create it
             print(f"An error occurred: {e}")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

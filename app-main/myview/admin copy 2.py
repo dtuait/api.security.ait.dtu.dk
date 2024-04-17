@@ -3,7 +3,7 @@ from django.http import HttpRequest
 from django.contrib.admin.widgets import FilteredSelectMultiple
 from django.db import transaction
 from django.db import models
-from myview.models import ADGroupAssociation
+
 import logging
 
 logger = logging.getLogger(__name__)
@@ -92,6 +92,13 @@ try:
         }
 
         def save_model(self, request, obj, form, change):
+            
+
+            # Call the method to delete unused groups
+            # self.delete_unused_groups()
+
+            # # Save the object first
+            # super().save_model(request, obj, form, change)
 
             # Sync members for each group in ad_groups
             ad_groups = form.cleaned_data.get('ad_groups', [])
@@ -113,12 +120,17 @@ try:
 
             # Save the object again to save the changes to ad_groups
             obj.save()
+
+            self.delete_unused_groups()
+
             
-            ADGroupAssociation.delete_unused_groups()
-           
-        # def delete_unused_groups(self):            
-            # unused_ad_groups = ADGroupAssociation.objects.filter(endpoints__isnull=True)
-            # unused_ad_groups.delete()
+
+
+
+        def delete_unused_groups(self):
+            
+            unused_ad_groups = ADGroupAssociation.objects.filter(endpoints__isnull=True)
+            unused_ad_groups.delete()
 
         def formfield_for_manytomany(self, db_field, request, **kwargs):
             if db_field.name == "ad_groups":

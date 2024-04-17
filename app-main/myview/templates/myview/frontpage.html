@@ -75,7 +75,7 @@
                     <th scope="row">{{ forloop.counter }}</th>
                     <td>{{ endpoint.method }} {{ endpoint.path }}</td>
                     <td>
-                        {% for ad_group in endpoint.ad_groups.all %}
+                        {% for ad_group in user_ad_groups %}
                         {{ ad_group.cn }}
                         {% if not forloop.last %}, {% endif %}
                         {% endfor %}

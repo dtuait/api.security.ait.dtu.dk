@@ -67,3 +67,10 @@ Opret AD bruger ved login, hvis brugeren ikke allerede findes
 Sync brugeren med de ad grupper som findes i django databasen
 
 Opret gruppe ved søgning 
+
+
+Der er fire steder jeg sync ad_group_assoc med AD. 
+1) BaseView i myview - ADGroupAssociation.sync_user_ad_groups(username) DONE
+2) Nr du logger ind - ADGroupAssociation.sync_user_ad_groups(username) DONE
+3) nr du opdatere i adminpanelet - ADGroupAssociation.sync_user_ad_groups(username) DONE
+4) nr du laver et endpoint kald - user.check_ad_group_assoc

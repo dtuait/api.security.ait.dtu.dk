@@ -74,6 +74,15 @@ class AccessControlMiddleware(MiddlewareMixin):
         if normalized_request_path == '/favicon.ico/':
             return self.get_response(request)
 
+        # Handle whitelist paths to bypass access control
+        if any(normalized_request_path.startswith(whitelist_path) for whitelist_path in self.whitelist_paths):
+
+            # If debug is true, skip /admin, because it needs special handling
+            if settings.DEBUG and normalized_request_path.startswith('/admin'):
+                pass
+            else:
+                return self.get_response(request)
+            
 
         # DEBUG mode: Mock authentication for testing without actual credentials
         if settings.DEBUG and not token:
@@ -94,7 +103,7 @@ class AccessControlMiddleware(MiddlewareMixin):
 
 
             # Check if the user has access to the requested endpoint
-            if not self.is_user_authorized_for_endpoint(request, normalized_request_path) and not any(normalized_request_path.startswith(whitelist_path) for whitelist_path in self.whitelist_paths):
+            if not self.is_user_authorized_for_endpoint(request, normalized_request_path):
                 return HttpResponseForbidden('You do not have access to this endpoint.')      
                 
             # limit the user only access to ressouces 
@@ -103,10 +112,6 @@ class AccessControlMiddleware(MiddlewareMixin):
 
 
 
-            return self.get_response(request)
-        
-        # Handle whitelist paths to bypass access control
-        elif any(normalized_request_path.startswith(whitelist_path) for whitelist_path in self.whitelist_paths):
             return self.get_response(request)
 
         # For unauthenticated users, redirect to login
