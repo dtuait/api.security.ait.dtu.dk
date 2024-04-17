@@ -74,8 +74,7 @@ def msal_callback(request):
             if username.startswith('adm-') or '-adm-' in username:
                 from django.contrib.auth.backends import ModelBackend
 
-                # After getting or creating the user
-                user, created = User.objects.get_or_create(username=username)
+
 
                 # Specify the backend explicitly
                 user.backend = 'django.contrib.auth.backends.ModelBackend'
@@ -88,8 +87,11 @@ def msal_callback(request):
                 search_attributes = ['memberOf']
                 ad_groups = execute_active_directory_query(base_dn=base_dn, search_filter=search_filter, search_attributes=search_attributes)
 
-                # Sync the user with the AD groups
-                sync_user_ad_groups(user, ad_groups)
+                # After getting or creating the user
+                user, created = User.objects.get_or_create(username=username)
+
+
+                
 
 
                 # Now log the user in

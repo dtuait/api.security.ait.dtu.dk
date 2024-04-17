@@ -59,3 +59,11 @@ Paa forsiden skal du kunne generere et token og se hvilken endpoints du har adga
 
 
 SUS-MFA-Reset
+
+
+
+Slet alle brugere og ADGrupper.
+Opret AD bruger ved login, hvis brugeren ikke allerede findes
+Sync brugeren med de ad grupper som findes i django databasen
+
+Opret gruppe ved søgning 

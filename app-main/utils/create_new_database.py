@@ -35,7 +35,7 @@ class Command(BaseCommand):
             self.startmake_migrations(None,None)
             self.startmigrate(None,None)
             self.createsuperuser(None,None)
-            self.createnormalusers(None,None)
+            # self.createnormalusers(None,None)
             # self.createalladgroups(None,None)
             # self.createallous(None,None)
 
@@ -48,9 +48,9 @@ class Command(BaseCommand):
 
 
             ##### 
-            django_init_token = os.getenv("DJANGO_ADM_VICRE_INIT_TOKEN")
-            user = User.objects.get(username='adm-vicre')
-            user.set_my_token(django_init_token)
+            # django_init_token = os.getenv("DJANGO_ADM_VICRE_INIT_TOKEN")
+            # user = User.objects.get(username='adm-vicre')
+            # user.set_my_token(django_init_token)
 
             # django_init_token = os.getenv("DJANGO_ADM_DAST_INIT_TOKEN")
             # user = User.objects.get(username='adm-byg-dast')
@@ -72,6 +72,7 @@ class Command(BaseCommand):
             # Token.objects.create(user=user, key=django_init_token)
 
             #######
+            print("Update endpoints")
             updateEndpoints()
             
 
