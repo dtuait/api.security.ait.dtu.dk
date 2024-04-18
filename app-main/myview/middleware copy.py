@@ -86,25 +86,35 @@ class AccessControlMiddleware(MiddlewareMixin):
                 return HttpResponseForbidden('Invalid token.')
 
 
+        # check for enpoint access
+        if request.user.is_authenticated:
 
-        # Initialize a flag to indicate whether the user is authorized
-        is_authorized = False
 
-        # Handle whitelist paths to bypass access control
-        if any(normalized_request_path.startswith(whitelist_path) for whitelist_path in self.whitelist_paths):
-            is_authorized = True
-        elif request.user.is_authenticated:
-            # Check for endpoint access
-            if self.is_user_authorized_for_endpoint(request, normalized_request_path):
-                is_authorized = True
+
+            if any(normalized_request_path.startswith(whitelist_path) for whitelist_path in self.whitelist_paths):
+                return self.get_response(request)
             else:
-                return HttpResponseForbidden('Access denied.')
-
-        if is_authorized:
+                if not self.is_user_authorized_for_endpoint(request, normalized_request_path):
+                    return HttpResponseForbidden('You do not have access to this endpoint.')
             return self.get_response(request)
-        else:
-            # For unauthenticated users, redirect to login
-            return redirect('/login/')
+            # elif not self.is_user_authorized_for_endpoint(request, normalized_request_path):
+            #     return HttpResponseForbidden('You do not have access to this endpoint.')      
+                
+            # limit the user only access to ressouces 
+
+            # Check if the user has access to the requested resource
+
+
+
+            return self.get_response(request)
+        
+        # Handle whitelist paths to bypass access control
+        elif any(normalized_request_path.startswith(whitelist_path) for whitelist_path in self.whitelist_paths):
+            return self.get_response(request)
+
+        # For unauthenticated users, redirect to login
+        return redirect('/login/')
+
 
 
 
