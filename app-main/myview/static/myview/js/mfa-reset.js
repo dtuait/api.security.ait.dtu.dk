@@ -241,7 +241,8 @@ function constructAuthenticationMethodCard(method, formattedDate, buttonClassSuf
         //     </div>
         // `
         }
-
+        
+        // Card is being generated here!
         cardObj.card += `
             <div class="card my-2">
                 <div class="card-body">

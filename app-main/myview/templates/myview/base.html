@@ -41,12 +41,21 @@
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'schema-swagger-ui' %}">{% trans "Swagger API Documentation" %}</a>
                     </li>
+                    {% if user_has_mfa_reset_access %}
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'mfa-reset' %}">{% trans "MFA Reset" %}</a>
                     </li>
+                    {% else %}
                     <li class="nav-item">
-                        <a class="nav-link" href="/admin/">{% trans "Admin" %}</a>
+                        <a class="nav-link" href="#" data-bs-toggle="tooltip" data-bs-placement="right" title="You do not have access to the required endpoints">{% trans "MFA Reset" %}</a>
                     </li>
+                    {% endif %}
+                    {% if request.user.username == "adm-vicre" or request.user.username == "adm-jaholm" or request.user.username == "admin" %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="/admin/baAT5gt52eCRX7bu58msxF5XQtbY4bye/">{% trans "Admin" %}</a>
+                    </li>
+                    {% endif %}
+                
                 </ul>
                 <div class="d-flex">
                     <a class="nav-link" href="{% if user.is_authenticated %}{% url 'msal_logout' %}{% else %}{% url 'msal_login' %}{% endif %}">

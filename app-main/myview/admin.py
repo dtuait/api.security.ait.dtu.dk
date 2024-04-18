@@ -155,17 +155,6 @@ try:
         def has_delete_permission(self, request, obj=None):
             return False
         
-        # def save_model(self, request, obj, form, change):
-        #     super().save_model(request, obj, form, change)
-        #     # After saving the form, delete the groups that are no longer associated
-        #     obj.delete_unused_groups()
-
-        # def save_related(self, request, form, formsets, change):
-        #     # super().save_related(request, form, formsets, change)
-        #     # # After saving the form and related objects, sync the group members
-        #     # if 'members' in form.changed_data:
-        #     #     form.instance.sync_ad_group_members()
-        #     pass
 
 
 except ImportError:

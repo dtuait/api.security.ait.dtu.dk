@@ -60,10 +60,12 @@ class BaseView(View):
         return branch, commit
 
     def get_context_data(self, **kwargs):
+        # from myview.models import ADGroupAssociation
+        # ADGroupAssociation.sync_user_ad_groups(self.request.user)
         branch, commit = self.get_git_info()
         user_ad_groups = self.request.user.ad_group_members.all()
+        # print(len(user_ad_groups))
         user_endpoints = Endpoint.objects.filter(ad_groups__in=user_ad_groups).prefetch_related('ad_groups').distinct()
-        
         context = {
             'base_template': self.base_template,
             'git_branch': branch,

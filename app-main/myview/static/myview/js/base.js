@@ -1,18 +1,9 @@
-// // Confirm that cash are loaded
-// console.log(`base.js: ${confirmCash()}`);
-
-// // Confirm that axios are loaded
-// confirmAxios().then(response => {
-//   console.log(response);
-// }).catch(error => {
-//   console.error(error);
-// });
-
-// // confirm that qs are loaded
-// console.log(`qs: ${Qs}`);
-
-
-
+document.addEventListener('DOMContentLoaded', function () {
+  const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+  tooltipTriggerList.forEach(function (tooltipTriggerEl) {
+    new bootstrap.Tooltip(tooltipTriggerEl);
+  });
+});
 
 /**
  * Perform a REST AJAX request.
@@ -54,30 +45,6 @@ async function restAjax(method, url, data = {}, headers = {}) {
 }
 
 
-
-// async function restAPI(method, endpoint, data = {}) {
-//   // const proto = window.location.protocol;
-//   const baseUrl = `${window.location.protocol}//${window.location.hostname}:${window.location.port}`;
-//   const url = `${baseUrl}${endpoint}`;
-
-//   // Call the restAjax function
-//   const response = await restAjax(method, url, data);
-
-//   // Check if the response was successful
-//   if (response && response.status >= 200 && response.status < 300) {
-//     // If the response was successful, return the data
-//     return response.data;
-//   } else {
-//     // If the response was not successful, throw an error
-//     throw new Error(`Request to ${url} failed with status ${response.status}`);
-//   }
-// }
-
-// // Usage:
-// // restAPI('get', '/active-directory/v1.0/query');
-// // restAPI('get', '/graph/v1.0/get-user/{user}');
-// // restAPI('get', '/graph/v1.0/list/{user_id__or__user_principalname}/authentication-methods');
-// // restAPI('delete', '/graph/v1.0/users/{user_id__or__user_principalname}/authentication-methods/{microsoft_authenticator_method_id}');
 
 
 
@@ -187,36 +154,6 @@ function setModal(triggerSelector, modalId, options = {}) {
 
 
 
-function confirmCash() {
-  try {
-    const body = $('body'); // Use Cash to select the document body
-    if (body.length > 0) { // Successfully selected the body
-      console.log('Cash was imported successfully and works.');
-    } else {
-      console.log('Cash could not access the DOM.');
-    }
-  } catch (error) {
-    console.log('Error confirming Cash:', error);
-  }
-}
-
-
-
-async function confirmAxios() {
-  try {
-    const response = await axios.get('https://jsonplaceholder.typicode.com/posts/1');
-    if (response.status === 200) {
-      console.log('Axios was imported successfully and works.');
-    } else {
-      console.log('Axios did not work as expected.');
-    }
-  } catch (error) {
-    console.log('Error confirming Axios:', error);
-  }
-}
-
-
-
 
 
 function getCookie(name) {
@@ -242,91 +179,3 @@ tooltipTriggerList.forEach(function (tooltipTriggerEl) {
     html: true  // Enables HTML content inside tooltips
   });
 });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/**
-//  * Dynamically creates and attaches a modal to a trigger element.
-//  * 
-//  * @param {string} triggerSelector - Selector for the element that triggers the modal.
-//  * @param {string} modalId - Unique ID for the modal.
-//  * @param {Object} options - Optional settings for modal customization.
-//  */
-// function setModal(triggerSelector, modalId, options = {}) {
-//   // this function assumes that each that a mudal is uniqie to a trigger
-
-  
-//   if ($('#' + modalId).length) {
-//     $('#' + modalId).remove();
-//   }
-
-//   // if options are provided, use them to update the modal
-
-//   const modalType = options.modalType || 'modal-dialog'
-//   const modalContent = options.modalContent || 'modal-content';
-//   const modalTitle = options.title || 'Default Modal Title';
-//   const modalBody = options.body || 'Default Modal Body';
-//   const modalFooter = options.footer || `<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>`;
-//   const eventListeners = options.eventListeners || []; // This will be an array of event listener descriptions
-
-//   // Create the modal HTML with the provided content and a unique ID
-//   const modalHtml = `
-//       <div class="modal fade" id="${modalId}" tabindex="-1" aria-labelledby="${modalId}Label" aria-hidden="true">
-//           <div class="${modalType}">
-//               <div class="${modalContent}">
-//                   <div class="modal-header">
-//                       <h5 class="modal-title" id="${modalId}Label">${modalTitle}</h5>
-//                       <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-//                   </div>
-//                   <div class="modal-body">
-//                       ${modalBody}
-//                   </div>
-//                   <div class="modal-footer">
-//                       ${modalFooter}
-//                   </div>
-//               </div>
-//           </div>
-//       </div>
-//   `;
-
-//   // Append the modal to the body
-//   $('body').append(modalHtml);
-//   const modalInstance = new bootstrap.Modal(document.getElementById(modalId), { keyboard: false });
-//   // // Use Bootstrap to handle the modal
-//   // const modalInstance = new bootstrap.Modal(document.getElementById(modalId), {
-//   //   keyboard: false
-//   // });
-
-//   // Attach event listeners specified in options
-//   eventListeners.forEach(({selector, event, handler}) => {
-//     // remove existing event listeners to prevent multiple bindings
-//     $(document).off(event, `#${modalId} ${selector}`).on(event, `#${modalId} ${selector}`, handler);
-//     // $(document).on(event, `#${modalId} ${selector}`, handler);
-//   });
-
-//   // Detach existing click events to prevent multiple bindings
-//   $(triggerSelector).off('click').on('click', function () {
-//     console.log('Trigger clicked');
-//     modalInstance.show();
-//   });
-
-// }

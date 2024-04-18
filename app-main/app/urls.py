@@ -49,7 +49,7 @@ urlpatterns = [
     'document_root': settings.STATIC_ROOT,
     }),
 
-    path('admin/', admin.site.urls, name='admin-panel'),
+    path('admin/baAT5gt52eCRX7bu58msxF5XQtbY4bye/', admin.site.urls, name='admin-panel'),
     
     # myview
     path('', RedirectView.as_view(url="myview/frontpage/", permanent=True)),

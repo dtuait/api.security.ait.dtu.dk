@@ -31,15 +31,12 @@ def generate_new_custom_token(self):
     # Create a new CustomToken for the user
     token = CustomToken.objects.create(user=self, key=random_string)
 
-    return True
+    return token
 
     
 
-    
+# This generates a token that the user decides for themselves, it is used, only by admins - utils.
 def set_my_token(self, token):
-
-    
-
     if len(token) != 255:
         raise ValueError("Token must be 255 characters long")
     CustomToken.objects.update_or_create(user=self, defaults={'key': token})

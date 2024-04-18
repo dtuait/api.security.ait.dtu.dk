@@ -50,11 +50,11 @@ class Command(BaseCommand):
             ##### 
             # django_init_token = os.getenv("DJANGO_ADM_VICRE_INIT_TOKEN")
             # user = User.objects.get(username='adm-vicre')
-            # user.set_my_token(django_init_token)
+            # user.set_my_token(django_init_token) 
 
             # django_init_token = os.getenv("DJANGO_ADM_DAST_INIT_TOKEN")
             # user = User.objects.get(username='adm-byg-dast')
-            # user.set_my_token(django_init_token)
+            # user.set_my_token(django_init_token) # function has been deleted 
             
             # try:
             #     # Get the user

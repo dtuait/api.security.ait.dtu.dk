@@ -1,5 +1,3 @@
-console.log('Hello from change_form.js');
-
 $(document).ready(function() {
 
 
@@ -49,25 +47,12 @@ $(document).ready(function() {
                     formData.append('base_dn', 'DC=win,DC=dtu,DC=dk');
                     formData.append('search_filter', `(&(objectClass=group)(cn=*${this.value}*))`);
                     formData.append('search_attributes', 'cn,canonicalName,distinguishedName');
-                    formData.append('limit', '100');
-            
+                    formData.append('limit', '100');            
                     let response;
                     response = await restAjax('POST', '/myview/ajax/', formData);
-            
-                    console.log('Response:', response);
+                    // console.log('Response:', response);
 
                     let ad_groups = response.data;
-
-                    // Assuming `id_ad_groups_from` is the select element for ad_groups
-                    let selectElement = $('#id_ad_groups_from');
-    
-                    // // Add new options based on AJAX response
-                    // ad_groups.forEach(group => {
-                    //     let option = new Option(group.cn, group.cn); // Set both the display text and the value to group.cn
-                    //     option.setAttribute('title', group.distinguishedName); // Use distinguishedName as the title, if necessary
-                    //     selectElement.append(option);
-                    // });
-
                     formData = null;
                     formData = new FormData();
                     formData.append('action', 'ajax_change_form_update_form_ad_groups');
@@ -118,13 +103,7 @@ $(document).ready(function() {
                     // Assuming `id_ad_ous_from` is the select element for ad_ous
                     let selectElement = $('#id_ad_ous_from');
 
-                    // Add new options based on AJAX response
-                    ad_ous.forEach(ou => {
-                        let option = new Option(ou.ou, ou.ou); // Set both the display text and the value to ou.ou
-                        option.setAttribute('title', ou.distinguishedName); // Use distinguishedName as the title, if necessary
-                        selectElement.append(option);
-                    });
-
+                    // Send the data to the server
                     formData = new FormData();
                     formData.append('action', 'ajax_change_form_update_form_ad_ous');
                     formData.append('ad_ous', JSON.stringify(ad_ous));

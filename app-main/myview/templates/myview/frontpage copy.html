@@ -49,15 +49,14 @@
                         <th scope="row">{{ forloop.counter }}</th>
                         <td>{{ endpoint.method }} {{ endpoint.path }}</td>
                         <td>
-                            {% for ad_group in endpoint.ad_groups.all %}  <!-- Adjust this to access the endpoint's specific groups -->
-                                {{ ad_group.cn }}
-                                {% if not forloop.last %}, {% endif %}
+                            {% for ad_group in user_ad_groups %}
+                            {{ ad_group.cn }}
+                            {% if not forloop.last %}, {% endif %}
                             {% endfor %}
                         </td>
                     </tr>
                     {% endfor %}
                 </tbody>
-                
             </table>
         </div>
     </div>

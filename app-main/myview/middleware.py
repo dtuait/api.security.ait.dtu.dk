@@ -118,30 +118,6 @@ class AccessControlMiddleware(MiddlewareMixin):
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     def handle_debug_mode(self, request, normalized_request_path):
         """Handles user authentication in DEBUG mode without actual credentials."""
         # Use Django's get_user_model to support custom user models
@@ -244,7 +220,6 @@ class AccessControlMiddleware(MiddlewareMixin):
         if request.user.is_superuser:
             return True
         
-        
 
 
         # Check if the user is authorized for the endpoint
@@ -252,17 +227,6 @@ class AccessControlMiddleware(MiddlewareMixin):
         ADGroupAssociation.sync_user_ad_groups(request.user)
         if self.is_user_authorized(request.user, normalized_request_path):
             return True
-
-        # # If no endpoint is found, try perform the sync 
-        # from active_directory.services import execute_active_directory_query
-        # base_dn = "DC=win,DC=dtu,DC=dk"
-        # search_filter = f"(sAMAccountName={request.user.username})"
-        # search_attributes = ['memberOf']
-        # ad_groups = execute_active_directory_query(base_dn=base_dn, search_filter=search_filter, search_attributes=search_attributes)
-
-        # # Check if the user is authorized for the endpoint again
-        # if self.is_user_authorized(request.user, normalized_request_path):
-        #     return True
 
         return False  # No matching endpoint found, access denied
 

@@ -38,10 +38,24 @@ class BaseView(View):
         user_ad_groups = self.request.user.ad_group_members.all()
         user_endpoints = Endpoint.objects.filter(ad_groups__in=user_ad_groups).prefetch_related('ad_groups').distinct()
 
+        # Print the user's endpoints
+        print("User's endpoints (method, path):")
+        for endpoint in user_endpoints:
+            print(f"{endpoint.method} {endpoint.path}")
+
+        # Create a set of tuples from the user endpoints
         user_endpoint_set = {(endpoint.method.upper(), endpoint.path) for endpoint in user_endpoints}
 
-        result = all((endpoint['method'], endpoint['path']) in user_endpoint_set for endpoint in required_endpoints)
-        return result
+        # Check and print the comparison of each required endpoint with the user's endpoint set
+        all_access = True
+        for req_endpoint in required_endpoints:
+            if (req_endpoint['method'], req_endpoint['path']) in user_endpoint_set:
+                print(f"Access granted for: {req_endpoint['method']} {req_endpoint['path']}")
+            else:
+                print(f"Access denied for: {req_endpoint['method']} {req_endpoint['path']}")
+                all_access = False
+
+        return all_access
 
 
     def dispatch(self, request, *args, **kwargs):
@@ -60,10 +74,12 @@ class BaseView(View):
         return branch, commit
 
     def get_context_data(self, **kwargs):
+        from myview.models import ADGroupAssociation
+        ADGroupAssociation.sync_user_ad_groups(self.request.user)
         branch, commit = self.get_git_info()
         user_ad_groups = self.request.user.ad_group_members.all()
+        # print(len(user_ad_groups))
         user_endpoints = Endpoint.objects.filter(ad_groups__in=user_ad_groups).prefetch_related('ad_groups').distinct()
-        
         context = {
             'base_template': self.base_template,
             'git_branch': branch,
