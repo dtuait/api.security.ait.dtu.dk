@@ -201,7 +201,7 @@ class ADGroupAssociation(BaseModel):
 
 
     def sync_ad_group_members(self):
-            print("Syncing AD group members...")
+            # print("Syncing AD group members...")
             base_dn = "DC=win,DC=dtu,DC=dk"
             search_filter = "(&(objectClass=user)(memberOf={}))".format(self.escape_ldap_filter_chars(self.distinguished_name))
             # search_attributes = ['distinguishedName', 'sAMAccountName']  # Include 'sAMAccountName' here
@@ -231,7 +231,7 @@ class ADGroupAssociation(BaseModel):
 
                 
 
-                print("Syncing AD group members finished")
+                # print("Syncing AD group members finished")
 
 
             except Exception as e:

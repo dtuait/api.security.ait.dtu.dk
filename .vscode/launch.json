@@ -20,7 +20,7 @@
             "runtimeExecutable": "C:\\Program Files\\chromium\\chrome-win\\chrome.exe",
             "request": "launch",
             "type": "msedge",
-            "url": "http://localhost:6081/admin/",
+            "url": "http://localhost:6081/admin/baAT5gt52eCRX7bu58msxF5XQtbY4bye/",
             "webRoot": "${workspaceFolder}/app-main",
             "disableNetworkCache": true,
         },

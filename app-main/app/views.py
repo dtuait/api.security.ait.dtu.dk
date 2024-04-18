@@ -87,8 +87,9 @@ def msal_callback(request):
                 # Now log the user in
                 login(request, user)
 
-                from myview.models import ADGroupAssociation
-                ADGroupAssociation.sync_user_ad_groups(user)
+
+                # from myview.models import ADGroupAssociation
+                # ADGroupAssociation.sync_user_ad_groups(user.username)
 
                 
                 # # Get group members of the user 
@@ -181,29 +182,29 @@ def msal_logout(request):
 
 
 
+# # Properply deprecated
+# from myview.models import ADGroupAssociation
+# def sync_user_ad_groups(user, ad_groups, sync_ad_group_members=False):
+#     for distinguished_name in ad_groups[0]['memberOf']:
+#         # Try to find the group in the ADGroupAssociation model
+#         try:
+#             print(distinguished_name)
+#             group = ADGroupAssociation.objects.get(distinguished_name=distinguished_name)
+#             # Check if user if member of the group if not run sync ad group members
+#             if not user.ad_group_members.filter(cn=group.cn).exists() or sync_ad_group_members == True:
+#                 print("User is not a member of the group.")
+#                 # Mayne this should be async?
+#                 group.sync_ad_group_members()
+#                 print("Done syncing group members for group: ", group.cn)
+#             else:
+#                 print("Skipping sync group members for group: ", group.cn)
 
-from myview.models import ADGroupAssociation
-def sync_user_ad_groups(user, ad_groups, sync_ad_group_members=False):
-    for distinguished_name in ad_groups[0]['memberOf']:
-        # Try to find the group in the ADGroupAssociation model
-        try:
-            print(distinguished_name)
-            group = ADGroupAssociation.objects.get(distinguished_name=distinguished_name)
-            # Check if user if member of the group if not run sync ad group members
-            if not user.ad_group_members.filter(cn=group.cn).exists() or sync_ad_group_members == True:
-                print("User is not a member of the group.")
-                # Mayne this should be async?
-                group.sync_ad_group_members()
-                print("Done syncing group members for group: ", group.cn)
-            else:
-                print("Skipping sync group members for group: ", group.cn)
-
-        except ADGroupAssociation.DoesNotExist:
-            print(f"ADGroupAssociation with distinguished_name {distinguished_name} does not exist.")
+#         except ADGroupAssociation.DoesNotExist:
+#             print(f"ADGroupAssociation with distinguished_name {distinguished_name} does not exist.")
             
-        except Exception as e:
-            # If the group does not exist, create it
-            print(f"An error occurred: {e}")
+#         except Exception as e:
+#             # If the group does not exist, create it
+#             print(f"An error occurred: {e}")
 
 
 

@@ -1,7 +1,60 @@
 console.log('Frontpage JS loaded');
 
 
+setModal(`#syncAdUsersBtn`, `syncAdUsersBtnModal`, {
+    title: 'Sync AD Users',
+    body: 'Are you sure you want to sync AD Users?',
+    footer: `
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="confirmSyncAdUsersBtn">Sync</button>
+    `,
+    eventListeners: [
+        {
+            selector: '#confirmSyncAdUsersBtn',
+            event: 'click',
+            handler: async function () {
+                const button = $(this);
+                const modal = button.closest('.modal');
+                const spinner = $('#loadingSpinner');
+            
+                // Show the spinner and disable the button
+                spinner.show();
+                button.prop('disabled', true);
+            
+                let response;
+                try {                  
+                    const modalElement = document.getElementById('syncAdUsersBtnModal');
+                    const modalInstance = bootstrap.Modal.getInstance(modalElement);
+                    modalInstance.hide();
+                    const formData = new FormData();
+                    formData.append('action', 'sync_ad_groups');
+                    response = await restAjax('POST', '/myview/ajax/', formData);
+                    console.log('AD Groups Synced:', response);
+                           
+                } catch (error) {
+                    console.error('Error:', error);
+            
 
+                    // Optionally, show an error message to the user
+                } finally {
+                    // Hide the spinner and enable the button
+                    spinner.hide();
+                    button.prop('disabled', false);
+
+                    // get the modal instance and hide it
+
+                    if (response.status === 200) {
+                        displayNotification('AD Groups synced successfully!', 'success');
+                    } else if (response.error) {
+                        displayNotification(response.error, 'warning');
+                    } else {
+                        displayNotification('An unknown error occurred.', 'warning');
+                    }
+                }
+            }
+        }
+    ]	
+});
 
 
 function showTokenSubModal(token) {
@@ -52,7 +105,7 @@ setModal(`#generateTokenBtn`, `generateTokenBtnModal`, {
     body: 'The token will only be displayed once, are you sure you want to generate a new token?',
     footer: `
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-primary" id="confirmSyncAdUsersBtn">Generate New Token <span id="loadingSpinnerGenerateTokenBtn" class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="display: none;"></span></button>
+        <button type="button" class="btn btn-primary" id="confirmSyncAdUsersBtn">Generate New Token <span id="loadingSpinner" class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="display: none;"></span></button>
     `,
     eventListeners: [
         {
@@ -60,7 +113,7 @@ setModal(`#generateTokenBtn`, `generateTokenBtnModal`, {
             event: 'click',
             handler: async function () {
             const button = $(this);
-            const spinner = $('#loadingSpinnerGenerateTokenBtn');
+            const spinner = $('#loadingSpinner');
             // Show the spinner and disable the button
             spinner.show();
             button.prop('disabled', true);
@@ -107,40 +160,7 @@ setModal(`#generateTokenBtn`, `generateTokenBtnModal`, {
 
 
 async function deleteADGroupCache() {
-    const button = $(this);
-    const spinner = $('#loadingSpinnerDeleteADGroupCacheBtn');
-    // Show the spinner and disable the button
-    spinner.show();
-    button.prop('disabled', true);
-
-    let formData = new FormData();     
-    formData.append('action', 'clear_my_ad_group_cached_data');       
-    let response;
-    try {
-        response = await restAjax('POST', '/myview/ajax/', formData);
-    } catch (error) {
-        console.log('Error:', error);
-    } finally {
-        if (response.status === 200) {
-            displayNotification('Cache deleted successfully!, reloading page in 2 seconds', 'success');
-
-            // Wait for 2 seconds
-            setTimeout(function() {
-                // reload the page
-                location.reload();
-            }, 2000);
-
-
-
-
-
-
-        } else if (response.error) {
-            displayNotification(response.error, 'warning');
-        } else {
-            displayNotification('An unknown error occurred.', 'warning');
-        }
-    }
+    console.log("Hello World");
 }
 
 // using jquery add a eventlisten (click) on <button id="deleteADGroupCacheBtn" class="btn btn-primary"> that runs deleteADGroupCache()

@@ -74,3 +74,10 @@ Der er fire steder jeg sync ad_group_assoc med AD.
 2) Nr du logger ind - ADGroupAssociation.sync_user_ad_groups(username) DONE
 3) nr du opdatere i adminpanelet - ADGroupAssociation.sync_user_ad_groups(username) DONE
 4) nr du laver et endpoint kald - user.check_ad_group_assoc
+
+
+Lav en reset delete groups cache knap
+Inkluder whitelist paths til ogsaa at have cached ad groups
+
+
+Nar du har defineret ressource kald, skal du vise en bruger i mfa-reset, hvis man forsøger at tilga en ressource som ikke er ejet af brugeren

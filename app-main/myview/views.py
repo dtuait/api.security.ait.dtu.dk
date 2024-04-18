@@ -99,6 +99,18 @@ class AjaxView(BaseView):
             else:
                 # Return an error message if the user is not a superuser
                 return JsonResponse({'error': "You need superuser privileges to perform this action."}, status=403)
+
+        elif action == 'clear_my_ad_group_cached_data':
+            # return dummy response - cache has been cleared
+            from django.core.cache import cache
+            try:
+                cache.clear()
+                return JsonResponse({'success': 'Cache cleared'})
+            except Exception as e:
+                return JsonResponse({'error': str(e)})
+
+
+
         elif action == 'create_custom_token':
             if request.user.is_authenticated:
                 return self.create_custom_token(request)

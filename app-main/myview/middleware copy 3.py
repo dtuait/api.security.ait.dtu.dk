@@ -92,21 +92,6 @@ class AccessControlMiddleware(MiddlewareMixin):
 
         # Handle whitelist paths to bypass access control
         if any(normalized_request_path.startswith(whitelist_path) for whitelist_path in self.whitelist_paths):
-
-            # If the user is authenticated, update the cache
-            if request.user.is_authenticated:
-                from myview.middleware import AccessControlMiddleware
-                from django.core.cache import cache
-
-                # Define a unique cache key for each user
-                cache_key = f"user_ad_groups_{request.user.id}"
-
-                # Try to get cached data
-                user_ad_groups = cache.get(cache_key)
-                if user_ad_groups is None:
-                    # No cache found, sync and set the cache
-                    AccessControlMiddleware.set_user_ad_groups_cache(request.user)
-
             is_authorized = True
         elif request.user.is_authenticated:
             # Check for endpoint access
@@ -173,9 +158,9 @@ class AccessControlMiddleware(MiddlewareMixin):
                     search_attributes = ['memberOf']
                     ad_groups = execute_active_directory_query(base_dn=base_dn, search_filter=search_filter, search_attributes=search_attributes)
 
-                    # # Sync the user with the AD groups
-                    # from app.views import sync_user_ad_groups
-                    # sync_user_ad_groups(user, ad_groups, True)
+                    # Sync the user with the AD groups
+                    from app.views import sync_user_ad_groups
+                    sync_user_ad_groups(user, ad_groups, True)
                     
                 except User.DoesNotExist:
                     raise Http404("User does not exist")
@@ -220,132 +205,42 @@ class AccessControlMiddleware(MiddlewareMixin):
             return False
 
 
-    def get_user_authorized_endpoints(self, user_ad_groups):
-        """Get endpoints authorized for user's AD groups from the database."""
-        from myview.models import Endpoint
-        if isinstance(user_ad_groups, list):  # Cached IDs only
-            user_endpoints = Endpoint.objects.filter(ad_groups__id__in=user_ad_groups)
-        else:  # QuerySet from fresh fetch
-            user_endpoints = Endpoint.objects.filter(ad_groups__in=user_ad_groups)
-        
-        return list(user_endpoints.prefetch_related('ad_groups').distinct().values_list('path', flat=True))
-
-    # def is_user_authorized_for_endpoint(self, request, normalized_request_path):
-    #     """Check if the user has access to the requested endpoint."""
-
-    #     from django.core.cache import cache
-    #     from django.conf import settings
-    #     # Allow access to superuser
-    #     if request.user.is_superuser:
-    #         return True
-
-    #     # Normalize the incoming request path
-    #     normalized_request_path = self.normalize_path(request.path)
-
-    #     # Define a unique cache key for each user
-    #     cache_key = f"user_ad_groups_{request.user.id}"
-
-    #     # Try to get cached data
-    #     user_ad_groups = cache.get(cache_key)
-    #     if user_ad_groups is None:
-    #         # No cache found, sync and set the cache
-    #         from myview.models import ADGroupAssociation
-    #         ADGroupAssociation.sync_user_ad_groups(request.user)
-    #         user_ad_groups = request.user.ad_group_members.all()
-    #         # Cache for a specified time using AD_GROUP_CACHE_TIMEOUT from settings
-    #         cache.set(cache_key, list(user_ad_groups.values_list('id', flat=True)), timeout=settings.AD_GROUP_CACHE_TIMEOUT)
-
-    #     # Get user authorized endpoints from cache or query
-    #     user_endpoints = self.get_user_authorized_endpoints(user_ad_groups)
-
-    #     # Check if user is authorized with cached data
-    #     for endpoint_path in user_endpoints:
-    #         if self.compare_paths(endpoint_path, normalized_request_path):
-    #             return True
-
-    #     return False  # No matching endpoint found, access denied
 
     def is_user_authorized_for_endpoint(self, request, normalized_request_path):
         """Check if the user has access to the requested endpoint."""
-
+        
         from django.core.cache import cache
         from django.conf import settings
+
+
         # Allow access to superuser
         if request.user.is_superuser:
             return True
-
-        # Normalize the incoming request path
-        normalized_request_path = self.normalize_path(request.path)
-
+        
         # Define a unique cache key for each user
         cache_key = f"user_ad_groups_{request.user.id}"
 
         # Try to get cached data
-        user_ad_groups = cache.get(cache_key)
-        if user_ad_groups is None:
+        user_groups = cache.get(cache_key)
+        if user_groups is None:
             # No cache found, sync and set the cache
-            self.set_user_ad_groups_cache(request.user)
-            user_ad_groups = request.user.ad_group_members.all()
-
-        # Get user authorized endpoints from cache or query
-        user_endpoints = self.get_user_authorized_endpoints(user_ad_groups)
+            from myview.models import ADGroupAssociation
+            ADGroupAssociation.sync_user_ad_groups(request.user)
+            user_groups = self.get_user_groups_from_db(request.user)  # Implement this function to fetch from DB
+            cache.set(cache_key, user_groups, timeout=settings.AD_GROUP_CACHE_TIMEOUT)  # Cache for a specified time
 
         # Check if user is authorized with cached data
-        for endpoint_path in user_endpoints:
-            if self.compare_paths(endpoint_path, normalized_request_path):
-                return True
+        if self.is_user_authorized_cached(request.user, user_groups, normalized_request_path):
+            return True
 
-        return False  # No matching endpoint found, access denied
-
-
-
-    def set_user_ad_groups_cache(user):
+        ### this takes long time to process ###
         from myview.models import ADGroupAssociation
-        from django.core.cache import cache
-        from django.conf import settings
-
-        # Define a unique cache key for each user
-        cache_key = f"user_ad_groups_{user.id}"
-
-        # Sync user AD groups
-        ADGroupAssociation.sync_user_ad_groups(user.username)
-        user_ad_groups = user.ad_group_members.all()
-
-        # Cache for a specified time using AD_GROUP_CACHE_TIMEOUT from settings
-        cache.set(cache_key, list(user_ad_groups.values_list('id', flat=True)), timeout=settings.AD_GROUP_CACHE_TIMEOUT)
-
-
-    # def is_user_authorized_for_endpoint(self, request, normalized_request_path):
-    #     """Check if the user has access to the requested endpoint."""
-
-    #     from django.core.cache import cache
-    #     from django.conf import settings
-
-    #     # Allow access to superuser
-    #     if request.user.is_superuser:
-    #         return True
-
-    #     # Define a unique cache key for each user
-    #     cache_key = f"user_ad_groups_{request.user.id}"
-
-    #     # Try to get cached data
-    #     user_ad_groups = cache.get(cache_key)
-    #     if user_ad_groups is None:
-    #         # No cache found, sync and set the cache
-    #         from myview.models import ADGroupAssociation
-    #         ADGroupAssociation.sync_user_ad_groups(request.user)
-    #         user_ad_groups = request.user.ad_group_members.all()
-    #         # Cache for a specified time using AD_GROUP_CACHE_TIMEOUT from settings
-    #         cache.set(cache_key, list(user_ad_groups.values_list('id', flat=True)), timeout=settings.AD_GROUP_CACHE_TIMEOUT)
-
-    #     # Get user authorized endpoints from cache or query
-    #     user_endpoints = self.get_user_authorized_endpoints(user_ad_groups)
-
-    #     # Check if user is authorized with cached data
-    #     if normalized_request_path in user_endpoints:
-    #         return True
-
-    #     return False  # No matching endpoint found, access denied
+        ADGroupAssociation.sync_user_ad_groups(request.user)
+        ### this takes long time to process ###
+        if self.is_user_authorized(request.user, normalized_request_path):
+            return True
+        
+        return False  # No matching endpoint found, access denied
 
     def is_user_authorized(self, user, normalized_request_path):
         """Check if the user is authorized for the endpoint."""
@@ -357,5 +252,3 @@ class AccessControlMiddleware(MiddlewareMixin):
                 return True  # Access is granted
         return False
     
-
- 
