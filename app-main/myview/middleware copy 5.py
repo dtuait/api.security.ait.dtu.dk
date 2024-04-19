@@ -65,221 +65,6 @@ class AccessControlMiddleware(MiddlewareMixin):
         return match
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    def handle_debug_mode(self, request, normalized_request_path):
-        """Handles user authentication in DEBUG mode without actual credentials."""
-        # Use Django's get_user_model to support custom user models
-        User = get_user_model()
-
-        # Prevent starting a new session for AJAX calls in '/myview/ajax', 
-        # which could delete session variables.
-        if normalized_request_path.startswith('/myview/ajax'):
-            return  # Just return, let the main __call__ method continue execution
-
-        # Logic for handling admin login page access
-        if normalized_request_path.startswith('/admin'):
-            # If a user is already logged in but is not the admin, log them out
-            if request.user.is_authenticated and request.user.username != 'admin':
-                logout(request)
-
-            # If no user is authenticated, log in as the admin user
-            if not request.user.is_authenticated:
-                try:
-                    admin_user = User.objects.get(username='admin')
-                except User.DoesNotExist:
-                    raise Http404("Admin user does not exist")
-
-                admin_user.backend = 'django.contrib.auth.backends.ModelBackend'  # Specify the backend
-                login(request, admin_user)  # Log in as admin user
-
-        # if /myview/ is requested, log in as the 'adm-vicre' user
-        elif normalized_request_path.startswith('/myview/'):
-            # If a user is already logged in but is not 'adm-vicre', log them out
-            # if request.user.is_authenticated and request.user.username == 'adm-vicre':
-            logout(request)
-
-            # If no user is authenticated, log in as the 'adm-vicre' user
-            if not request.user.is_authenticated:
-
-
-                try:
-
-                    user = User.objects.get(username='adm-vicre')
-                    user.backend = 'django.contrib.auth.backends.ModelBackend'
-                    login(request, user)  # Log in as the 'adm-vicre' user
-
-                except User.DoesNotExist:
-                    raise Http404("User does not exist")
-
-
-                
-                                
-
-            # After handling admin access, let the main __call__ method continue execution
-            return
-
-
-
-
-        # For other paths in debug mode, you might want to mock or auto-login a default user
-        # This example auto-logs in a user named 'adm-vicre', similar to your other logic
-        else:
-            # Log out the current user if they are not 'adm-vicre'
-            if request.user.is_authenticated and request.user.username != 'adm-vicre':
-                logout(request)
-
-            # Attempt to get or create the 'adm-vicre' user
-            try:
-                user = User.objects.get(username='adm-vicre')
-            except User.DoesNotExist:
-                raise Http404("User does not exist")
-
-            # Set the backend and log in the 'adm-vicre' user
-            user.backend = 'django.contrib.auth.backends.ModelBackend'
-            login(request, user)  # Set the mocked user as the authenticated user on the request
-
-    def authenticate_by_token(self, request, token):
-        """Authenticate user based on provided token."""
-        try:
-            user = Token.objects.get(key=token).user
-            request.user = user
-            return True
-        except ObjectDoesNotExist:
-            logger = logging.getLogger(__name__)
-            logger.info(f'Invalid token access attempt. Path: {request.path}, Token: {token[:10]}')
-            return False
-
-
-    def get_user_authorized_endpoints(self, user_ad_groups):
-        """Get endpoints authorized for user's AD groups from the database."""
-        from myview.models import Endpoint
-        if isinstance(user_ad_groups, list):  # Cached IDs only
-            user_endpoints = Endpoint.objects.filter(ad_groups__id__in=user_ad_groups)
-        else:  # QuerySet from fresh fetch
-            user_endpoints = Endpoint.objects.filter(ad_groups__in=user_ad_groups)
-        
-        return list(user_endpoints.prefetch_related('ad_groups').distinct().values_list('path', flat=True))
-
-
-
-    def is_user_authorized_for_endpoint(self, request, normalized_request_path):
-        """Check if the user has access to the requested endpoint."""
-
-        from django.core.cache import cache
-        from django.conf import settings
-        # Allow access to superuser
-        if request.user.is_superuser:
-            return True
-
-        # Normalize the incoming request path
-        normalized_request_path = self.normalize_path(request.path)
-
-        # Define a unique cache key for each user
-        cache_key = f"user_ad_groups_{request.user.id}"
-
-        # Try to get cached data
-        user_ad_groups = cache.get(cache_key)
-        if user_ad_groups is None:
-            # No cache found, sync and set the cache
-            self.set_user_ad_groups_cache(request.user)
-            user_ad_groups = request.user.ad_group_members.all()
-
-        # Get user authorized endpoints from cache or query
-        user_endpoints = self.get_user_authorized_endpoints(user_ad_groups)
-
-        # Check if user is authorized with cached data
-        for endpoint_path in user_endpoints:
-            if self.compare_paths(endpoint_path, normalized_request_path):
-                return True
-
-        return False  # No matching endpoint found, access denied
-
-
-
-    def set_user_ad_groups_cache(user):
-        from myview.models import ADGroupAssociation
-        from django.core.cache import cache
-        from django.conf import settings
-
-        # Skip if user.username is 'admin'
-        if user.username != 'admin':
-            # Define a unique cache key for each user
-            cache_key = f"user_ad_groups_{user.id}"
-
-            # Sync user AD groups
-            ADGroupAssociation.sync_user_ad_groups(user.username)
-            user_ad_groups = user.ad_group_members.all()
-
-            # Cache for a specified time using AD_GROUP_CACHE_TIMEOUT from settings
-            cache.set(cache_key, list(user_ad_groups.values_list('id', flat=True)), timeout=settings.AD_GROUP_CACHE_TIMEOUT)
-
-
-
-    def is_user_authorized(self, user, normalized_request_path):
-        """Check if the user is authorized for the endpoint."""
-        ad_groups = user.ad_group_members.all()
-        endpoints = Endpoint.objects.filter(ad_groups__in=ad_groups)
-        for endpoint in endpoints:
-            endpoint_path = self.normalize_path(endpoint.path)
-            if self.compare_paths(endpoint_path, normalized_request_path):
-                return True  # Access is granted
-        return False
-    
-
- 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     def __call__(self, request):
         # Normalize request path for consistent handling
         normalized_request_path = self.normalize_path(request.path)
@@ -337,3 +122,240 @@ class AccessControlMiddleware(MiddlewareMixin):
             return redirect('/login/')
 
 
+
+
+
+
+    def handle_debug_mode(self, request, normalized_request_path):
+        """Handles user authentication in DEBUG mode without actual credentials."""
+        # Use Django's get_user_model to support custom user models
+        User = get_user_model()
+
+        # Prevent starting a new session for AJAX calls in '/myview/ajax', 
+        # which could delete session variables.
+        if normalized_request_path.startswith('/myview/ajax'):
+            return  # Just return, let the main __call__ method continue execution
+
+        # Logic for handling admin login page access
+        if normalized_request_path.startswith('/admin'):
+            # If a user is already logged in but is not the admin, log them out
+            if request.user.is_authenticated and request.user.username != 'admin':
+                logout(request)
+
+            # If no user is authenticated, log in as the admin user
+            if not request.user.is_authenticated:
+                try:
+                    admin_user = User.objects.get(username='admin')
+                except User.DoesNotExist:
+                    raise Http404("Admin user does not exist")
+
+                admin_user.backend = 'django.contrib.auth.backends.ModelBackend'  # Specify the backend
+                login(request, admin_user)  # Log in as admin user
+
+        # if /myview/ is requested, log in as the 'adm-vicre' user
+        elif normalized_request_path.startswith('/myview/'):
+            # If a user is already logged in but is not 'adm-vicre', log them out
+            # if request.user.is_authenticated and request.user.username == 'adm-vicre':
+            logout(request)
+
+            # If no user is authenticated, log in as the 'adm-vicre' user
+            if not request.user.is_authenticated:
+
+
+                try:
+
+                    
+                    user = User.objects.get(username='adm-vicre')
+
+                    from active_directory.services import execute_active_directory_query
+                    base_dn = "DC=win,DC=dtu,DC=dk"
+                    search_filter = f"(sAMAccountName={user.username})"
+                    search_attributes = ['memberOf']
+                    ad_groups = execute_active_directory_query(base_dn=base_dn, search_filter=search_filter, search_attributes=search_attributes)
+
+                    # # Sync the user with the AD groups
+                    # from app.views import sync_user_ad_groups
+                    # sync_user_ad_groups(user, ad_groups, True)
+                    
+                except User.DoesNotExist:
+                    raise Http404("User does not exist")
+
+                user.backend = 'django.contrib.auth.backends.ModelBackend'
+                login(request, user)  # Log in as the 'adm-vicre' user
+                
+                                
+
+            # After handling admin access, let the main __call__ method continue execution
+            return
+
+
+
+
+        # For other paths in debug mode, you might want to mock or auto-login a default user
+        # This example auto-logs in a user named 'adm-vicre', similar to your other logic
+        else:
+            # Log out the current user if they are not 'adm-vicre'
+            if request.user.is_authenticated and request.user.username != 'adm-vicre':
+                logout(request)
+
+            # Attempt to get or create the 'adm-vicre' user
+            try:
+                user = User.objects.get(username='adm-vicre')
+            except User.DoesNotExist:
+                raise Http404("User does not exist")
+
+            # Set the backend and log in the 'adm-vicre' user
+            user.backend = 'django.contrib.auth.backends.ModelBackend'
+            login(request, user)  # Set the mocked user as the authenticated user on the request
+
+    def authenticate_by_token(self, request, token):
+        """Authenticate user based on provided token."""
+        try:
+            user = Token.objects.get(key=token).user
+            request.user = user
+            return True
+        except ObjectDoesNotExist:
+            logger = logging.getLogger(__name__)
+            logger.info(f'Invalid token access attempt. Path: {request.path}, Token: {token[:10]}')
+            return False
+
+
+    def get_user_authorized_endpoints(self, user_ad_groups):
+        """Get endpoints authorized for user's AD groups from the database."""
+        from myview.models import Endpoint
+        if isinstance(user_ad_groups, list):  # Cached IDs only
+            user_endpoints = Endpoint.objects.filter(ad_groups__id__in=user_ad_groups)
+        else:  # QuerySet from fresh fetch
+            user_endpoints = Endpoint.objects.filter(ad_groups__in=user_ad_groups)
+        
+        return list(user_endpoints.prefetch_related('ad_groups').distinct().values_list('path', flat=True))
+
+    # def is_user_authorized_for_endpoint(self, request, normalized_request_path):
+    #     """Check if the user has access to the requested endpoint."""
+
+    #     from django.core.cache import cache
+    #     from django.conf import settings
+    #     # Allow access to superuser
+    #     if request.user.is_superuser:
+    #         return True
+
+    #     # Normalize the incoming request path
+    #     normalized_request_path = self.normalize_path(request.path)
+
+    #     # Define a unique cache key for each user
+    #     cache_key = f"user_ad_groups_{request.user.id}"
+
+    #     # Try to get cached data
+    #     user_ad_groups = cache.get(cache_key)
+    #     if user_ad_groups is None:
+    #         # No cache found, sync and set the cache
+    #         from myview.models import ADGroupAssociation
+    #         ADGroupAssociation.sync_user_ad_groups(request.user)
+    #         user_ad_groups = request.user.ad_group_members.all()
+    #         # Cache for a specified time using AD_GROUP_CACHE_TIMEOUT from settings
+    #         cache.set(cache_key, list(user_ad_groups.values_list('id', flat=True)), timeout=settings.AD_GROUP_CACHE_TIMEOUT)
+
+    #     # Get user authorized endpoints from cache or query
+    #     user_endpoints = self.get_user_authorized_endpoints(user_ad_groups)
+
+    #     # Check if user is authorized with cached data
+    #     for endpoint_path in user_endpoints:
+    #         if self.compare_paths(endpoint_path, normalized_request_path):
+    #             return True
+
+    #     return False  # No matching endpoint found, access denied
+
+    def is_user_authorized_for_endpoint(self, request, normalized_request_path):
+        """Check if the user has access to the requested endpoint."""
+
+        from django.core.cache import cache
+        from django.conf import settings
+        # Allow access to superuser
+        if request.user.is_superuser:
+            return True
+
+        # Normalize the incoming request path
+        normalized_request_path = self.normalize_path(request.path)
+
+        # Define a unique cache key for each user
+        cache_key = f"user_ad_groups_{request.user.id}"
+
+        # Try to get cached data
+        user_ad_groups = cache.get(cache_key)
+        if user_ad_groups is None:
+            # No cache found, sync and set the cache
+            self.set_user_ad_groups_cache(request.user)
+            user_ad_groups = request.user.ad_group_members.all()
+
+        # Get user authorized endpoints from cache or query
+        user_endpoints = self.get_user_authorized_endpoints(user_ad_groups)
+
+        # Check if user is authorized with cached data
+        for endpoint_path in user_endpoints:
+            if self.compare_paths(endpoint_path, normalized_request_path):
+                return True
+
+        return False  # No matching endpoint found, access denied
+
+
+
+    def set_user_ad_groups_cache(user):
+        from myview.models import ADGroupAssociation
+        from django.core.cache import cache
+        from django.conf import settings
+
+        # Define a unique cache key for each user
+        cache_key = f"user_ad_groups_{user.id}"
+
+        # Sync user AD groups
+        ADGroupAssociation.sync_user_ad_groups(user.username)
+        user_ad_groups = user.ad_group_members.all()
+
+        # Cache for a specified time using AD_GROUP_CACHE_TIMEOUT from settings
+        cache.set(cache_key, list(user_ad_groups.values_list('id', flat=True)), timeout=settings.AD_GROUP_CACHE_TIMEOUT)
+
+
+    # def is_user_authorized_for_endpoint(self, request, normalized_request_path):
+    #     """Check if the user has access to the requested endpoint."""
+
+    #     from django.core.cache import cache
+    #     from django.conf import settings
+
+    #     # Allow access to superuser
+    #     if request.user.is_superuser:
+    #         return True
+
+    #     # Define a unique cache key for each user
+    #     cache_key = f"user_ad_groups_{request.user.id}"
+
+    #     # Try to get cached data
+    #     user_ad_groups = cache.get(cache_key)
+    #     if user_ad_groups is None:
+    #         # No cache found, sync and set the cache
+    #         from myview.models import ADGroupAssociation
+    #         ADGroupAssociation.sync_user_ad_groups(request.user)
+    #         user_ad_groups = request.user.ad_group_members.all()
+    #         # Cache for a specified time using AD_GROUP_CACHE_TIMEOUT from settings
+    #         cache.set(cache_key, list(user_ad_groups.values_list('id', flat=True)), timeout=settings.AD_GROUP_CACHE_TIMEOUT)
+
+    #     # Get user authorized endpoints from cache or query
+    #     user_endpoints = self.get_user_authorized_endpoints(user_ad_groups)
+
+    #     # Check if user is authorized with cached data
+    #     if normalized_request_path in user_endpoints:
+    #         return True
+
+    #     return False  # No matching endpoint found, access denied
+
+    def is_user_authorized(self, user, normalized_request_path):
+        """Check if the user is authorized for the endpoint."""
+        ad_groups = user.ad_group_members.all()
+        endpoints = Endpoint.objects.filter(ad_groups__in=ad_groups)
+        for endpoint in endpoints:
+            endpoint_path = self.normalize_path(endpoint.path)
+            if self.compare_paths(endpoint_path, normalized_request_path):
+                return True  # Access is granted
+        return False
+    
+
+ 

@@ -92,33 +92,13 @@
                 <!-- Other footer content -->
             </div>
             <div class="box-right">
-                <!-- Trigger modal button -->
-                <button type="button" class="btn btn-info" data-bs-toggle="modal" data-bs-target="#sourceCodeInfoModal">
-                    Source Code Info
-                </button>
+
             </div>
         </div>
     </footer>
 
 
-<!-- Source Code Info Modal -->
-<div class="modal fade" id="sourceCodeInfoModal" tabindex="-1" aria-labelledby="sourceCodeInfoModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title" id="sourceCodeInfoModalLabel">Source Code Information</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-          <p>Current Branch: {{ git_branch }}</p>
-          <p>Last Commit: {{ git_commit }}</p>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-        </div>
-      </div>
-    </div>
-  </div>
+
 
 
 </body>

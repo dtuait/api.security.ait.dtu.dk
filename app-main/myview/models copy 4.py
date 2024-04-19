@@ -93,12 +93,16 @@ class ADGroupAssociation(BaseModel):
         else:
             ad_groups = set()
 
+        # Fetch the current AD group associations from Django
         current_associations = set(user.ad_group_members.values_list('distinguished_name', flat=True))
+
+        # Determine which groups to add and which to remove
         groups_to_add = ad_groups - current_associations
         groups_to_remove = current_associations - ad_groups
 
         # Add new group associations
         for group_dn in groups_to_add:
+            # you can only add a group if the group pang dang already exist in the database
             group, created = ADGroupAssociation.objects.get_or_create(distinguished_name=group_dn)
             group.members.add(user)
 
@@ -107,14 +111,23 @@ class ADGroupAssociation(BaseModel):
             group = ADGroupAssociation.objects.get(distinguished_name=group_dn)
             group.members.remove(user)
 
-        # Remove all groups not associated with any endpoint
-        for group in ADGroupAssociation.objects.all():
-            if not group.endpoints.exists():
-                group.delete()
+        # Remove all groups that are no longer associated with any endpoint 
+        # class Endpoint(BaseModel):
+        #     path = models.CharField(max_length=255, unique=True)
+        #     method = models.CharField(max_length=6, blank=True, default='')
+        #     ad_groups = models.ManyToManyField('ADGroupAssociation', related_name='endpoints', blank=True)
+        #     ad_organizational_units = models.ManyToManyField('ADOrganizationalUnitAssociation', related_name='endpoints', blank=True)
+        # class ADGroupAssociation(BaseModel):
+            # cn = models.CharField(max_length=255, verbose_name="Common Name")
+            # canonical_name = models.CharField(max_length=1024)
+            # distinguished_name = models.CharField(max_length=1024)
+            # members = models.ManyToManyField(User, related_name='ad_group_members')
+            # def __str__(self):
+                # return self.cn
+
 
         user.save()
-        user.refresh_from_db()
-
+        user.refresh_from_db()    
                     
 
     @staticmethod

@@ -86,35 +86,30 @@ class ADGroupAssociation(BaseModel):
         base_dn = "DC=win,DC=dtu,DC=dk"
         search_filter = f"(sAMAccountName={username})"
         search_attributes = ['memberOf']
-        result = execute_active_directory_query(base_dn=base_dn, search_filter=search_filter, search_attributes=search_attributes)
+        ad_groups = execute_active_directory_query(base_dn=base_dn, search_filter=search_filter, search_attributes=search_attributes)
+        ad_groups_association = list(user.ad_group_members.all())
+        # ad_groups_association = user.ad_group_members.all()
+        # ad_groups_association = list(user.ad_group_members.all())
+        ad_groups_set = set(group['memberOf'][0] for group in ad_groups)
+        
 
-        if result and 'memberOf' in result[0]:
-            ad_groups = set(result[0]['memberOf'])
-        else:
-            ad_groups = set()
+        # list(ad_groups_set)[0] >> 'CN=SUS-MFA-Reset,OU=IT,OU=Groups,OU=SUS,OU=Institutter,DC=win,DC=dtu,DC=dk'
 
-        current_associations = set(user.ad_group_members.values_list('distinguished_name', flat=True))
-        groups_to_add = ad_groups - current_associations
-        groups_to_remove = current_associations - ad_groups
+        # remove all users af ad_group_association that does not exist in ad_groups_set
+        for group in ad_groups_association:
+            if group.distinguished_name not in ad_groups_set:
+                user.ad_group_members.remove(group)
 
-        # Add new group associations
-        for group_dn in groups_to_add:
-            group, created = ADGroupAssociation.objects.get_or_create(distinguished_name=group_dn)
-            group.members.add(user)
+        # Convert the QuerySet to a list again to get the updated data
+        ad_groups_association = list(user.ad_group_members.all())
 
-        # Remove outdated group associations
-        for group_dn in groups_to_remove:
-            group = ADGroupAssociation.objects.get(distinguished_name=group_dn)
-            group.members.remove(user)
+        for group in ad_groups_association:
+            if group.distinguished_name in ad_groups_set:
+                ADGroupAssociation.sync_ad_group_members(group)
+                ADGroupAssociation.delete_unused_groups()         
 
-        # Remove all groups not associated with any endpoint
-        for group in ADGroupAssociation.objects.all():
-            if not group.endpoints.exists():
-                group.delete()
-
-        user.save()
-        user.refresh_from_db()
-
+        # refresh and update the database or models here so next lines of code gets the latest data
+        user.refresh_from_db()    
                     
 
     @staticmethod

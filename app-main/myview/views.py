@@ -91,16 +91,7 @@ class AjaxView(BaseView):
         # Extract an 'action' parameter from the POST request to determine which method to call
         action = request.POST.get('action')
 
-        # Check if the action matches one of your AJAX methods
-        if action == 'sync_ad_groups':
-
-            if request.user.is_superuser:
-                return self.sync_ad_groups(request)
-            else:
-                # Return an error message if the user is not a superuser
-                return JsonResponse({'error': "You need superuser privileges to perform this action."}, status=403)
-
-        elif action == 'clear_my_ad_group_cached_data':
+        if action == 'clear_my_ad_group_cached_data':
             # return dummy response - cache has been cleared
             from django.core.cache import cache
             try:
@@ -209,10 +200,6 @@ class AjaxView(BaseView):
 
 
 
-
-
-# from django.contrib.auth.decorators import login_required
-# from django.utils.decorators import method_decorator
 
 
 @method_decorator(login_required, name='dispatch')
