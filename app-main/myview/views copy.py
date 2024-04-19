@@ -28,19 +28,19 @@ class BaseView(View):
 
     def user_has_mfa_reset_access(self):
         required_endpoints = [
-            {'method': 'GET', 'path': '/graph/v1.0/get-user/{user}'},
-            {'method': 'GET', 'path': '/graph/v1.0/list/{user_id__or__user_principalname}/authentication-methods'},
-            {'method': 'DELETE', 'path': '/graph/v1.0/users/{user_id__or__user_principalname}/authentication-methods/{microsoft_authenticator_method_id}'},
-            {'method': 'GET', 'path': '/active-directory/v1.0/query'}
+            "/graph/v1.0/get-user/{user}",
+            "/graph/v1.0/list/{user_id_or_user_principalname}/authentication-methods",
+            "/graph/v1.0/users/{user_id_or_user_principalname}/authentication-methods/{microsoft_authenticator_method_id}",
+            "/active-directory/v1.0/query"
         ]
 
-        # Fetch user's ad groups and user endpoints
+
+
         user_ad_groups = self.request.user.ad_group_members.all()
         user_endpoints = Endpoint.objects.filter(ad_groups__in=user_ad_groups).prefetch_related('ad_groups').distinct()
-
-        user_endpoint_set = {(endpoint.method.upper(), endpoint.path) for endpoint in user_endpoints}
-
-        result = all((endpoint['method'], endpoint['path']) in user_endpoint_set for endpoint in required_endpoints)
+        # user_endpoints[0].method >> 'get'
+        # user_endpoints[0].method >> '/graph/v1.0/get-user/{user}'
+        result = all(endpoint in user_endpoints for endpoint in required_endpoints)
         return result
 
 
@@ -60,10 +60,12 @@ class BaseView(View):
         return branch, commit
 
     def get_context_data(self, **kwargs):
+        from myview.models import ADGroupAssociation
+        ADGroupAssociation.sync_user_ad_groups(self.request.user)
         branch, commit = self.get_git_info()
         user_ad_groups = self.request.user.ad_group_members.all()
+        # print(len(user_ad_groups))
         user_endpoints = Endpoint.objects.filter(ad_groups__in=user_ad_groups).prefetch_related('ad_groups').distinct()
-        
         context = {
             'base_template': self.base_template,
             'git_branch': branch,
@@ -91,17 +93,14 @@ class AjaxView(BaseView):
         # Extract an 'action' parameter from the POST request to determine which method to call
         action = request.POST.get('action')
 
-        if action == 'clear_my_ad_group_cached_data':
-            # return dummy response - cache has been cleared
-            from django.core.cache import cache
-            try:
-                cache.clear()
-                return JsonResponse({'success': 'Cache cleared'})
-            except Exception as e:
-                return JsonResponse({'error': str(e)})
+        # Check if the action matches one of your AJAX methods
+        if action == 'sync_ad_groups':
 
-
-
+            if request.user.is_superuser:
+                return self.sync_ad_groups(request)
+            else:
+                # Return an error message if the user is not a superuser
+                return JsonResponse({'error': "You need superuser privileges to perform this action."}, status=403)
         elif action == 'create_custom_token':
             if request.user.is_authenticated:
                 return self.create_custom_token(request)
@@ -200,6 +199,10 @@ class AjaxView(BaseView):
 
 
 
+
+
+# from django.contrib.auth.decorators import login_required
+# from django.utils.decorators import method_decorator
 
 
 @method_decorator(login_required, name='dispatch')

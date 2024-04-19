@@ -1,9 +1,9 @@
 from django.contrib import admin
 from django.http import HttpRequest
 from django.contrib.admin.widgets import FilteredSelectMultiple
-
+from django.db import transaction
 from django.db import models
-
+from myview.models import ADGroupAssociation
 import logging
 
 logger = logging.getLogger(__name__)
@@ -20,6 +20,7 @@ try:
         search_fields = ('cn', 'canonical_name')  # Fields to include in the search box in the admin
         filter_horizontal = ('members',)  # Provides a more user-friendly widget for ManyToMany relations
         readonly_fields = ('cn', 'canonical_name', 'distinguished_name')  # Fields that should be read-only in the admin
+        list_per_page = 10
 
         def get_queryset(self, request):
             qs = super().get_queryset(request)
@@ -28,18 +29,44 @@ try:
         def has_delete_permission(self, request, obj=None):
             return False
 
-        def save_related(self, request, form, formsets, change):
-            super().save_related(request, form, formsets, change)
-            # After saving the form and related objects, sync the group members
-            if 'members' in form.changed_data:
-                form.instance.sync_ad_group_members()
-
-
-
-
 except ImportError:
     print("ADGroup model is not available for registration in the admin site.")
     pass
+
+
+
+
+try:
+    from .models import ADOrganizationalUnitAssociation
+    from django.db.models import Q
+
+
+    class ADOrganizationalUnitAssociationAdmin(admin.ModelAdmin):
+        list_display = ('distinguished_name',)
+        search_fields = ('distinguished_name',)
+        # list_filter = ('distinguished_name',)
+        list_per_page = 10  # Display 10 objects per page
+
+        def get_queryset(self, request):
+            qs = super().get_queryset(request)
+            return qs.prefetch_related('members')
+
+        def get_search_results(self, request, queryset, search_term):
+            queryset, use_distinct = super().get_search_results(request, queryset, search_term)
+            queryset = queryset.filter(Q(distinguished_name__startswith=search_term))
+            return queryset, use_distinct
+
+        def has_delete_permission(self, request, obj=None):
+            return False
+
+
+    admin.site.register(ADOrganizationalUnitAssociation, ADOrganizationalUnitAssociationAdmin)
+
+except ImportError:
+    print("ADOU model is not available for registration in the admin site.")
+    pass
+
+
 
 
 
@@ -48,50 +75,88 @@ except ImportError:
 try:
     from .models import Endpoint
 
+
+
+
+
+
     @admin.register(Endpoint)
     class EndpointAdmin(admin.ModelAdmin):
         list_display = ('path', 'method')
         search_fields = ('path', 'method')
-        filter_horizontal = ('ad_groups',)  # Provides a more user-friendly widget for ManyToMany relations
+        filter_horizontal = ('ad_groups', 'ad_organizational_units')  # Add 'ad_organizational_units' here
         readonly_fields = ('path', 'method')
 
-        # Use custom formfield for ManyToMany field to include filter interface
         formfield_overrides = {
-            models.ManyToManyField: {'widget': FilteredSelectMultiple("Ad groups", is_stacked=False)},
+            models.ManyToManyField: {'widget': FilteredSelectMultiple("Relationships", is_stacked=False)},
         }
+
+        def save_model(self, request, obj, form, change):
+
+            # Sync members for each group in ad_groups
+            ad_groups = form.cleaned_data.get('ad_groups', [])
+            for group in ad_groups:
+                ADGroupAssociation.sync_ad_group_members(group)
+                # get or create the group
+                try:
+                    ad_group_assoc, created = ADGroupAssociation.objects.get_or_create(
+                        cn=group.cn,
+                        canonical_name=group.canonical_name,
+                        defaults={'distinguished_name': group.distinguished_name}
+                    )
+                except Exception as e:
+                    print(f"Error creating ADGroupAssociation: {e}")
+                # print ad_group_assoc creted true or false
+                print(created)
+                # add the group to the endpoint
+                obj.ad_groups.add(ad_group_assoc)
+
+            # Save the object again to save the changes to ad_groups
+            obj.save()
+            
+            ADGroupAssociation.delete_unused_groups()
+           
+        # def delete_unused_groups(self):            
+            # unused_ad_groups = ADGroupAssociation.objects.filter(endpoints__isnull=True)
+            # unused_ad_groups.delete()
 
         def formfield_for_manytomany(self, db_field, request, **kwargs):
             if db_field.name == "ad_groups":
-                selected_ad_groups = request.session.get('ajax_change_form_update_form_ad_groups', [])
+                return self._custom_field_logic(db_field, request, ADGroupAssociation, **kwargs)
+            elif db_field.name == "ad_organizational_units":
+                return self._custom_field_logic(db_field, request, ADOrganizationalUnitAssociation, **kwargs)
+            return super().formfield_for_manytomany(db_field, request, **kwargs)
 
-                associated_ad_groups = ADGroupAssociation.objects.filter(endpoints__isnull=False).distinct()
+        def _custom_field_logic(self, db_field, request, model_class, **kwargs):
+            selected_items = request.session.get(f'ajax_change_form_update_form_{db_field.name}', [])
+            associated_items = model_class.objects.filter(endpoints__isnull=False).distinct()
+            
+            for item in selected_items:
+                ad_group_assoc, created = ADGroupAssociation.objects.get_or_create(
+                    cn=item['cn'][0],
+                    canonical_name=item['canonicalName'][0],
+                    defaults={'distinguished_name': item['distinguishedName'][0]}
+                )
 
-                # Initial queryset based on selected ad groups or all associated groups
-                if selected_ad_groups:
-                    distinguishedNames = [group['distinguishedName'][0] for group in selected_ad_groups]
-                    initial_queryset = db_field.related_model.objects.filter(distinguished_name__in=distinguishedNames)
-                else:
+            if selected_items:
+                distinguished_names = [item['distinguishedName'][0] for item in selected_items]
+                initial_queryset = db_field.related_model.objects.filter(distinguished_name__in=distinguished_names)
+            else:
+                initial_queryset = db_field.related_model.objects.all()[:100]
 
-                    initial_queryset = db_field.related_model.objects.all()[:100]
+            initial_ids = set(initial_queryset.values_list('id', flat=True))
+            associated_ids = set(associated_items.values_list('id', flat=True))
+            all_ids = initial_ids | associated_ids
+            combined_queryset = db_field.related_model.objects.filter(id__in=all_ids).distinct()
 
-
-                # Get IDs from both querysets
-                initial_ids = set(initial_queryset.values_list('id', flat=True))
-                associated_ids = set(associated_ad_groups.values_list('id', flat=True))
-
-                # Combine IDs and filter for unique objects
-                all_ids = initial_ids | associated_ids
-                combined_queryset = db_field.related_model.objects.filter(id__in=all_ids).distinct()
-
-                kwargs["queryset"] = combined_queryset
-
-                return super().formfield_for_manytomany(db_field, request, **kwargs)
+            kwargs["queryset"] = combined_queryset
+            return super().formfield_for_manytomany(db_field, request, **kwargs)
 
         def has_delete_permission(self, request, obj=None):
             return False
+        
+
 
 except ImportError:
     print("Endpoint model is not available for registration in the admin site.")
     pass
-
-

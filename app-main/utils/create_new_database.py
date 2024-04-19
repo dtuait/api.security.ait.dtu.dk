@@ -11,7 +11,7 @@ from active_directory.scripts.active_directory_query import active_directory_que
 import string
 from django.contrib.auth.hashers import make_password, check_password
 import random
-from myview.models import ADGroupAssociation
+from myview.models import ADGroupAssociation, Endpoint, ADOrganizationalUnitAssociation
 from utils.cronjob_update_endpoints import updateEndpoints
 import shutil
 from django.contrib.auth.models import User
@@ -23,22 +23,38 @@ class Command(BaseCommand):
 
         try:
 
-      
+            
+            # # before deleting the database, we should extract the ad_group_associations
+            # # Extract the associations into a dictionary
+            # associations = {}
+            # for group in ADGroupAssociation.objects.prefetch_related('endpoints'):
+            #     associations[group.cn] = [endpoint.id for endpoint in group.endpoints.all()]
+
+
             self._reset_database(create_back=False)
             self.startmake_migrations(None,None)
             self.startmigrate(None,None)
             self.createsuperuser(None,None)
-            self.createnormalusers(None,None)
-            self.createalladgroups(None,None)
+            # self.createnormalusers(None,None)
+            # self.createalladgroups(None,None)
+            # self.createallous(None,None)
+
+            # # Restore the associations
+            #  #           Reapply the associations
+            # for group in ADGroupAssociation.objects.filter(cn__in=associations.keys()):
+            #     group.endpoints.set(Endpoint.objects.filter(id__in=associations[group.cn]))
+
+
+
 
             ##### 
-            django_init_token = os.getenv("DJANGO_ADM_VICRE_INIT_TOKEN")
-            user = User.objects.get(username='adm-vicre')
-            user.set_my_token(django_init_token)
+            # django_init_token = os.getenv("DJANGO_ADM_VICRE_INIT_TOKEN")
+            # user = User.objects.get(username='adm-vicre')
+            # user.set_my_token(django_init_token) 
 
             # django_init_token = os.getenv("DJANGO_ADM_DAST_INIT_TOKEN")
             # user = User.objects.get(username='adm-byg-dast')
-            # user.set_my_token(django_init_token)
+            # user.set_my_token(django_init_token) # function has been deleted 
             
             # try:
             #     # Get the user
@@ -56,6 +72,7 @@ class Command(BaseCommand):
             # Token.objects.create(user=user, key=django_init_token)
 
             #######
+            print("Update endpoints")
             updateEndpoints()
             
 
@@ -130,8 +147,14 @@ class Command(BaseCommand):
 
 
     def createalladgroups(self, *args, **options):
+
         ADGroupAssociation.sync_ad_groups(self)
         print("done creating AD groups")
+
+    def createallous(self, *args, **options):
+            
+        ADOrganizationalUnitAssociation.sync_ad_ous(self)
+        print("done creating OUs")
 
     def startmake_migrations(self, *args, **options):
         os.system('python /usr/src/project/app-main/manage.py makemigrations')

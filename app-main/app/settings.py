@@ -24,6 +24,11 @@ load_dotenv(dotenv_path=dotenv_path)
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# settings.py
+
+# AD group cache timeout (15 minutes)
+AD_GROUP_CACHE_TIMEOUT = 15 * 60  # This
+
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/

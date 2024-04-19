@@ -19,20 +19,17 @@
 {% block main-content %}
 
 
-<div class="container my-4">    
-    <div class="container my-4">
-        <!-- New button to generate a new token -->
-        <i class="bi bi-question-circle-fill" data-bs-toggle="tooltip" data-bs-placement="right" title="Forexample if added yourself to a group after you login. Cache remains 15 minutes" data-bs-html="true"></i>
-        <button id="deleteADGroupCacheBtn" class="btn btn-primary">
-            Delete Cache <span id="loadingSpinnerDeleteADGroupCacheBtn" class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="display: none;"></span>
-        </button>
-    </div>
-    <div class="container my-4">
+<div class="container my-4">        
+
+    <div class="container my-4"></div>
         <!-- New button to generate a new token -->
         <i class="bi bi-question-circle-fill" data-bs-toggle="tooltip" data-bs-placement="right" title="The token will only be displayed once!" data-bs-html="true"></i>
         <button id="generateTokenBtn" class="btn btn-primary">
             Generate New Token
         </button>
+
+        <!-- Element to display the token -->
+        <pre id="tokenDisplay" style="white-space: pre-wrap; word-wrap: break-word;"></pre>
     </div>
 
     <div class="container my-4">
@@ -52,15 +49,14 @@
                         <th scope="row">{{ forloop.counter }}</th>
                         <td>{{ endpoint.method }} {{ endpoint.path }}</td>
                         <td>
-                            {% for ad_group in endpoint.ad_groups.all %}  <!-- Adjust this to access the endpoint's specific groups -->
-                                {{ ad_group.cn }}
-                                {% if not forloop.last %}, {% endif %}
+                            {% for ad_group in user_ad_groups %}
+                            {{ ad_group.cn }}
+                            {% if not forloop.last %}, {% endif %}
                             {% endfor %}
                         </td>
                     </tr>
                     {% endfor %}
                 </tbody>
-                
             </table>
         </div>
     </div>

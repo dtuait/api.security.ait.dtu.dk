@@ -86,29 +86,47 @@ class ADGroupAssociation(BaseModel):
         base_dn = "DC=win,DC=dtu,DC=dk"
         search_filter = f"(sAMAccountName={username})"
         search_attributes = ['memberOf']
-        ad_groups = execute_active_directory_query(base_dn=base_dn, search_filter=search_filter, search_attributes=search_attributes)
-        ad_groups_association = list(user.ad_group_members.all())
-        # ad_groups_association = user.ad_group_members.all()
-        # ad_groups_association = list(user.ad_group_members.all())
-        ad_groups_set = set(group['memberOf'][0] for group in ad_groups)
-        
+        result = execute_active_directory_query(base_dn=base_dn, search_filter=search_filter, search_attributes=search_attributes)
 
-        # list(ad_groups_set)[0] >> 'CN=SUS-MFA-Reset,OU=IT,OU=Groups,OU=SUS,OU=Institutter,DC=win,DC=dtu,DC=dk'
+        if result and 'memberOf' in result[0]:
+            ad_groups = set(result[0]['memberOf'])
+        else:
+            ad_groups = set()
 
-        # remove all users af ad_group_association that does not exist in ad_groups_set
-        for group in ad_groups_association:
-            if group.distinguished_name not in ad_groups_set:
-                user.ad_group_members.remove(group)
+        # Fetch the current AD group associations from Django
+        current_associations = set(user.ad_group_members.values_list('distinguished_name', flat=True))
 
-        # Convert the QuerySet to a list again to get the updated data
-        ad_groups_association = list(user.ad_group_members.all())
+        # Determine which groups to add and which to remove
+        groups_to_add = ad_groups - current_associations
+        groups_to_remove = current_associations - ad_groups
 
-        for group in ad_groups_association:
-            if group.distinguished_name in ad_groups_set:
-                ADGroupAssociation.sync_ad_group_members(group)
-                ADGroupAssociation.delete_unused_groups()         
+        # Add new group associations
+        for group_dn in groups_to_add:
+            # you can only add a group if the group pang dang already exist in the database
+            group, created = ADGroupAssociation.objects.get_or_create(distinguished_name=group_dn)
+            group.members.add(user)
 
-        # refresh and update the database or models here so next lines of code gets the latest data
+        # Remove outdated group associations
+        for group_dn in groups_to_remove:
+            group = ADGroupAssociation.objects.get(distinguished_name=group_dn)
+            group.members.remove(user)
+
+        # Remove all groups that are no longer associated with any endpoint 
+        # class Endpoint(BaseModel):
+        #     path = models.CharField(max_length=255, unique=True)
+        #     method = models.CharField(max_length=6, blank=True, default='')
+        #     ad_groups = models.ManyToManyField('ADGroupAssociation', related_name='endpoints', blank=True)
+        #     ad_organizational_units = models.ManyToManyField('ADOrganizationalUnitAssociation', related_name='endpoints', blank=True)
+        # class ADGroupAssociation(BaseModel):
+            # cn = models.CharField(max_length=255, verbose_name="Common Name")
+            # canonical_name = models.CharField(max_length=1024)
+            # distinguished_name = models.CharField(max_length=1024)
+            # members = models.ManyToManyField(User, related_name='ad_group_members')
+            # def __str__(self):
+                # return self.cn
+
+
+        user.save()
         user.refresh_from_db()    
                     
 

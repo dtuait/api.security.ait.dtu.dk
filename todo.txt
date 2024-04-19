@@ -59,3 +59,25 @@ Paa forsiden skal du kunne generere et token og se hvilken endpoints du har adga
 
 
 SUS-MFA-Reset
+
+
+
+Slet alle brugere og ADGrupper.
+Opret AD bruger ved login, hvis brugeren ikke allerede findes
+Sync brugeren med de ad grupper som findes i django databasen
+
+Opret gruppe ved søgning 
+
+
+Der er fire steder jeg sync ad_group_assoc med AD. 
+1) BaseView i myview - ADGroupAssociation.sync_user_ad_groups(username) DONE
+2) Nr du logger ind - ADGroupAssociation.sync_user_ad_groups(username) DONE
+3) nr du opdatere i adminpanelet - ADGroupAssociation.sync_user_ad_groups(username) DONE
+4) nr du laver et endpoint kald - user.check_ad_group_assoc
+
+
+Lav en reset delete groups cache knap
+Inkluder whitelist paths til ogsaa at have cached ad groups
+
+
+Nar du har defineret ressource kald, skal du vise en bruger i mfa-reset, hvis man forsøger at tilga en ressource som ikke er ejet af brugeren

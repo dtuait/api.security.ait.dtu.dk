@@ -30,7 +30,14 @@ class ActiveDirectoryQueryViewSet(APIAuthBaseViewSet):
         specifies the starting point within the AD structure. 'search_filter' narrows down the objects based on
         specified conditions. 'search_attributes' controls which attributes of the objects are retrieved, and 'limit'
         provides pagination capability. 'excluded_attributes' can further refine the returned data by excluding
-        specified attributes from the response, enhancing query efficiency and relevance.""",
+        specified attributes from the response, enhancing query efficiency and relevance.
+        
+        
+        Get infomation about a specific user, based on initial
+        (sAMAccountName=vicre)
+
+        
+        """,
         manual_parameters=[
             openapi.Parameter(
                 name='base_dn',
@@ -87,7 +94,7 @@ class ActiveDirectoryQueryViewSet(APIAuthBaseViewSet):
         if limit is not None:
             limit = int(limit)
 
-        if search_attributes == 'ALL_ATTRIBUTES':
+        if search_attributes == 'ALL_ATTRIBUTES' or search_attributes is '*' or search_attributes == None:
             search_attributes = ALL_ATTRIBUTES
         else:
             search_attributes = search_attributes.split(',')

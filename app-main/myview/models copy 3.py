@@ -86,27 +86,33 @@ class ADGroupAssociation(BaseModel):
         base_dn = "DC=win,DC=dtu,DC=dk"
         search_filter = f"(sAMAccountName={username})"
         search_attributes = ['memberOf']
-        ad_groups = execute_active_directory_query(base_dn=base_dn, search_filter=search_filter, search_attributes=search_attributes)
-        ad_groups_association = list(user.ad_group_members.all())
-        # ad_groups_association = user.ad_group_members.all()
-        # ad_groups_association = list(user.ad_group_members.all())
-        ad_groups_set = set(group['memberOf'][0] for group in ad_groups)
-        
+        ad_groups = list(execute_active_directory_query(base_dn=base_dn, search_filter=search_filter, search_attributes=search_attributes)[0]['memberOf'])
+        # ad_groups[0] >> 'CN=AIT-BIT-ISG-SOC-MFAReset,OU=Groups,OU=SOC,OU=BIT-ISG,OU=AIT,DC=win,DC=dtu,DC=dk'
+        # ad_groups[1] >> 'CN=SUS-MFA-Reset,OU=IT,OU=Groups,OU=SUS,OU=Institutter,DC=win,DC=dtu,DC=dk'
+        ad_groups_association_array = list(user.ad_group_members.values_list('distinguished_name', flat=True))
+        # ad_groups_association_array[0] >> 'CN=AIT-BIT-ISG-SOC-MFAReset,OU=Groups,OU=SOC,OU=BIT-ISG,OU=AIT,DC=win,DC=dtu,DC=dk'
+        # ad_groups_association_array[1] >> 'CN=SUS-MFA-Reset,OU=IT,OU=Groups,OU=SUS,OU=Institutter,DC=win,DC=dtu,DC=dk'
 
+
+
+        # ad_groups_set = set(group['memberOf'] for group in ad_groups)
         # list(ad_groups_set)[0] >> 'CN=SUS-MFA-Reset,OU=IT,OU=Groups,OU=SUS,OU=Institutter,DC=win,DC=dtu,DC=dk'
+        # ad_groups_association >> []
 
-        # remove all users af ad_group_association that does not exist in ad_groups_set
-        for group in ad_groups_association:
-            if group.distinguished_name not in ad_groups_set:
-                user.ad_group_members.remove(group)
+        # for each ad_groups_set
 
-        # Convert the QuerySet to a list again to get the updated data
-        ad_groups_association = list(user.ad_group_members.all())
+        # # remove all users af ad_group_association that does not exist in ad_groups_set
+        # for group in ad_groups_association:
+        #     if group.distinguished_name not in ad_groups_set:
+        #         user.ad_group_members.remove(group)
 
-        for group in ad_groups_association:
-            if group.distinguished_name in ad_groups_set:
-                ADGroupAssociation.sync_ad_group_members(group)
-                ADGroupAssociation.delete_unused_groups()         
+        # # Convert the QuerySet to a list again to get the updated data
+        # ad_groups_association = list(user.ad_group_members.all())
+
+        # for group in ad_groups_association:
+        #     if group.distinguished_name in ad_groups_set:
+        #         ADGroupAssociation.sync_ad_group_members(group)
+        #         ADGroupAssociation.delete_unused_groups()         
 
         # refresh and update the database or models here so next lines of code gets the latest data
         user.refresh_from_db()    

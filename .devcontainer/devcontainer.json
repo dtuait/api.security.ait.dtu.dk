@@ -13,9 +13,11 @@
                 "GitHub.copilot",
                 "ms-python.vscode-pylance",
                 "ms-python.debugpy",
-                "ms-python.python"
+                "ms-python.python",
+                "stuart.unique-window-colors"
             ]
         }
     },
-    "postCreateCommand": "bash .devcontainer/postCreateCommand.sh"
+    "postCreateCommand": "bash .devcontainer/postCreateCommand.sh",
+    "postStartCommand": "bash .devcontainer/postStartCommand.sh"
 }

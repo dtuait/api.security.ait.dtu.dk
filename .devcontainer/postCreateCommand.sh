@@ -1,22 +1,53 @@
-# cd ./app and remove venv if it exits, then rebuild venv, activate it, and install requirements
-# cd ./app-main && rm -rf venv && \
-#     python3 -m venv venv && \
-#     source venv/bin/activate && \
-#     pip install --upgrade pip && \
-#     pip install -r requirements.txt
+#!/bin/bash
 
-echo "Starting postCreateCommand.sh"
+# this script runs first time when container is created
+echo "running postCreateCommand.sh"
 
-cd /usr/src/project/app-main && source /usr/src/venvs/app-main/bin/activate
+# store current pwd into a variable
+current_pwd=$(pwd)
+cd /usr/src/project
 
-git config --global user.email "vicre@dtu.dk"
-git config --global user.name "Victor Reipur"
+# Check if /usr/src/project/.git is a valid git repository
+if [ -d "/usr/src/project/.git" ]; then
+    # Set git to ignore file mode (permissions) changes in this repository
+    git --git-dir=/usr/src/project/.git config core.fileMode false
+else
+    echo "Error: /usr/src/project/.git is not a valid git repository."
+fi
+
+# Set git to ignore file mode (permissions) changes globally for all repositories
+git config --global core.fileMode false
+
+echo "Enter your username:"
+read username
+case $username in
+    afos)
+        git config --global user.email "afos@dtu.dk"
+        git config --global user.name "Anders Fosgerau"
+        ;;
+    jaholm)
+        git config --global user.email "jaholm@dtu.dk"
+        git config --global user.name "Jakob Holm"
+        ;;
+    vicre)
+        git config --global user.email "vicre@dtu.dk"
+        git config --global user.name "Victor Reipur"
+        ;;
+    *)
+        echo "Enter your email:"
+        read email
+        git config --global user.email "$email"
+        echo "Enter your name:"
+        read name
+        git config --global user.name "$name"
+        ;;
+esac
+
 git config --global --add safe.directory /usr/src/project
 git config --global --add safe.directory /mnt/project
 git config --global --add safe.directory /usr/src/project/.devcontainer/.docker-migrate
 git config --global --add safe.directory /usr/src/project/.devcontainer/.docker-image-builder
 git config pull.rebase true
-# git submodule update --remote # gets the latest commit from the submodule
 
 # show current pip freeze
 echo "Show current pip freeze into requirements.txt"
@@ -26,3 +57,6 @@ echo "Getting git submodules"
 git submodule init && git submodule update
 
 echo "Ending postCreateCommand.sh"
+
+# restore the pwd
+cd $current_pwd

@@ -74,14 +74,50 @@ def msal_callback(request):
             if username.startswith('adm-') or '-adm-' in username:
                 from django.contrib.auth.backends import ModelBackend
 
+
+
+
+                
+
+
                 # After getting or creating the user
                 user, created = User.objects.get_or_create(username=username)
-
                 # Specify the backend explicitly
                 user.backend = 'django.contrib.auth.backends.ModelBackend'
-
                 # Now log the user in
                 login(request, user)
+
+
+                # from myview.models import ADGroupAssociation
+                # ADGroupAssociation.sync_user_ad_groups(user.username)
+
+                
+                # # Get group members of the user 
+                # from active_directory.services import execute_active_directory_query
+                # base_dn = "DC=win,DC=dtu,DC=dk"
+                # search_filter = f"(sAMAccountName={username})"
+                # search_attributes = ['memberOf']
+                # ad_groups = execute_active_directory_query(base_dn=base_dn, search_filter=search_filter, search_attributes=search_attributes)
+                # ad_groups_association = user.ad_group_members.all()
+                # # ad_groups_association[0].distinguished_name >> 'CN=SUS-MFA-Reset,OU=IT,OU=Groups,OU=SUS,OU=Institutter,DC=win,DC=dtu,DC=dk'
+                # # ad_groups[0]['memberOf'][0] >> 'CN=SUS-MFA-Reset,OU=IT,OU=Groups,OU=SUS,OU=Institutter,DC=win,DC=dtu,DC=dk'
+                # # 
+                # # if the user is member of a ad_group that exist in the ADGroupAssociation model then sync that groups members
+                # # Convert ad_groups to a set for faster lookup
+                # ad_groups_set = set(group['memberOf'][0] for group in ad_groups)
+
+                # for group in ad_groups_association:
+                #     if group.distinguished_name in ad_groups_set:
+                #         # Sync the members of the group
+                #         ADGroupAssociation.sync_ad_group_members(group)
+
+                
+
+
+
+
+
+
 
                 if user.is_superuser:
                     return HttpResponseRedirect(reverse('admin:index'))
@@ -143,6 +179,50 @@ def msal_logout(request):
     response = redirect('https://login.microsoftonline.com/common/oauth2/v2.0/logout?post_logout_redirect_uri=https://api.security.ait.dtu.dk/myview/frontpage/')
     response.delete_cookie('csrftoken')
     return response
+
+
+
+# # Properply deprecated
+# from myview.models import ADGroupAssociation
+# def sync_user_ad_groups(user, ad_groups, sync_ad_group_members=False):
+#     for distinguished_name in ad_groups[0]['memberOf']:
+#         # Try to find the group in the ADGroupAssociation model
+#         try:
+#             print(distinguished_name)
+#             group = ADGroupAssociation.objects.get(distinguished_name=distinguished_name)
+#             # Check if user if member of the group if not run sync ad group members
+#             if not user.ad_group_members.filter(cn=group.cn).exists() or sync_ad_group_members == True:
+#                 print("User is not a member of the group.")
+#                 # Mayne this should be async?
+#                 group.sync_ad_group_members()
+#                 print("Done syncing group members for group: ", group.cn)
+#             else:
+#                 print("Skipping sync group members for group: ", group.cn)
+
+#         except ADGroupAssociation.DoesNotExist:
+#             print(f"ADGroupAssociation with distinguished_name {distinguished_name} does not exist.")
+            
+#         except Exception as e:
+#             # If the group does not exist, create it
+#             print(f"An error occurred: {e}")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
