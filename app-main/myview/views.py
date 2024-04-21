@@ -64,12 +64,23 @@ class BaseView(View):
         user_ad_groups = self.request.user.ad_group_members.all()
         user_endpoints = Endpoint.objects.filter(ad_groups__in=user_ad_groups).prefetch_related('ad_groups').distinct()
         
+        # Filter endpoints to include only user-specific group access information
+        filtered_endpoints = []
+        for endpoint in user_endpoints:
+            # Filter ad_groups to include only those where the user is a member
+            filtered_groups = endpoint.ad_groups.filter(members=self.request.user)
+            filtered_endpoints.append({
+                'method': endpoint.method,
+                'path': endpoint.path,
+                'ad_groups': filtered_groups
+            })
+            
         context = {
             'base_template': self.base_template,
             'git_branch': branch,
             'git_commit': commit,
             'is_superuser': self.request.user.is_superuser,
-            'user_endpoints': user_endpoints,
+            'user_endpoints': filtered_endpoints,  # Replace with the filtered list
             'user_ad_groups': user_ad_groups,
             'user_has_mfa_reset_access': self.user_has_mfa_reset_access()
         }
