@@ -45,10 +45,10 @@ class GetUserViewSet(APIAuthBaseViewSet):
     autho_bearer_token = openapi.Parameter(
         'Authorization',  # name of the header        
         in_=openapi.IN_HEADER,  # where the parameter is located
-        description="Required. Must be in the format 'Token \<token\>'.",
+        description="Required. Must be in the format '\<token\> or real token'.",
         type=openapi.TYPE_STRING,  # type of the parameter
         required=True,  # if the header is required or not
-        default='Token <token>'  # default value
+        default='<token>'  # default value
     )
 
     user_path_param = openapi.Parameter(
@@ -145,10 +145,10 @@ class ListUserAuthenticationMethodsViewSet(APIAuthBaseViewSet):
     autho_bearer_token = openapi.Parameter(
         'Authorization',  # name of the header        
         in_=openapi.IN_HEADER,  # where the parameter is located
-        description="Required. Must be in the format 'Token \<token\>'.",
+        description="Required. Must be in the format '\<token\> or real token'.",
         type=openapi.TYPE_STRING,  # type of the parameter
         required=True,  # if the header is required or not
-        default='Token <token>'  # default value
+        default='<token>'  # default value
     )
 
     user_path_param = openapi.Parameter(
@@ -174,7 +174,7 @@ class ListUserAuthenticationMethodsViewSet(APIAuthBaseViewSet):
         curl -X 'GET'
         \t'http://localhost:6081/v1.0/graph/list/vicre-test01%40dtudk.onmicrosoft.com/authentication-methods'
         \t-H 'accept: application/json'
-        \t-H 'Authorization: Token <token>'
+        \t-H 'Authorization: <token>'
         \t-H 'X-CSRFToken: qfp3Ahr3MGnV0aERFcjdAjkCNPVp39m77Y3d72WuUUanpJzJrcXN9TIe86t5yFL2'
         ```
         Request URL\n
@@ -268,10 +268,10 @@ class DeleteMfaViewSet(APIAuthBaseViewSet):
     autho_bearer_token = openapi.Parameter(
         'Authorization',  # name of the header        
         in_=openapi.IN_HEADER,  # where the parameter is located
-        description="Required. Must be in the format 'Token \<token\>'.",
+        description="Required. Must be in the format '\<token\> or real token'.",
         type=openapi.TYPE_STRING,  # type of the parameter
         required=True,  # if the header is required or not
-        default='Token <token>'  # default value
+        default='<token>'  # default value
     )
 
     user_path_param = openapi.Parameter(
@@ -310,7 +310,7 @@ class DeleteMfaViewSet(APIAuthBaseViewSet):
         curl -X 'DELETE'
             \t'http://localhost:6081/v1.0/graph/users/vicre-test01%40dtudk.onmicrosoft.com/authentication-methods/171397f2-804e-4664-8ede-c4b3adf6bbb0'
             \t-H 'accept: application/json'
-            \t-H 'Authorization: Token <token>'
+            \t-H 'Authorization: <token>'
             \t-H 'X-CSRFToken: zVFVMDNniqLL9sdWjjcsvYrOb4haiVgfgEj5joiOqEydy18O5jQ24yPqwlPQNrFa'
         ```
         Request URL

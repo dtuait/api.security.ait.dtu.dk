@@ -39,6 +39,16 @@ class ActiveDirectoryQueryViewSet(APIAuthBaseViewSet):
         
         """,
         manual_parameters=[
+
+            openapi.Parameter(
+                'Authorization',  # name of the header        
+                in_=openapi.IN_HEADER,  # where the parameter is located
+                description="Required. Must be in the format '\<token\> or real token'.",
+                type=openapi.TYPE_STRING,  # type of the parameter
+                required=True,  # if the header is required or not
+                default='<token>'  # default value
+            ),
+
             openapi.Parameter(
                 name='base_dn',
                 in_=openapi.IN_QUERY,
