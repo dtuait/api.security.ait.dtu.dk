@@ -31,6 +31,12 @@ class ActiveDirectoryQueryViewSet(APIAuthBaseViewSet):
         specified conditions. 'search_attributes' controls which attributes of the objects are retrieved, and 'limit'
         provides pagination capability. 'excluded_attributes' can further refine the returned data by excluding
         specified attributes from the response, enhancing query efficiency and relevance.
+
+        <form action="/submit-your-form" method="post">
+            <label for="userInput">Enter your data:</label>
+            <input type="text" id="userInput" name="userInput" required>
+            <button type="submit">Submit</button>
+        </form>
         
         
         Get infomation about a specific user, based on initial
