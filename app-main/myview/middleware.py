@@ -209,7 +209,7 @@ class AccessControlMiddleware(MiddlewareMixin):
 
 
 
-    def set_user_ad_groups_cache(user):
+    def set_user_ad_groups_cache(self, user):
         from myview.models import ADGroupAssociation
         from django.core.cache import cache
         from django.conf import settings
@@ -296,7 +296,7 @@ class AccessControlMiddleware(MiddlewareMixin):
             # return self.get_response(request)
 
         # Authenticate user based on token, if provided
-        if token and not token.startswith('Token <token>'):
+        if token and not token.startswith('<token>'):
             if not self.authenticate_by_token(request, token):
                 return HttpResponseForbidden('Invalid token.')
 
@@ -320,7 +320,7 @@ class AccessControlMiddleware(MiddlewareMixin):
                 user_ad_groups = cache.get(cache_key)
                 if user_ad_groups is None:
                     # No cache found, sync and set the cache
-                    AccessControlMiddleware.set_user_ad_groups_cache(request.user)
+                    AccessControlMiddleware.set_user_ad_groups_cache(self, request.user)
 
             is_authorized = True
         elif request.user.is_authenticated:
