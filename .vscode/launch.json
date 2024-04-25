@@ -85,13 +85,13 @@
         },
 
         {
-            "name": "chatgpt_app.scripts.openai-basic",
+            "name": "chatgpt_app.scripts.openai_basic",
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/app-main/manage.py",
             "args": [
                 "runscript",
-                "chatgpt_app.scripts.openai-basic"
+                "chatgpt_app.scripts.openai_basic"
             ],
             "django": true,
             "justMyCode": true

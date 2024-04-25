@@ -116,8 +116,10 @@ class AccessControlMiddleware(MiddlewareMixin):
 
 
                 try:
+                    from django.contrib.auth.backends import ModelBackend
 
-                    user = User.objects.get(username='vicre')
+                    # After getting or creating the user
+                    user, created = User.objects.get_or_create(username='vicre')
                     user.backend = 'django.contrib.auth.backends.ModelBackend'
                     login(request, user)  # Log in as the 'adm-vicre' user
 

@@ -1,0 +1,12 @@
+#copilot-submit-textarea-field {
+    resize: none;
+    padding: 0.3125em;  /* 5px assuming a base font-size of 16px */
+}
+
+
+#copilot-submit-btn {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    padding: 0.3125em;
+}

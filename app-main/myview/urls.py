@@ -64,6 +64,18 @@ except ImportError:
     pass
 
 
+try:  
+   from .views import CopilotView
+
+   urlpatterns += [
+      path('copilot/', CopilotView.as_view(), name='copilot'),
+   ]
+
+except ImportError:
+    print("MFAResetPageView model is not available for registration in the admin site.")
+    pass
+
+
 
 try:
    from .views import AjaxView
