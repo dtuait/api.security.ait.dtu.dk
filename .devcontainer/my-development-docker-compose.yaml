@@ -19,6 +19,7 @@ services:
 ##### only for production ####
   xx-api-security-ait-dtu-dk-httpd-service:
     image: dtuait/api-security-ait-dtu-dk-httpd-service:httpd-2.4-myversion-1.0.0
+    restart: always
     volumes:
       - ../shared-project-data:/mnt/shared-project-data
       - ../httpd-service/data/virtualhosts:/usr/local/apache2/conf/virtualhosts

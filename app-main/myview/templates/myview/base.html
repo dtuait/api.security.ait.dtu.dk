@@ -42,9 +42,11 @@
                         <a class="nav-link" href="{% url 'schema-swagger-ui' %}">{% trans "Swagger API Documentation" %}</a>
                     </li>
                     
+                    {% if debug %}
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'copilot' %}">{% trans "Copilot (preview)" %}</a>
                     </li>
+                    {% endif %}
 
                     {% if user_has_mfa_reset_access %}
                     <li class="nav-item">

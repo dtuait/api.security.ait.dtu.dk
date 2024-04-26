@@ -74,7 +74,9 @@ class BaseView(View):
                 'path': endpoint.path,
                 'ad_groups': filtered_groups
             })
-            
+        
+        
+        from django.conf import settings
         context = {
             'base_template': self.base_template,
             'git_branch': branch,
@@ -82,7 +84,8 @@ class BaseView(View):
             'is_superuser': self.request.user.is_superuser,
             'user_endpoints': filtered_endpoints,  # Replace with the filtered list
             'user_ad_groups': user_ad_groups,
-            'user_has_mfa_reset_access': self.user_has_mfa_reset_access()
+            'user_has_mfa_reset_access': self.user_has_mfa_reset_access(),
+            'debug': settings.DEBUG,
         }
 
         return context
