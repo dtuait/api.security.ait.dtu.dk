@@ -48,15 +48,24 @@ def msal_callback(request):
         redirect_uri=redirect_uri
     )
 
+    # At this point the user has been authenticated and the token has been acquired
     if 'access_token' in token_response:
         access_token = token_response['access_token']
         
+        # run validate_user() function return django user object or None, if user is not authenticated
+        # validate_user(access_token)
+
+
+
+
         # Use the access token to make a request to the Microsoft Graph API
-        graph_api_endpoint = 'https://graph.microsoft.com/v1.0/me/'
+        graph_api_endpoint = 'https://graph.microsoft.com/v1.0/me/?$select=onPremisesImmutableId,userPrincipalName'
         headers = {
             'Authorization': f'Bearer {access_token}',
             'Content-Type': 'application/json'
         }
+
+
         
         # Make the GET request to the Graph API to get user details
         graph_response = requests.get(graph_api_endpoint, headers=headers)
@@ -64,29 +73,48 @@ def msal_callback(request):
         if graph_response.status_code == 200:
             # Successful request to the Graph API
             user_data = graph_response.json()
+
+
             # Extract the preferred username (which could be the user's email)
-            username = user_data.get('userPrincipalName')
+            user_principal_name = user_data.get('userPrincipalName')
+            on_premises_immutable_id = user_data.get('onPremisesImmutableId')
+            
+            from .scripts.validate_user import validate_user
 
-            # remove the @dtudk.onmicrosoft.com from the username
-            username = username.split('@')[0]
+            is_synced = validate_user(user_principal_name=user_principal_name, on_premises_immutable_id=on_premises_immutable_id)
+            
 
 
-            from django.contrib.auth.backends import ModelBackend
+            if not is_synced:
+                # Return HTTP response if the Azure user account is not synced with the AD account.
+                return HttpResponse(
+                    "You are not authenticated because the Azure user with which you have logged in does not have a synced AD account. Please log in using a DTU email account, such as user@dtu.dk, afos@dtu.dk, or dast@dtu.dk. For assistance, please contact vicre@dtu.dk.",
+                    status=403
+                )
 
-            # After getting or creating the user
-            user, created = User.objects.get_or_create(username=username)
-            # Specify the backend explicitly
+            from .scripts.user_have_onpremises_adm_account import user_have_onpremises_adm_account
+            user_have_onpremises_adm_account = user_have_onpremises_adm_account(user_principal_name)
+
+            if not user_have_onpremises_adm_account:
+                # Construct the dynamic part of the message based on user's principal name.
+                adm_account_suffix = user_principal_name.split('@')[0]
+                return HttpResponse(
+                    f"You are not authenticated because the Azure user with which you have logged in does not have an on-premises admin account. The account adm-{adm_account_suffix}-* does not appear to exist in Active Directory. This restriction is in place to allow only IT staff to access this application. If you believe this is an error or need access, please contact vicre@dtu.dk.",
+                    status=403
+                )
+            
+            user, created = User.objects.get_or_create(username=user_principal_name.split('@')[0])
             user.backend = 'django.contrib.auth.backends.ModelBackend'
-            # Now log the user in
             login(request, user)
-
 
             if user.is_superuser:
                 return HttpResponseRedirect(reverse('admin:index'))
             else:
                 return redirect('/myview/frontpage/')
             
-            
+            user, created = User.objects.get_or_create(username=user_principal_name.split('@')[0])
+            user.backend = 'django.contrib.auth.backends.ModelBackend'
+            login(request, user)
 
         else:
             # Handle failure or show an error message to the user
@@ -164,10 +192,6 @@ def msal_logout(request):
 #         except Exception as e:
 #             # If the group does not exist, create it
 #             print(f"An error occurred: {e}")
-
-
-
-
 
 
 

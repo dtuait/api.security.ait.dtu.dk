@@ -71,6 +71,34 @@
             "disableNetworkCache": true,
         },
 
+
+        {
+            "name": "app.scripts.validate_user",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/app-main/manage.py",
+            "args": [
+                "runscript",
+                "app.scripts.validate_user"
+            ],
+            "django": true,
+            "justMyCode": true
+        },
+
+        {
+            "name": "app.scripts.user_have_onpremises_adm_account",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/app-main/manage.py",
+            "args": [
+                "runscript",
+                "app.scripts.user_have_onpremises_adm_account"
+            ],
+            "django": true,
+            "justMyCode": true
+        },
+
+
         {
             "name": "chatgpt_app.scripts.openai-test",
             "type": "debugpy",

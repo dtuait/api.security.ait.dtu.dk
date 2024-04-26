@@ -8,8 +8,8 @@ def execute_hunting_query(query):
     response, status_code = run_hunting_query(query)
     return response.json(), status_code
 
-def execute_get_user(user):
-    response, status_code = get_user(user)
+def execute_get_user(user, select_param):
+    response, status_code = get_user(user, select_param)
     return response.json(), status_code
 
 

@@ -3,7 +3,9 @@ import requests
 from ._graph_get_bearertoken import _get_bearertoken
 
 
-def get_user(user):
+def get_user(user, select_param=None):
+
+    
 
     token = _get_bearertoken()
 
@@ -12,7 +14,10 @@ def get_user(user):
         'Content-Type': 'application/json'
     }
 
-    api_endpoint = f"https://graph.microsoft.com/v1.0/users/{user}"
+    if select_param is not None:
+        api_endpoint = f"https://graph.microsoft.com/v1.0/users/{user}?{select_param}"
+    else:
+        api_endpoint = f"https://graph.microsoft.com/v1.0/users/{user}"
 
     response = requests.get(api_endpoint, headers=headers)
 

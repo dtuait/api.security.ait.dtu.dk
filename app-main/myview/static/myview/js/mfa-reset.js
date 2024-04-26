@@ -265,8 +265,6 @@ function constructAuthenticationMethodCard(method, formattedDate, buttonClassSuf
             </div>
         `
 
-    
-
     return cardObj;
 }
 
