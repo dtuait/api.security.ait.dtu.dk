@@ -4,7 +4,7 @@ from django.http import HttpResponseForbidden, JsonResponse
 from rest_framework.authtoken.models import Token
 from django.shortcuts import render
 from django.shortcuts import render
-from .forms import UserLookupForm
+from .forms import UserLookupForm, LargeTextAreaForm
 from .models import ADGroupAssociation, Endpoint
 import subprocess
 from django.utils.decorators import method_decorator
@@ -119,6 +119,27 @@ class AjaxView(BaseView):
             
 
 
+        elif action == 'copilot-chatgpt-basic':
+            if request.user.is_authenticated:
+                # return not implemented yet status 200
+                content = request.POST.get('content')
+                user = json.loads(content)
+
+                from chatgpt_app.scripts.openai_basic import get_openai_completion
+
+                message = get_openai_completion(
+                    system="You return 1 ldap3 query at a time. Give me a ldap3 query that returns user name vicre >> (sAMAccountName=vicre). Do not explain the query, just provide it.",
+                    user=user['user']
+                )
+
+                return JsonResponse({'message': message.content})
+
+
+                return JsonResponse({'error': 'Not implemented yet'}, status=200)
+            
+            
+
+
 
 
         elif action == 'active_directory_query':
@@ -154,7 +175,6 @@ class AjaxView(BaseView):
             request.session['ajax_change_form_update_form_ad_groups'] = ad_groups
 
             # logger.info(f"Session data after setting ad_groups: {request.session.items()}")
-                    
             request.session.save()
 
             # reload the page
@@ -238,4 +258,16 @@ class MFAResetPageView(BaseView):
         context = super().get_context_data(**kwargs)
         context['form'] = form
         return render(request, self.template_name, context)
+
+
+
+class CopilotView(BaseView):
+    form_class = LargeTextAreaForm
+    template_name = "myview/copilot.html"
+    def get(self, request, **kwargs):
+        form = self.form_class()
+        context = super().get_context_data(**kwargs)
+        context['form'] = form
+        return render(request, self.template_name, context)
+    
 

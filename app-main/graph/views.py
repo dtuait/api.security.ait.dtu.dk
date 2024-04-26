@@ -51,18 +51,39 @@ class GetUserViewSet(APIAuthBaseViewSet):
         default='<token>'  # default value
     )
 
-    user_path_param = openapi.Parameter(
-        'user',  # name of the path parameter
-        in_=openapi.IN_PATH,  # location of the parameter
-        description="The username requested for retrieval",
-        type=openapi.TYPE_STRING,  # type of the parameter
-        required=True,  # if the path parameter is required
-        default='vicre-test01@dtudk.onmicrosoft.com',  # default value
-        override=True  # override the default value
-    )
+
+
+
 
     @swagger_auto_schema(
-        manual_parameters=[autho_bearer_token, user_path_param],
+        manual_parameters=[
+            openapi.Parameter(
+                'Authorization',  # name of the header        
+                in_=openapi.IN_HEADER,  # where the parameter is located
+                description="Required. Must be in the format '\<token\> or real token'.",
+                type=openapi.TYPE_STRING,  # type of the parameter
+                required=True,  # if the header is required or not
+                default='<token>'  # default value
+            ), 
+            openapi.Parameter(
+                'user',  # name of the path parameter
+                in_=openapi.IN_PATH,  # location of the parameter
+                description="The username requested for retrieval",
+                type=openapi.TYPE_STRING,  # type of the parameter
+                required=True,  # if the path parameter is required
+                default='vicre-test01@dtudk.onmicrosoft.com',  # default value
+                override=True  # override the default value
+            ),
+            openapi.Parameter(
+            '$select',  # name of the query parameter
+            in_=openapi.IN_QUERY,  # location of the parameter
+            description="Optional. Specifies a subset of properties to include in the response.",
+            type=openapi.TYPE_STRING,
+            required=False
+            ),
+        ],
+
+
         operation_description="""
         Get the user info for the given username.
 
@@ -107,8 +128,9 @@ class GetUserViewSet(APIAuthBaseViewSet):
 
     def get_user(self, request, user):
             
+        select_param = request.GET.get('$select', None)
 
-        response, status_code = execute_get_user(user)
+        response, status_code = execute_get_user(user, select_param)
 
         return Response(response, status=status_code)
 

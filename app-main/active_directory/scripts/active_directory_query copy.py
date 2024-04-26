@@ -61,9 +61,8 @@ def active_directory_query(*, base_dn, search_filter, search_attributes=ALL_ATTR
                     if attr in excluded_attributes:
                         continue  # Skip excluded attributes
                     attr_values = entry.entry_attributes_as_dict.get(attr, [])
-                    # serialized_values = [serialize_value(value) for value in attr_values]
-                    # attr_dict[attr] = serialized_values
-                    attr_dict[attr] = attr_values
+                    serialized_values = [serialize_value(value) for value in attr_values]
+                    attr_dict[attr] = serialized_values
 
                 # If search_attributes is not set to ALL_ATTRIBUTES, process only the attributes in search_attributes
                 else:
@@ -71,8 +70,8 @@ def active_directory_query(*, base_dn, search_filter, search_attributes=ALL_ATTR
                 for attr in attributes_to_process:
                     attr_values = entry.entry_attributes_as_dict.get(attr, [])
                     # Serialize each attribute value
-                    # serialized_values = [serialize_value(value) for value in attr_values]
-                    attr_dict[attr] = attr_values
+                    serialized_values = [serialize_value(value) for value in attr_values]
+                    attr_dict[attr] = serialized_values
 
                 ldap_list.append(attr_dict)
                 entries_collected += 1

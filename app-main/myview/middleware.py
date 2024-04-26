@@ -116,8 +116,10 @@ class AccessControlMiddleware(MiddlewareMixin):
 
 
                 try:
+                    from django.contrib.auth.backends import ModelBackend
 
-                    user = User.objects.get(username='adm-vicre')
+                    # After getting or creating the user
+                    user, created = User.objects.get_or_create(username='vicre')
                     user.backend = 'django.contrib.auth.backends.ModelBackend'
                     login(request, user)  # Log in as the 'adm-vicre' user
 
@@ -138,12 +140,12 @@ class AccessControlMiddleware(MiddlewareMixin):
         # This example auto-logs in a user named 'adm-vicre', similar to your other logic
         else:
             # Log out the current user if they are not 'adm-vicre'
-            if request.user.is_authenticated and request.user.username != 'adm-vicre':
+            if request.user.is_authenticated and request.user.username != 'vicre':
                 logout(request)
 
             # Attempt to get or create the 'adm-vicre' user
             try:
-                user = User.objects.get(username='adm-vicre')
+                user = User.objects.get(username='vicre')
             except User.DoesNotExist:
                 raise Http404("User does not exist")
 

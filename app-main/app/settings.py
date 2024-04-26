@@ -93,6 +93,7 @@ INSTALLED_APPS = [
     'myview',
     'active_directory',
     'misc',
+    'chatgpt_app',
 ]
 
 # MIDDLEWARE = [

@@ -114,7 +114,7 @@ async function deleteADGroupCache() {
     button.prop('disabled', true);
 
     let formData = new FormData();     
-    formData.append('action', 'clear_my_ad_group_cached_data');       
+    formData.append('action', 'clear_my_ad_group_cached_data');
     let response;
     try {
         response = await restAjax('POST', '/myview/ajax/', formData);

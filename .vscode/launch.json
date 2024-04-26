@@ -73,6 +73,58 @@
 
 
         {
+            "name": "app.scripts.validate_user",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/app-main/manage.py",
+            "args": [
+                "runscript",
+                "app.scripts.validate_user"
+            ],
+            "django": true,
+            "justMyCode": true
+        },
+
+        {
+            "name": "app.scripts.user_have_onpremises_adm_account",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/app-main/manage.py",
+            "args": [
+                "runscript",
+                "app.scripts.user_have_onpremises_adm_account"
+            ],
+            "django": true,
+            "justMyCode": true
+        },
+
+
+        {
+            "name": "chatgpt_app.scripts.openai-test",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/app-main/manage.py",
+            "args": [
+                "runscript",
+                "chatgpt_app.scripts.openai-test"
+            ],
+            "django": true,
+            "justMyCode": true
+        },
+
+        {
+            "name": "chatgpt_app.scripts.openai_basic",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/app-main/manage.py",
+            "args": [
+                "runscript",
+                "chatgpt_app.scripts.openai_basic"
+            ],
+            "django": true,
+            "justMyCode": true
+        },
+        {
             "name": "active_directory.scripts.active_directory_query",
             "type": "debugpy",
             "request": "launch",

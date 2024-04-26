@@ -9,7 +9,8 @@ from .services import get_inactive_computers
 from graph.views import APIAuthBaseViewSet
 from rest_framework.decorators import action
 from .services import execute_active_directory_query
-
+import datetime
+import base64
 
 
 
@@ -116,8 +117,35 @@ class ActiveDirectoryQueryViewSet(APIAuthBaseViewSet):
             limit=limit,
             excluded_attributes=excluded_attributes
         )
+        serialized_results = self.serialize_results(results)
+        return Response(serialized_results)
 
-        return Response(results)
+    def serialize_value(self, value):
+        """
+        Convert LDAP attribute values to JSON serializable formats.
+        """
+        if isinstance(value, datetime.datetime):
+            return value.isoformat()
+        elif isinstance(value, bytes):
+            return base64.b64encode(value).decode('utf-8')
+        else:
+            return value
+
+    def serialize_results(self, results):
+        """
+        Serialize each attribute in the results list for JSON compatibility.
+        """
+        serialized_results = []
+        for entry in results:
+            serialized_entry = {}
+            for key, values in entry.items():
+                serialized_entry[key] = [self.serialize_value(value) for value in values]
+            serialized_results.append(serialized_entry)
+        return serialized_results
+
+
+
+
 
 
 
