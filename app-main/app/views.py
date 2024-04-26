@@ -99,7 +99,7 @@ def msal_callback(request):
                 # Construct the dynamic part of the message based on user's principal name.
                 adm_account_suffix = user_principal_name.split('@')[0]
                 return HttpResponse(
-                    f"You are not authenticated because the Azure user with which you have logged in does not have an on-premises admin account. The account adm-{adm_account_suffix}-* does not appear to exist in Active Directory. This restriction is in place to allow only IT staff to access this application. If you believe this is an error or need access, please contact vicre@dtu.dk.",
+                    f"You are not authenticated because the Azure user with which you have logged in does not have an on-premises admin account. The account adm-{adm_account_suffix}* does not appear to exist in Active Directory. This restriction is in place to allow only IT staff to access this application. If you believe this is an error or need access, please contact vicre@dtu.dk.",
                     status=403
                 )
             
