@@ -112,10 +112,6 @@ def msal_callback(request):
             else:
                 return redirect('/myview/frontpage/')
             
-            user, created = User.objects.get_or_create(username=user_principal_name.split('@')[0])
-            user.backend = 'django.contrib.auth.backends.ModelBackend'
-            login(request, user)
-
         else:
             # Handle failure or show an error message to the user
             return HttpResponse("Error: failed to retrieve user information.", status=graph_response.status_code)
