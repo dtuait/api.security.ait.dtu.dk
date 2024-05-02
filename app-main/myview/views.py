@@ -16,6 +16,7 @@ from rest_framework.response import Response
 import json
 from django.shortcuts import redirect
 import logging
+from django.contrib.contenttypes.models import ContentType
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +73,9 @@ class BaseView(View):
             filtered_endpoints.append({
                 'method': endpoint.method,
                 'path': endpoint.path,
-                'ad_groups': filtered_groups
+                'ad_groups': filtered_groups,
+                'limiter_type': ContentType.objects.get_for_id(endpoint.limiter_type_id).model if endpoint.limiter_type else "None",
+                'no_limit': endpoint.no_limit
             })
         
         
@@ -186,6 +189,25 @@ class AjaxView(BaseView):
 
             return JsonResponse({'success': 'Form updated'})
 
+
+        elif action == 'ajax_search_form_add_new_organizational_unit':
+            # Extract ad_groups = [] from the POST request
+            organizational_unit = json.loads(request.POST.getlist('organizational_unit')[0])
+            # organizational_unit[0]['distinguishedName'][0]  >> 'OU=AIT,OU=DTUBaseUsers,DC=win,DC=dtu,DC=dk'
+            # organizational_unit[0]['canonicalName'][0]      >>'win.dtu.dk/DTUBaseUsers/AIT'
+            from .models import ADOrganizationalUnitLimiter
+            # class ADOrganizationalUnitLimiter(BaseModel):
+                # canonical_name = models.CharField(max_length=1024)
+                # distinguished_name = models.CharField(max_length=1024) # checks if the queried abject is under this OU e.g. OU=FOOD,OU=DTUBaseUsers,DC=win,DC=dtu,DC=dk
+
+            # Get or create a new ADOrganizationalUnitLimiter
+            ou_limiter, created = ADOrganizationalUnitLimiter.objects.get_or_create(
+                canonical_name=organizational_unit[0]['canonicalName'][0],
+                distinguished_name=organizational_unit[0]['distinguishedName'][0]
+            )
+
+
+            return JsonResponse({'success': 'Form updated'})
     
         elif action == 'ajax_change_form_update_form_ad_ous':
             # Extract ad_ous from the POST request
@@ -264,9 +286,9 @@ class MFAResetPageView(BaseView):
 
 
 
-class CopilotView(BaseView):
+class ActiveDirectoryCopilotView(BaseView):
     form_class = LargeTextAreaForm
-    template_name = "myview/copilot.html"
+    template_name = "myview/active-directory-copilot.html"
     def get(self, request, **kwargs):
         form = self.form_class()
         context = super().get_context_data(**kwargs)

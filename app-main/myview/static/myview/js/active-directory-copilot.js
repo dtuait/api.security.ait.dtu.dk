@@ -32,23 +32,6 @@ async function handleCopilotRequest(event) {
 $('#copilot-submit-btn').on('click', handleCopilotRequest);
 
 
-// $('#copilot-submit-textarea-field').on('input', function() {
-//     var text = $(this).val();
-//     var lineCount = (text.match(/\n/g) || []).length + 1;
-//     $(this).attr('rows', lineCount);
-// });
-
-
-// $('#copilot-submit-textarea-field').on('input', function() {
-//     var text = $(this).val();
-//     var cols = $(this).attr('cols');
-//     var lineCount = (text.match(/\n/g) || []).length + 1;
-//     var wrappedLineCount = Math.ceil(text.length / cols);
-//     var totalLineCount = Math.max(lineCount, wrappedLineCount);
-//     $(this).attr('rows', totalLineCount);
-// });
-
-
 $('#copilot-submit-textarea-field').on('keydown', function(event) {
     if (event.key === 'Enter' && !event.shiftKey) {
         event.preventDefault();

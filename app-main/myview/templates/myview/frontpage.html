@@ -44,6 +44,8 @@
                         <th scope="col">#</th>
                         <th scope="col">Endpoint</th>
                         <th scope="col"><i class="bi bi-question-circle-fill" data-bs-toggle="tooltip" data-bs-placement="right" title="These groups gives you permission to the endpoint" data-bs-html="true"></i> AD Group</th>
+                        <th scope="col">Limiter Type</th>
+                        <th scope="col">Unrestricted Access</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -57,6 +59,8 @@
                                 {% if not forloop.last %}, {% endif %}
                             {% endfor %}
                         </td>
+                        <td>{{ endpoint.limiter_type }}</td>
+                        <td>{{ endpoint.no_limit|yesno:"Yes,No" }}</td> <!-- Displays 'Yes' if no_limit is True, 'No' otherwise -->
                     </tr>
                     {% endfor %}
                 </tbody>

@@ -176,18 +176,6 @@ class AccessControlMiddleware(MiddlewareMixin):
         # return list(user_endpoints.prefetch_related('ad_groups').distinct().values_list('path', flat=True))
         return user_endpoints
 
-    def is_user_authorized_for_ressouce(self, endpoint):
-        is_authorized = False
-        if endpoint.no_limit:
-            is_authorized = True
-            return is_authorized
-        elif endpoint.limiter_type is not None:
-            # detect the type and handle it.
-            
-            pass
-        
-        
-        return is_authorized
 
 
     def is_user_authorized_for_endpoint(self, request, normalized_request_path):
@@ -214,11 +202,12 @@ class AccessControlMiddleware(MiddlewareMixin):
 
         # Get user authorized endpoints from cache or query
         user_endpoints = self.get_user_authorized_endpoints(user_ad_groups)
-
+        endpoint_paths = list(user_endpoints.prefetch_related('ad_groups').distinct().values_list('path', flat=True))
+        
         # Check if user is authorized with cached data
-        for endpoint in user_endpoints.prefetch_related('ad_groups').distinct():
-            if self.compare_paths(endpoint.path, normalized_request_path):
-                return True, endpoint
+        for endpoint_path in endpoint_paths:
+            if self.compare_paths(endpoint_path, normalized_request_path):
+                return True, endpoint_path
 
         return False, None  # No matching endpoint found, access denied
 
@@ -340,15 +329,12 @@ class AccessControlMiddleware(MiddlewareMixin):
             is_authorized = True
         elif request.user.is_authenticated:
             # Check for endpoint access
-            is_user_authorized_for_endpoint, endpoint = self.is_user_authorized_for_endpoint(request, normalized_request_path)
-            is_user_authorized_for_resource = self.is_user_authorized_for_ressouce(endpoint)
+            is_user_authorized_for_endpoint, endpoint_path = self.is_user_authorized_for_endpoint(request, normalized_request_path)
 
-            if is_user_authorized_for_endpoint and is_user_authorized_for_resource:
+            if is_user_authorized_for_endpoint:
                 is_authorized = True
 
             else:
-                # from django.http import JsonResponse
-                # return JsonResponse({'message': 'Access denied.'}, status=403)
                 return HttpResponseForbidden('Access denied.')
 
 

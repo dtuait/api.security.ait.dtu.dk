@@ -6,8 +6,6 @@ from django.db import models
 from myview.models import ADGroupAssociation
 from django.contrib.contenttypes.admin import GenericTabularInline
 import logging
-from django.contrib.contenttypes.models import ContentType
-from django import forms
 
 logger = logging.getLogger(__name__)
 
@@ -64,44 +62,16 @@ try:
     from .models import Endpoint, IPLimiter
 
 
-    # class ResourceLimiterInline(GenericTabularInline):
-    #     model = Endpoint.limiter.through
-    #     ct_field = "limiter_type"
-    #     ct_fk_field = "limiter_id"
+    class ResourceLimiterInline(GenericTabularInline):
+        model = Endpoint.limiter.through
+        ct_field = "limiter_type"
+        ct_fk_field = "limiter_id"
 
     @admin.register(IPLimiter)
     class IPLimiterAdmin(admin.ModelAdmin):
         list_display = ('ip_address', 'description')
         search_fields = ('ip_address',)
 
-    class EndpointAdminForm(forms.ModelForm):
-        class Meta:
-            model = Endpoint
-            fields = '__all__'
-
-        limiter_content_type = forms.ModelChoiceField(
-            queryset=ContentType.objects.filter(model__in=['iplimiter']),
-            required=False,
-            label="Type of Limiter"
-        )
-        limiter_object_id = forms.IntegerField(
-            required=False,
-            label="ID of Limiter"
-        )
-
-        def __init__(self, *args, **kwargs):
-            super().__init__(*args, **kwargs)
-            if self.instance and self.instance.limiter:
-                self.fields['limiter_content_type'].initial = self.instance.limiter_type
-                self.fields['limiter_object_id'].initial = self.instance.limiter_id
-
-        def save(self, commit=True):
-            model = super().save(commit=False)
-            model.limiter_type = self.cleaned_data['limiter_content_type']
-            model.limiter_id = self.cleaned_data['limiter_object_id']
-            if commit:
-                model.save()
-            return model
 
     @admin.register(Endpoint)
     class EndpointAdmin(admin.ModelAdmin):
@@ -109,7 +79,7 @@ try:
         search_fields = ('path', 'method')
         filter_horizontal = ('ad_groups',) 
         readonly_fields = ('path', 'method')
-        
+        inlines = [ResourceLimiterInline]
 
         
         formfield_overrides = {
@@ -234,30 +204,32 @@ except ImportError:
 
 
 
-try:
-    from .models import ADOrganizationalUnitLimiter
-    from django.db.models import Q
+# try:
+#     from .models import ADOrganizationalUnitAssociation
+#     from django.db.models import Q
 
-    from django.contrib import admin
-    from django.db.models import Q
-    from django.contrib.admin.widgets import FilteredSelectMultiple
-    from django.db import models
 
-    from django.contrib import admin
-    from .models import ADOrganizationalUnitLimiter
+#     class ADOrganizationalUnitAssociationAdmin(admin.ModelAdmin):
+#         list_display = ('distinguished_name',)
+#         search_fields = ('distinguished_name',)
+#         # list_filter = ('distinguished_name',)
+#         list_per_page = 10  # Display 10 objects per page
 
-    @admin.register(ADOrganizationalUnitLimiter)
-    class ADOrganizationalUnitLimiterAdmin(admin.ModelAdmin):
-        list_display = ('canonical_name', 'distinguished_name')
-        search_fields = ('canonical_name', 'distinguished_name')
-        list_per_page = 10  # Display 10 objects per page
+#         def get_queryset(self, request):
+#             qs = super().get_queryset(request)
+#             return qs.prefetch_related('members')
 
-        def has_delete_permission(self, request, obj=None):
-            return False
-        
-        def has_add_permission(self, request, obj=None):
-            return False
+#         def get_search_results(self, request, queryset, search_term):
+#             queryset, use_distinct = super().get_search_results(request, queryset, search_term)
+#             queryset = queryset.filter(Q(distinguished_name__startswith=search_term))
+#             return queryset, use_distinct
 
-except ImportError:
-    print("ADOU model is not available for registration in the admin site.")
-    pass
+#         def has_delete_permission(self, request, obj=None):
+#             return False
+
+
+#     admin.site.register(ADOrganizationalUnitAssociation, ADOrganizationalUnitAssociationAdmin)
+
+# except ImportError:
+#     print("ADOU model is not available for registration in the admin site.")
+#     pass

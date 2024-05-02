@@ -238,25 +238,27 @@ try:
     from .models import ADOrganizationalUnitLimiter
     from django.db.models import Q
 
-    from django.contrib import admin
-    from django.db.models import Q
-    from django.contrib.admin.widgets import FilteredSelectMultiple
-    from django.db import models
 
-    from django.contrib import admin
-    from .models import ADOrganizationalUnitLimiter
-
-    @admin.register(ADOrganizationalUnitLimiter)
     class ADOrganizationalUnitLimiterAdmin(admin.ModelAdmin):
-        list_display = ('canonical_name', 'distinguished_name')
-        search_fields = ('canonical_name', 'distinguished_name')
+        list_display = ('distinguished_name',)
+        search_fields = ('distinguished_name',)
+        # list_filter = ('distinguished_name',)
         list_per_page = 10  # Display 10 objects per page
+
+        def get_queryset(self, request):
+            qs = super().get_queryset(request)
+            return qs.prefetch_related('members')
+
+        def get_search_results(self, request, queryset, search_term):
+            queryset, use_distinct = super().get_search_results(request, queryset, search_term)
+            queryset = queryset.filter(Q(distinguished_name__startswith=search_term))
+            return queryset, use_distinct
 
         def has_delete_permission(self, request, obj=None):
             return False
-        
-        def has_add_permission(self, request, obj=None):
-            return False
+
+
+    admin.site.register(ADOrganizationalUnitLimiter, ADOrganizationalUnitLimiterAdmin)
 
 except ImportError:
     print("ADOU model is not available for registration in the admin site.")

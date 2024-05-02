@@ -24,6 +24,9 @@
     <form method="post">
         {% csrf_token %}
         <div class="mb-3 position-relative">
+            <label for="input1" class="form-label">Authorization</label>
+            <input id="copilot-authorization" type="text" id="input1" class="form-control">
+
             <label for="input1" class="form-label">base_dn</label>
             <input id="copilot-base-dn" type="text" id="input1" class="form-control">
         
@@ -32,6 +35,9 @@
         
             <label for="input3" class="form-label">search_attributes</label>
             <input id="copilot-search-attributes" type="text" id="input3" class="form-control">
+
+            <label for="input3" class="form-label">limit</label>
+            <input id="copilot-search-limit" type="text" id="input3" class="form-control">
 
 
             <label for="id_copilot" class="form-label">Copilot
@@ -44,9 +50,8 @@
             </button>
         </div>
     </form>
-
 </div>
 
-<script src="{% static 'myview/js/copilot.js' %}" defer></script>
-<link rel="stylesheet" type="text/css" media="all" href="{% static 'myview/css/copilot.css' %}" />
+<script src="{% static 'myview/js/active-directory-copilot.js' %}" defer></script>
+<link rel="stylesheet" type="text/css" media="all" href="{% static 'myview/css/active-directory-copilot.css' %}" />
 {% endblock %}
