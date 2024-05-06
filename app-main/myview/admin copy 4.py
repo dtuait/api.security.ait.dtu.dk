@@ -59,12 +59,14 @@ try:
     from .models import LimiterType
     @admin.register(LimiterType)
     class LimiterTypeAdmin(admin.ModelAdmin):
-        list_display = ('content_type',)
+        list_display = ('content_type', 'object_id')
         search_fields = ('name',)
         def save_model(self, request, obj, form, change):
-            obj.name = obj.content_type.model_class()._meta.verbose_name
-            obj.description = obj.content_type.model_class().__doc__
-            super().save_model(request, obj, form, change)
+            # If is_a_limiter is True in the content type, set the name and description fields
+            if getattr(obj.content_type.model_class(), 'is_a_limiter', False):
+                obj.name = obj.content_type.model_class()._meta.verbose_name
+                obj.description = obj.content_type.model_class().__doc__
+                super().save_model(request, obj, form, change)
 
 
 except ImportError:

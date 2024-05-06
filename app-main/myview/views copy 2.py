@@ -17,7 +17,6 @@ import json
 from django.shortcuts import redirect
 import logging
 from django.contrib.contenttypes.models import ContentType
-from .models import LimiterType, IPLimiter, ADOrganizationalUnitLimiter
 
 logger = logging.getLogger(__name__)
 
@@ -65,8 +64,7 @@ class BaseView(View):
         branch, commit = self.get_git_info()
         user_ad_groups = self.request.user.ad_group_members.all()
         user_endpoints = Endpoint.objects.filter(ad_groups__in=user_ad_groups).prefetch_related('ad_groups').distinct()
-        user_ad_group_ids = user_ad_groups.values_list('id', flat=True)
-
+        
         # Filter endpoints to include only user-specific group access information
         filtered_endpoints = []
         for endpoint in user_endpoints:
@@ -80,31 +78,32 @@ class BaseView(View):
                 'no_limit': endpoint.no_limit
             })
         
+        # from .models import LimiterType, IPLimiter, ADOrganizationalUnitLimiter
+        # limiter_types = LimiterType.objects.all()
+        #         # Get all limiter types associated with the current user via AD groups
+        # ip_limiter_groups = IPLimiter.objects.filter(ad_groups__in=user_ad_groups).values_list('limiter_type', flat=True)
+        # ou_limiter_groups = ADOrganizationalUnitLimiter.objects.filter(ad_groups__in=user_ad_groups).values_list('limiter_type', flat=True)
 
-        # Fetch Limiter Types that the user is associated with
-        associated_limiter_types = []
+        # # Combine limiter types from all sources and make them unique
+        # all_limiter_type_ids = set(ip_limiter_groups).union(set(ou_limiter_groups))
+        # user_limiter_types = LimiterType.objects.filter(id__in=all_limiter_type_ids)
+            
 
-        for limiter_type in LimiterType.objects.all():
-            content_type = limiter_type.content_type
+        # Filter endpoints to include only user-specific group access information
+        filtered_endpoints = []
+        for endpoint in user_endpoints:
+            # Filter ad_groups to include only those where the user is a member
+            filtered_groups = endpoint.ad_groups.filter(members=self.request.user)
+            filtered_endpoints.append({
+                'method': endpoint.method,
+                'path': endpoint.path,
+                'ad_groups': filtered_groups,
+                'limiter_type': endpoint.limiter_type.name if endpoint.limiter_type else "None",
+                'no_limit': endpoint.no_limit
+            })
 
-            if content_type.model == 'iplimiter':
-                limiters = IPLimiter.objects.filter(ad_groups__in=user_ad_group_ids).distinct()
-            elif content_type.model == 'adorganizationalunitlimiter':
-                limiters = ADOrganizationalUnitLimiter.objects.filter(ad_groups__in=user_ad_group_ids).distinct()
-            else:
-                limiters = []
 
-            if limiters.exists():
-                limiter_type_info = {
-                    'name': limiter_type.name,
-                    'description': limiter_type.description,
-                    'model': content_type.model,
-                    'canonical_names': ', '.join(limiters.values_list('canonical_name', flat=True).distinct()) if content_type.model == 'adorganizationalunitlimiter' else None,
-                }
-                associated_limiter_types.append(limiter_type_info)
-
-        # for all limiter types check if a group that request.user is member of is associated with the group
-
+            
         from django.conf import settings
         context = {
             'base_template': self.base_template,
@@ -115,7 +114,7 @@ class BaseView(View):
             'user_ad_groups': user_ad_groups,
             'user_has_mfa_reset_access': self.user_has_mfa_reset_access(),
             'debug': settings.DEBUG,
-            'all_limiter_types': associated_limiter_types,
+            'user_available_ressouces': None
         }
 
         return context
