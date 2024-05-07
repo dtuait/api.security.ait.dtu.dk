@@ -411,19 +411,6 @@ class AccessControlMiddleware(MiddlewareMixin):
 
 
         if is_authorized:
-            # # check for resource limit
-            
-            # check if the user is visiting a endpoint
-            if self.is_user_authorized_for_endpoint(request, normalized_request_path):
-                print("User is visiting an endpoint")
-
-                
-
-            # if endpoint.no_limit or endpoint.limiter_type is not None:
-            # # The user can access the endpoint
-            # else:
-            # # The user cannot access the endpoint
-
 
             return self.get_response(request)
         else:
