@@ -205,46 +205,23 @@ class AccessControlMiddleware(MiddlewareMixin):
         for limiter in limiters:
             if limiter.ad_groups.filter(id__in=user_groups).exists():
                 print("IPLimiter")
-                return False  # Grant access if user is part of any related AD group
+                return True  # Grant access if user is part of any related AD group
         return False
 
     def handle_ado_ou_limiter(self, limiters, user_groups, request):
         for limiter in limiters:
             if limiter.ad_groups.filter(id__in=user_groups).exists():
-                            
-                # Regex to find the user principal name in the URL
+                print("ADOrganizationalUnitLimiter")
+
                 regex = r"([^\/@]+@[^\/]+)"
 
-                # Extract the user principal name from the request path
-                match = re.search(regex, request.path)
-                user_principal_name = match.group() if match else None
-
-                if user_principal_name is None:
-                    return False
-
-                # Get the ADOrganizationalUnitLimiter instances associated with the ADGroupAssociation instances
-                ad_organizational_unit_limiters = ADOrganizationalUnitLimiter.objects.filter(ad_groups__in=limiter.ad_groups.all()).distinct()
-
-                for ado_ou_limiter in ad_organizational_unit_limiters:
-                    # perform ldap query ado_ou_limiters
-                    print(ado_ou_limiter.distinguished_name)
-
-                    # base_dn = "DC=win,DC=dtu,DC=dk"
-                    base_dn = ado_ou_limiter.distinguished_name
-                    search_filter = f"(userPrincipalName={user_principal_name})"                    
-                    search_attributes = ['userPrincipalName']
-                    from active_directory.services import execute_active_directory_query
-                    result = execute_active_directory_query(base_dn=base_dn, search_filter=search_filter, search_attributes=search_attributes)
-
-                    if len(result) > 0:
-                        # print("User is under the OU")
-                        return True
+                user_principal_name = None
 
                 
-                return False
-            
-
-
+                # '/graph/v1.0/get-user/vicre-test01@dtudk.onmicrosoft.com' >> vicre-test01@dtudk.onmicrosoft.com
+                # '/graph/v1.0/list/vicre-test01@dtudk.onmicrosoft.com/authentication-methods' >> vicre-test01@dtudk.onmicrosoft.com
+                # '/graph/v1.0/users/vicre-test01@dtudk.onmicrosoft.com/authentication-methods/214213' >> vicre-test01@dtudk.onmicrosoft.com
+                return True  # Grant access if user is part of any related AD group
         return False
 
 

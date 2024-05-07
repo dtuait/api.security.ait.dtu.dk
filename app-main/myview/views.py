@@ -82,6 +82,7 @@ class BaseView(View):
         
 
         # Fetch Limiter Types that the user is associated with
+        from .models import LimiterType, IPLimiter, ADOrganizationalUnitLimiter
         associated_limiter_types = []
 
         for limiter_type in LimiterType.objects.all():
@@ -184,8 +185,8 @@ class AjaxView(BaseView):
             limit = request.POST.get('limit')
             
             if limit is not None:
-                limit = int(limit)                
-
+                limit = int(limit)
+                
             # Perform the active directory query
             result = active_directory_query(base_dn=base_dn, search_filter=search_filter, search_attributes=search_attributes, limit=limit)
             # return Response(result)

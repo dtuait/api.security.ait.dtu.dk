@@ -241,7 +241,6 @@ class Endpoint(BaseModel):
     method = models.CharField(max_length=6, blank=True, default='')
     ad_groups = models.ManyToManyField('ADGroupAssociation', related_name='endpoints', blank=True)
     limiter_type = models.ForeignKey(LimiterType, on_delete=models.CASCADE, null=True, blank=True)
-    # limiter_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, null=True, blank=True)
     no_limit = models.BooleanField(default=False)
     
 

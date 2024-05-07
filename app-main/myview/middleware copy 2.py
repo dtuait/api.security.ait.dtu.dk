@@ -178,74 +178,28 @@ class AccessControlMiddleware(MiddlewareMixin):
         return user_endpoints
 
     
-    def is_user_authorized_for_resource(self, endpoint, request):
+
+    def is_user_authorized_for_resource(self, endpoint, user):
+        from django.contrib.contenttypes.models import ContentType
         if endpoint.no_limit:
-            return True  # Access is granted because there is no limitation
+            return True  # No limiter is applied to the endpoint, access is granted
 
         if endpoint.limiter_type is not None:
             content_type = endpoint.limiter_type.content_type
-            model_class = content_type.model_class()  # Retrieves the model class based on the content type
+            model_class = content_type.model_class()  # This retrieves the model class based on the content type
 
-            # Retrieve all instances of the model class to see if the user has access through any
+            # Check all instances of this model class to see if the user has access through any
             limiters = model_class.objects.all()
-            user_groups = request.user.ad_group_members.all()
+            user_groups = user.ad_group_members.all()
 
-            # Handle each type of limiter differently
-            if model_class == IPLimiter:
-                return self.handle_iplimiter(limiters, user_groups, request)
-            elif model_class == ADOrganizationalUnitLimiter:
-                return self.handle_ado_ou_limiter(limiters, user_groups, request)
-            else:
-                print(f"No specific handling for {model_class.__name__}")
-                return False  # If the limiter type is not recognized, access is denied
+            for limiter in limiters:
+                if limiter.ad_groups.filter(id__in=user_groups).exists():
+                    return True  # If any limiter's groups include the user, grant access
 
-        return False  # Deny access if no limiter type is specified
+            return False  # If no access is found, deny access
 
-    def handle_iplimiter(self, limiters, user_groups, request):
-        for limiter in limiters:
-            if limiter.ad_groups.filter(id__in=user_groups).exists():
-                print("IPLimiter")
-                return False  # Grant access if user is part of any related AD group
-        return False
+        return False  # Default to denying access if no limiter type is specified
 
-    def handle_ado_ou_limiter(self, limiters, user_groups, request):
-        for limiter in limiters:
-            if limiter.ad_groups.filter(id__in=user_groups).exists():
-                            
-                # Regex to find the user principal name in the URL
-                regex = r"([^\/@]+@[^\/]+)"
-
-                # Extract the user principal name from the request path
-                match = re.search(regex, request.path)
-                user_principal_name = match.group() if match else None
-
-                if user_principal_name is None:
-                    return False
-
-                # Get the ADOrganizationalUnitLimiter instances associated with the ADGroupAssociation instances
-                ad_organizational_unit_limiters = ADOrganizationalUnitLimiter.objects.filter(ad_groups__in=limiter.ad_groups.all()).distinct()
-
-                for ado_ou_limiter in ad_organizational_unit_limiters:
-                    # perform ldap query ado_ou_limiters
-                    print(ado_ou_limiter.distinguished_name)
-
-                    # base_dn = "DC=win,DC=dtu,DC=dk"
-                    base_dn = ado_ou_limiter.distinguished_name
-                    search_filter = f"(userPrincipalName={user_principal_name})"                    
-                    search_attributes = ['userPrincipalName']
-                    from active_directory.services import execute_active_directory_query
-                    result = execute_active_directory_query(base_dn=base_dn, search_filter=search_filter, search_attributes=search_attributes)
-
-                    if len(result) > 0:
-                        # print("User is under the OU")
-                        return True
-
-                
-                return False
-            
-
-
-        return False
 
 
     def is_user_authorized_for_endpoint(self, request, normalized_request_path):
@@ -399,7 +353,7 @@ class AccessControlMiddleware(MiddlewareMixin):
         elif request.user.is_authenticated:
             # Check for endpoint access
             is_user_authorized_for_endpoint, endpoint = self.is_user_authorized_for_endpoint(request, normalized_request_path)
-            is_user_authorized_for_resource = self.is_user_authorized_for_resource(endpoint, request)
+            is_user_authorized_for_resource = self.is_user_authorized_for_resource(endpoint, request.user)
 
             if is_user_authorized_for_endpoint and is_user_authorized_for_resource:
                 is_authorized = True
