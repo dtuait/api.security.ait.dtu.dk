@@ -11,7 +11,7 @@ from active_directory.scripts.active_directory_query import active_directory_que
 import string
 from django.contrib.auth.hashers import make_password, check_password
 import random
-from myview.models import ADGroupAssociation, Endpoint, ADOrganizationalUnitAssociation
+from myview.models import ADGroupAssociation, Endpoint
 from utils.cronjob_update_endpoints import updateEndpoints
 import shutil
 from django.contrib.auth.models import User
@@ -151,10 +151,10 @@ class Command(BaseCommand):
         ADGroupAssociation.sync_ad_groups(self)
         print("done creating AD groups")
 
-    def createallous(self, *args, **options):
+    # def createallous(self, *args, **options):
             
-        ADOrganizationalUnitAssociation.sync_ad_ous(self)
-        print("done creating OUs")
+    #     ADOrganizationalUnitAssociation.sync_ad_ous(self)
+    #     print("done creating OUs")
 
     def startmake_migrations(self, *args, **options):
         os.system('python /usr/src/project/app-main/manage.py makemigrations')

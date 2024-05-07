@@ -17,7 +17,6 @@ import json
 from django.shortcuts import redirect
 import logging
 from django.contrib.contenttypes.models import ContentType
-from .models import LimiterType, IPLimiter, ADOrganizationalUnitLimiter
 
 logger = logging.getLogger(__name__)
 
@@ -81,28 +80,32 @@ class BaseView(View):
             })
         
 
-        # Fetch Limiter Types that the user is associated with
+
+        # Fetch all Limiter Types with extra information
         from .models import LimiterType, IPLimiter, ADOrganizationalUnitLimiter
-        associated_limiter_types = []
+        all_limiter_types = LimiterType.objects.all().values('name', 'description', 'content_type')
+        content_type_map = ContentType.objects.in_bulk([lt['content_type'] for lt in all_limiter_types if lt['content_type']])
 
-        for limiter_type in LimiterType.objects.all():
-            content_type = limiter_type.content_type
+        for limiter_type in all_limiter_types:
+            content_type = content_type_map.get(limiter_type['content_type'])
+            if content_type:
+                limiter_type['model'] = content_type.model
+                
+                # Check if the user is associated with a limiter type through their groups
+                if content_type.model == 'iplimiter':
+                    limiters = IPLimiter.objects.filter(ad_groups__in=user_ad_group_ids).distinct()
+                    limiter_type['canonical_names'] = None  # Not applicable to IPLimiter
+                elif content_type.model == 'adorganizationalunitlimiter':
+                    limiters = ADOrganizationalUnitLimiter.objects.filter(ad_groups__in=user_ad_group_ids).distinct()
+                    canonical_names = limiters.values_list('canonical_name', flat=True).distinct()
+                    limiter_type['canonical_names'] = ', '.join(canonical_names)
+                else:
+                    limiters = []
+                    limiter_type['canonical_names'] = None
 
-            if content_type.model == 'iplimiter':
-                limiters = IPLimiter.objects.filter(ad_groups__in=user_ad_group_ids).distinct()
-            elif content_type.model == 'adorganizationalunitlimiter':
-                limiters = ADOrganizationalUnitLimiter.objects.filter(ad_groups__in=user_ad_group_ids).distinct()
-            else:
-                limiters = []
+                # Determine if the user is associated with this type of limiter
+                limiter_type['user_associated'] = limiters.exists()
 
-            if limiters.exists():
-                limiter_type_info = {
-                    'name': limiter_type.name,
-                    'description': limiter_type.description,
-                    'model': content_type.model,
-                    'canonical_names': ', '.join(limiters.values_list('canonical_name', flat=True).distinct()) if content_type.model == 'adorganizationalunitlimiter' else None,
-                }
-                associated_limiter_types.append(limiter_type_info)
 
         # for all limiter types check if a group that request.user is member of is associated with the group
 
@@ -116,7 +119,7 @@ class BaseView(View):
             'user_ad_groups': user_ad_groups,
             'user_has_mfa_reset_access': self.user_has_mfa_reset_access(),
             'debug': settings.DEBUG,
-            'all_limiter_types': associated_limiter_types,
+            'all_limiter_types': all_limiter_types,
         }
 
         return context
@@ -185,8 +188,8 @@ class AjaxView(BaseView):
             limit = request.POST.get('limit')
             
             if limit is not None:
-                limit = int(limit)
-                
+                limit = int(limit)                
+
             # Perform the active directory query
             result = active_directory_query(base_dn=base_dn, search_filter=search_filter, search_attributes=search_attributes, limit=limit)
             # return Response(result)

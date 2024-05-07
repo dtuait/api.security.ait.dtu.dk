@@ -44,9 +44,6 @@ try:
 
         def has_delete_permission(self, request, obj=None):
             return False
-        
-        def has_add_permission(self, request, obj=None):
-            return False
 
 except ImportError:
     print("ADGroup model is not available for registration in the admin site.")
@@ -55,23 +52,7 @@ except ImportError:
 
 
 
-try:
-    from .models import LimiterType
-    @admin.register(LimiterType)
-    class LimiterTypeAdmin(admin.ModelAdmin):
-        list_display = ('content_type',)
-        search_fields = ('name',)
-        def save_model(self, request, obj, form, change):
-            obj.name = obj.content_type.model_class()._meta.verbose_name
-            obj.description = obj.content_type.model_class().__doc__
-            super().save_model(request, obj, form, change)
-
-
-except ImportError:
-    print("Limiter type model is not available for registration in the admin site.")
-    pass
-
-
+# 
 
 
 
@@ -80,7 +61,7 @@ except ImportError:
 
 # Attempt to import the Endpoint model
 try:
-    from .models import Endpoint
+    from .models import Endpoint, IPLimiter
 
 
     # class ResourceLimiterInline(GenericTabularInline):
@@ -88,10 +69,10 @@ try:
     #     ct_field = "limiter_type"
     #     ct_fk_field = "limiter_id"
 
-    # @admin.register(IPLimiter)
-    # class IPLimiterAdmin(admin.ModelAdmin):
-    #     list_display = ('ip_address', 'description')
-    #     search_fields = ('ip_address',)
+    @admin.register(IPLimiter)
+    class IPLimiterAdmin(admin.ModelAdmin):
+        list_display = ('ip_address', 'description')
+        search_fields = ('ip_address',)
 
     class EndpointAdminForm(forms.ModelForm):
         class Meta:
@@ -257,26 +238,27 @@ try:
     from .models import ADOrganizationalUnitLimiter
     from django.db.models import Q
 
-    from django.contrib import admin
-    from django.db.models import Q
-    from django.contrib.admin.widgets import FilteredSelectMultiple
-    from django.db import models
 
-    from django.contrib import admin
-    from .models import ADOrganizationalUnitLimiter
-
-    @admin.register(ADOrganizationalUnitLimiter)
     class ADOrganizationalUnitLimiterAdmin(admin.ModelAdmin):
-        list_display = ('canonical_name', 'distinguished_name')
-        search_fields = ('canonical_name', 'distinguished_name')
-        filter_horizontal = ('ad_groups',)  
+        list_display = ('distinguished_name',)
+        search_fields = ('distinguished_name',)
+        # list_filter = ('distinguished_name',)
         list_per_page = 10  # Display 10 objects per page
+
+        def get_queryset(self, request):
+            qs = super().get_queryset(request)
+            return qs.prefetch_related('members')
+
+        def get_search_results(self, request, queryset, search_term):
+            queryset, use_distinct = super().get_search_results(request, queryset, search_term)
+            queryset = queryset.filter(Q(distinguished_name__startswith=search_term))
+            return queryset, use_distinct
 
         def has_delete_permission(self, request, obj=None):
             return False
-        
-        def has_add_permission(self, request, obj=None):
-            return False
+
+
+    admin.site.register(ADOrganizationalUnitLimiter, ADOrganizationalUnitLimiterAdmin)
 
 except ImportError:
     print("ADOU model is not available for registration in the admin site.")

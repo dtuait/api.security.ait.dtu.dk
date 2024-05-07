@@ -6,7 +6,7 @@ from active_directory.scripts.active_directory_query import active_directory_que
 from django.db import transaction
 from django.db.utils import IntegrityError
 from django.utils.translation import gettext_lazy as _
-from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
+from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 
 class BaseModel(models.Model):
@@ -16,43 +16,31 @@ class BaseModel(models.Model):
     class Meta:
         abstract = True
 
-
-
 class LimiterType(models.Model):
-    """This model represents a type of limiter, associated only with the model type."""
     name = models.CharField(max_length=255, unique=True)
     description = models.TextField(blank=True, default='')
-    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, null=True, blank=True, 
-                                     limit_choices_to={'model__in': ['iplimiter', 'adorganizationalunitlimiter']})
-
+    from django.contrib.contenttypes.models import ContentType
+    limiter_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, null=True, blank=True)
+    
     def __str__(self):
         return self.name
 
+
 class IPLimiter(BaseModel):
-    """This model represents a specific IP limiter."""
-    ip_address = models.CharField(max_length=15)
+    ip_address = models.CharField(max_length=15) # list each ip address semi colon seperated
     description = models.TextField(blank=True, default='')
     ad_groups = models.ManyToManyField('ADGroupAssociation', related_name='ip_limiters', blank=True)
 
-    class Meta:
-        verbose_name = "IP Limiter"
-        verbose_name_plural = "IP Limiters"
-
 class ADOrganizationalUnitLimiter(BaseModel):
-    """This model represents an AD organizational unit limiter."""
-    canonical_name = models.CharField(max_length=1024)
-    distinguished_name = models.CharField(max_length=1024)
+    canonical_name = models.CharField(max_length=1024) # list each canonicalname semi colon seperated
+    distinguished_name = models.CharField(max_length=1024) 
     ad_groups = models.ManyToManyField('ADGroupAssociation', related_name='ad_organizational_unit_limiters', blank=True)
+    def __str__(self):
+        return self.canonical_name
 
-    class Meta:
-        verbose_name = "AD Organizational Unit Limiter"
-        verbose_name_plural = "AD Organizational Unit Limiters"
 
 # This model is used to associate AD groups with Django users
 class ADGroupAssociation(BaseModel):
-    """
-    This model represents an association between an AD group and a Django user.
-    """
     cn = models.CharField(max_length=255, verbose_name="Common Name")
     canonical_name = models.CharField(max_length=1024)
     distinguished_name = models.CharField(max_length=1024)
@@ -234,13 +222,14 @@ class ADGroupAssociation(BaseModel):
         self.added_manually_by = admin_user
         self.save()
 
-
+    
 
 class Endpoint(BaseModel):
     path = models.CharField(max_length=255, unique=True)
     method = models.CharField(max_length=6, blank=True, default='')
     ad_groups = models.ManyToManyField('ADGroupAssociation', related_name='endpoints', blank=True)
     limiter_type = models.ForeignKey(LimiterType, on_delete=models.CASCADE, null=True, blank=True)
+    # limiter_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, null=True, blank=True)
     no_limit = models.BooleanField(default=False)
     
 

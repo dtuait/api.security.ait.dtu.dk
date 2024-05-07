@@ -19,31 +19,46 @@ class BaseModel(models.Model):
 
 
 class LimiterType(models.Model):
-    """This model represents a type of limiter, associated only with the model type."""
+    """
+    This model represents a type of limiter.
+    """
     name = models.CharField(max_length=255, unique=True)
     description = models.TextField(blank=True, default='')
-    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, null=True, blank=True, 
-                                     limit_choices_to={'model__in': ['iplimiter', 'adorganizationalunitlimiter']})
-
+    
+    # Content type and object ID for generic relation
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, null=True, blank=True, limit_choices_to={'model__in': ['iplimiter', 'adorganizationalunitlimiter']})
+    # content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, null=True, blank=True)
+    # object_id = models.PositiveIntegerField(null=True, blank=True)
+    # content_object = GenericForeignKey('content_type', 'object_id')
+    
     def __str__(self):
         return self.name
 
+
 class IPLimiter(BaseModel):
-    """This model represents a specific IP limiter."""
+    """
+    This model represents a type of limiter.
+    """
+    is_a_limiter = True
     ip_address = models.CharField(max_length=15)
     description = models.TextField(blank=True, default='')
     ad_groups = models.ManyToManyField('ADGroupAssociation', related_name='ip_limiters', blank=True)
+    limiter_type = GenericRelation(LimiterType)
 
     class Meta:
         verbose_name = "IP Limiter"
         verbose_name_plural = "IP Limiters"
 
 class ADOrganizationalUnitLimiter(BaseModel):
-    """This model represents an AD organizational unit limiter."""
+    """
+    This model represents a type of limiter.
+    """
+    is_a_limiter = True
     canonical_name = models.CharField(max_length=1024)
     distinguished_name = models.CharField(max_length=1024)
     ad_groups = models.ManyToManyField('ADGroupAssociation', related_name='ad_organizational_unit_limiters', blank=True)
-
+    limiter_type = GenericRelation(LimiterType)
+    
     class Meta:
         verbose_name = "AD Organizational Unit Limiter"
         verbose_name_plural = "AD Organizational Unit Limiters"
@@ -241,6 +256,7 @@ class Endpoint(BaseModel):
     method = models.CharField(max_length=6, blank=True, default='')
     ad_groups = models.ManyToManyField('ADGroupAssociation', related_name='endpoints', blank=True)
     limiter_type = models.ForeignKey(LimiterType, on_delete=models.CASCADE, null=True, blank=True)
+    # limiter_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, null=True, blank=True)
     no_limit = models.BooleanField(default=False)
     
 

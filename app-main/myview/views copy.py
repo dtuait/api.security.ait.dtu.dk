@@ -17,7 +17,6 @@ import json
 from django.shortcuts import redirect
 import logging
 from django.contrib.contenttypes.models import ContentType
-from .models import LimiterType, IPLimiter, ADOrganizationalUnitLimiter
 
 logger = logging.getLogger(__name__)
 
@@ -65,8 +64,7 @@ class BaseView(View):
         branch, commit = self.get_git_info()
         user_ad_groups = self.request.user.ad_group_members.all()
         user_endpoints = Endpoint.objects.filter(ad_groups__in=user_ad_groups).prefetch_related('ad_groups').distinct()
-        user_ad_group_ids = user_ad_groups.values_list('id', flat=True)
-
+        
         # Filter endpoints to include only user-specific group access information
         filtered_endpoints = []
         for endpoint in user_endpoints:
@@ -80,32 +78,11 @@ class BaseView(View):
                 'no_limit': endpoint.no_limit
             })
         
-
-        # Fetch Limiter Types that the user is associated with
-        from .models import LimiterType, IPLimiter, ADOrganizationalUnitLimiter
-        associated_limiter_types = []
-
-        for limiter_type in LimiterType.objects.all():
-            content_type = limiter_type.content_type
-
-            if content_type.model == 'iplimiter':
-                limiters = IPLimiter.objects.filter(ad_groups__in=user_ad_group_ids).distinct()
-            elif content_type.model == 'adorganizationalunitlimiter':
-                limiters = ADOrganizationalUnitLimiter.objects.filter(ad_groups__in=user_ad_group_ids).distinct()
-            else:
-                limiters = []
-
-            if limiters.exists():
-                limiter_type_info = {
-                    'name': limiter_type.name,
-                    'description': limiter_type.description,
-                    'model': content_type.model,
-                    'canonical_names': ', '.join(limiters.values_list('canonical_name', flat=True).distinct()) if content_type.model == 'adorganizationalunitlimiter' else None,
-                }
-                associated_limiter_types.append(limiter_type_info)
-
-        # for all limiter types check if a group that request.user is member of is associated with the group
-
+        from .models import LimiterType
+        limiter_types = LimiterType.objects.all()
+        
+        
+        
         from django.conf import settings
         context = {
             'base_template': self.base_template,
@@ -116,7 +93,7 @@ class BaseView(View):
             'user_ad_groups': user_ad_groups,
             'user_has_mfa_reset_access': self.user_has_mfa_reset_access(),
             'debug': settings.DEBUG,
-            'all_limiter_types': associated_limiter_types,
+            'user_available_ressouces': None
         }
 
         return context
@@ -185,8 +162,8 @@ class AjaxView(BaseView):
             limit = request.POST.get('limit')
             
             if limit is not None:
-                limit = int(limit)
-                
+                limit = int(limit)                
+
             # Perform the active directory query
             result = active_directory_query(base_dn=base_dn, search_filter=search_filter, search_attributes=search_attributes, limit=limit)
             # return Response(result)

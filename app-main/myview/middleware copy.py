@@ -10,7 +10,6 @@ from rest_framework.authentication import TokenAuthentication, get_authorization
 import logging
 import re
 from .models import Endpoint
-from .models import LimiterType, IPLimiter, ADOrganizationalUnitLimiter
 
 def get_client_ip(request):
     """Utility function to extract client's IP from request."""
@@ -177,75 +176,6 @@ class AccessControlMiddleware(MiddlewareMixin):
         # return list(user_endpoints.prefetch_related('ad_groups').distinct().values_list('path', flat=True))
         return user_endpoints
 
-    
-    def is_user_authorized_for_resource(self, endpoint, request):
-        if endpoint.no_limit:
-            return True  # Access is granted because there is no limitation
-
-        if endpoint.limiter_type is not None:
-            content_type = endpoint.limiter_type.content_type
-            model_class = content_type.model_class()  # Retrieves the model class based on the content type
-
-            # Retrieve all instances of the model class to see if the user has access through any
-            limiters = model_class.objects.all()
-            user_groups = request.user.ad_group_members.all()
-
-            # Handle each type of limiter differently
-            if model_class == IPLimiter:
-                return self.handle_iplimiter(limiters, user_groups, request)
-            elif model_class == ADOrganizationalUnitLimiter:
-                return self.handle_ado_ou_limiter(limiters, user_groups, request)
-            else:
-                print(f"No specific handling for {model_class.__name__}")
-                return False  # If the limiter type is not recognized, access is denied
-
-        return False  # Deny access if no limiter type is specified
-
-    def handle_iplimiter(self, limiters, user_groups, request):
-        for limiter in limiters:
-            if limiter.ad_groups.filter(id__in=user_groups).exists():
-                print("IPLimiter")
-                return False  # Grant access if user is part of any related AD group
-        return False
-
-    def handle_ado_ou_limiter(self, limiters, user_groups, request):
-        for limiter in limiters:
-            if limiter.ad_groups.filter(id__in=user_groups).exists():
-                            
-                # Regex to find the user principal name in the URL
-                regex = r"([^\/@]+@[^\/]+)"
-
-                # Extract the user principal name from the request path
-                match = re.search(regex, request.path)
-                user_principal_name = match.group() if match else None
-
-                if user_principal_name is None:
-                    return False
-
-                # Get the ADOrganizationalUnitLimiter instances associated with the ADGroupAssociation instances
-                ad_organizational_unit_limiters = ADOrganizationalUnitLimiter.objects.filter(ad_groups__in=limiter.ad_groups.all()).distinct()
-
-                for ado_ou_limiter in ad_organizational_unit_limiters:
-                    # perform ldap query ado_ou_limiters
-                    print(ado_ou_limiter.distinguished_name)
-
-                    # base_dn = "DC=win,DC=dtu,DC=dk"
-                    base_dn = ado_ou_limiter.distinguished_name
-                    search_filter = f"(userPrincipalName={user_principal_name})"                    
-                    search_attributes = ['userPrincipalName']
-                    from active_directory.services import execute_active_directory_query
-                    result = execute_active_directory_query(base_dn=base_dn, search_filter=search_filter, search_attributes=search_attributes)
-
-                    if len(result) > 0:
-                        # print("User is under the OU")
-                        return True
-
-                
-                return False
-            
-
-
-        return False
 
 
     def is_user_authorized_for_endpoint(self, request, normalized_request_path):
@@ -272,11 +202,12 @@ class AccessControlMiddleware(MiddlewareMixin):
 
         # Get user authorized endpoints from cache or query
         user_endpoints = self.get_user_authorized_endpoints(user_ad_groups)
-
+        endpoint_paths = list(user_endpoints.prefetch_related('ad_groups').distinct().values_list('path', flat=True))
+        
         # Check if user is authorized with cached data
-        for endpoint in user_endpoints.prefetch_related('ad_groups').distinct():
-            if self.compare_paths(endpoint.path, normalized_request_path):
-                return True, endpoint
+        for endpoint_path in endpoint_paths:
+            if self.compare_paths(endpoint_path, normalized_request_path):
+                return True, endpoint_path
 
         return False, None  # No matching endpoint found, access denied
 
@@ -398,19 +329,29 @@ class AccessControlMiddleware(MiddlewareMixin):
             is_authorized = True
         elif request.user.is_authenticated:
             # Check for endpoint access
-            is_user_authorized_for_endpoint, endpoint = self.is_user_authorized_for_endpoint(request, normalized_request_path)
-            is_user_authorized_for_resource = self.is_user_authorized_for_resource(endpoint, request)
+            is_user_authorized_for_endpoint, endpoint_path = self.is_user_authorized_for_endpoint(request, normalized_request_path)
 
-            if is_user_authorized_for_endpoint and is_user_authorized_for_resource:
+            if is_user_authorized_for_endpoint:
                 is_authorized = True
 
             else:
-                # from django.http import JsonResponse
-                # return JsonResponse({'message': 'Access denied.'}, status=403)
                 return HttpResponseForbidden('Access denied.')
 
 
         if is_authorized:
+            # # check for resource limit
+            
+            # check if the user is visiting a endpoint
+            if self.is_user_authorized_for_endpoint(request, normalized_request_path):
+                print("User is visiting an endpoint")
+
+                
+
+            # if endpoint.no_limit or endpoint.limiter_type is not None:
+            # # The user can access the endpoint
+            # else:
+            # # The user cannot access the endpoint
+
 
             return self.get_response(request)
         else:

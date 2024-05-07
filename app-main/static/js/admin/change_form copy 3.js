@@ -1,7 +1,9 @@
 $(document).ready(function() {
+
     // Monitor the fields specifically for the change form endpoint
     let endpointChangeFormMonitor = setInterval(function() {
         let inputGroup = $('#id_ad_groups_input');
+        // let inputOrganizationalUnit = $('#id_ad_organizational_units_input');
         let currentPath = window.location.pathname;
         let formattedPath = currentPath.replace(/\/(\d+)\//, '/x/');
 
@@ -23,40 +25,32 @@ $(document).ready(function() {
                     formData.append('base_dn', 'DC=win,DC=dtu,DC=dk');
                     formData.append('search_filter', `(&(objectClass=group)(cn=*${this.value}*))`);
                     formData.append('search_attributes', 'cn,canonicalName,distinguishedName');
-                    formData.append('limit', '5');
+                    formData.append('limit', '100');
     
                     let response = await restAjax('POST', '/myview/ajax/', formData);
                     console.log('Response:', response);
     
                     formData = new FormData();
-                    formData.append('action', 'ajax_change_form_update_form_ad_groups');
-                    formData.append('ad_groups', JSON.stringify(response.data));
+                    formData.append('action', `ajax_change_form_update_form_ad_groups`);
+                    formData.append(`ad_groups`, JSON.stringify(response.data));
                     formData.append('path', window.location.pathname);
                     response = await restAjax('POST', '/myview/ajax/', formData);
                     console.log('Reloading page...');
                     location.reload();
                     timeoutId = null;
-                }.bind(this), 500);
+                }.bind(this), 2000);
             });
         } else {
             clearInterval(endpointChangeFormMonitor); // Stop monitoring if path does not match
         }
     }, 100); // check every 100ms
 
-    // Monitor inputs on another path for the organizational unit limiter endpoint
+
+    // Placeholder for the second monitor function if required
     let anotherPathMonitor = setInterval(function() {
-        let searchBar = $('#searchbar');
-        let currentPath = window.location.pathname;
 
-        const requiredPathForSearchBar = "/admin/baAT5gt52eCRX7bu58msxF5XQtbY4bye/myview/adorganizationalunitlimiter/";
-        if (currentPath === requiredPathForSearchBar && searchBar) {
-            clearInterval(anotherPathMonitor); // Stop monitoring once the path and element are confirmed
-
-            searchBar.on('input', function() {
-                console.log('Searchbar input text:', this.value);
-            });
-        } else {
-            clearInterval(anotherPathMonitor); // Stop monitoring if path does not match
-        }
+        // http://localhost:6081/admin/baAT5gt52eCRX7bu58msxF5XQtbY4bye/myview/adorganizationalunitlimiter/
+        // element id = searchbar
+        // on input console.log(searchbar input text)
     }, 100);
 });

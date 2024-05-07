@@ -65,10 +65,10 @@ except ImportError:
 
 
 try:  
-   from .views import CopilotView
+   from .views import ActiveDirectoryCopilotView
 
    urlpatterns += [
-      path('copilot/', CopilotView.as_view(), name='copilot'),
+      path('active-directory-copilot/', ActiveDirectoryCopilotView.as_view(), name='active-directory-copilot'),
    ]
 
 except ImportError:
