@@ -1,0 +1,39 @@
+#vicre-adorganizationalunitlimiter-searchbar {
+    /* will be overwritten by javascript */
+    display: none;
+
+}
+
+#django-vanilla-searchbar {
+    /* will be overwritten by javascript */
+    display: inline-block;
+}
+
+.vicre-adorganizationalunitlimiter-tooltip {
+    position: relative;
+    display: inline-block;
+  }
+  
+  .vicre-adorganizationalunitlimiter-tooltip .vicre-adorganizationalunitlimiter-tooltiptext {
+    visibility: hidden;
+    
+    background-color: rgba(0, 0, 0, 0.9);
+    color: #fff;
+    text-align: left;
+    padding: 5px;
+    border-radius: 6px;
+  
+    position: absolute;
+    z-index: 1;
+    bottom: 100%; /* Position the tooltip above the text */
+    left: 50%;
+    margin-left: -60px; /* Use half of the width to center the tooltip */
+  
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  
+  .vicre-adorganizationalunitlimiter-tooltip:hover .vicre-adorganizationalunitlimiter-tooltiptext {
+    visibility: visible;
+    opacity: 1;
+  }

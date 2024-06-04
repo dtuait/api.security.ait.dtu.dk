@@ -13,7 +13,6 @@ logger = logging.getLogger(__name__)
 
 
 
-
 try:
     from .models import IPLimiter
 
@@ -33,10 +32,9 @@ try:
     @admin.register(ADGroupAssociation)
     class ADGroupAssociationAdmin(admin.ModelAdmin):
         list_display = ('cn', 'canonical_name', 'distinguished_name')  # Fields to display in the admin list view
-        search_fields = ('cn', 'canonical_name')  # Fields to include in the search box in the admin
         filter_horizontal = ('members',)  # Provides a more user-friendly widget for ManyToMany relations
         readonly_fields = ('cn', 'canonical_name', 'distinguished_name')  # Fields that should be read-only in the admin
-        list_per_page = 10
+        list_per_page = 40
 
         def get_queryset(self, request):
             qs = super().get_queryset(request)
@@ -83,16 +81,6 @@ try:
     from .models import Endpoint
 
 
-    # class ResourceLimiterInline(GenericTabularInline):
-    #     model = Endpoint.limiter.through
-    #     ct_field = "limiter_type"
-    #     ct_fk_field = "limiter_id"
-
-    # @admin.register(IPLimiter)
-    # class IPLimiterAdmin(admin.ModelAdmin):
-    #     list_display = ('ip_address', 'description')
-    #     search_fields = ('ip_address',)
-
     class EndpointAdminForm(forms.ModelForm):
         class Meta:
             model = Endpoint
@@ -125,7 +113,6 @@ try:
     @admin.register(Endpoint)
     class EndpointAdmin(admin.ModelAdmin):
         list_display = ('path', 'method')
-        search_fields = ('path', 'method')
         filter_horizontal = ('ad_groups',) 
         readonly_fields = ('path', 'method')
         
@@ -195,6 +182,10 @@ try:
         def has_delete_permission(self, request, obj=None):
             return False
         
+        def has_add_permission(self, request):
+            return False
+        
+
 
 
 except ImportError:
@@ -277,7 +268,7 @@ try:
         
         def has_add_permission(self, request, obj=None):
             return False
-
+        
 except ImportError:
     print("ADOU model is not available for registration in the admin site.")
     pass
