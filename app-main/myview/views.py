@@ -168,8 +168,6 @@ class AjaxView(BaseView):
 
                 return JsonResponse({'message': message.content})
 
-
-                return JsonResponse({'error': 'Not implemented yet'}, status=200)
             
             
 
@@ -203,9 +201,6 @@ class AjaxView(BaseView):
             # convert ad_groups[0] into a list. The data is JSON encoded in the POST request
             ad_groups = json.loads(ad_groups[0])
 
-    
-            # logger.info(f"Session data before setting ad_groups: {request.session.items()}")
-
             request.session['ajax_change_form_update_form_ad_groups'] = ad_groups
 
             # logger.info(f"Session data after setting ad_groups: {request.session.items()}")
@@ -218,24 +213,46 @@ class AjaxView(BaseView):
             return JsonResponse({'success': 'Form updated'})
 
 
-        elif action == 'ajax_search_form_add_new_organizational_unit':
-            # Extract ad_groups = [] from the POST request
-            organizational_unit = json.loads(request.POST.getlist('organizational_unit')[0])
-            # organizational_unit[0]['distinguishedName'][0]  >> 'OU=AIT,OU=DTUBaseUsers,DC=win,DC=dtu,DC=dk'
-            # organizational_unit[0]['canonicalName'][0]      >>'win.dtu.dk/DTUBaseUsers/AIT'
-            from .models import ADOrganizationalUnitLimiter
-            # class ADOrganizationalUnitLimiter(BaseModel):
-                # canonical_name = models.CharField(max_length=1024)
-                # distinguished_name = models.CharField(max_length=1024) # checks if the queried abject is under this OU e.g. OU=FOOD,OU=DTUBaseUsers,DC=win,DC=dtu,DC=dk
+        elif action == 'ajax__search_form__add_new_organizational_unit':
+            
+            try:
+                # Extract the parameters from the POST request
+                base_dn = 'DC=win,DC=dtu,DC=dk'
+                distinguished_name = request.POST.get('distinguished_name')
+                search_filter = f'(&(objectClass=organizationalUnit)(distinguishedName={distinguished_name}))'
+                search_attributes = 'distinguishedName,canonicalName'
+                search_attributes = search_attributes.split(',') if search_attributes else ALL_ATTRIBUTES
+                limit = 1
 
-            # Get or create a new ADOrganizationalUnitLimiter
-            ou_limiter, created = ADOrganizationalUnitLimiter.objects.get_or_create(
-                canonical_name=organizational_unit[0]['canonicalName'][0],
-                distinguished_name=organizational_unit[0]['distinguishedName'][0]
-            )
+                if limit is not None:
+                    limit = int(limit)
+
+                # Perform the active directory query
+                organizational_unit = active_directory_query(base_dn=base_dn, search_filter=search_filter, search_attributes=search_attributes, limit=limit)
+
+                # If len(organizational_unit) != 1 then return error JsonResponse
+                if len(organizational_unit) != 1:
+                    raise ValueError("No match found for the distinguished name.")
+
+                # Get or create a new ADOrganizationalUnitLimiter
+                from .models import ADOrganizationalUnitLimiter
+                ou_limiter, created = ADOrganizationalUnitLimiter.objects.get_or_create(
+                    canonical_name=organizational_unit[0]['canonicalName'][0],
+                    distinguished_name=organizational_unit[0]['distinguishedName'][0]
+                )
+
+            
+                return JsonResponse({'success': 'New organizational unit created'}, status=201)
 
 
-            return JsonResponse({'success': 'Form updated'})
+            except Exception as e:
+                from django.conf import settings
+                if settings.DEBUG:
+                    return JsonResponse({'error': str(e)}, status=500)
+                else:
+                    return JsonResponse({'error': 'Internal server error'}, status=500)
+
+
     
         elif action == 'ajax_change_form_update_form_ad_ous':
             # Extract ad_ous from the POST request

@@ -32,6 +32,7 @@ try:
     @admin.register(ADGroupAssociation)
     class ADGroupAssociationAdmin(admin.ModelAdmin):
         list_display = ('cn', 'canonical_name', 'distinguished_name')  # Fields to display in the admin list view
+        search_fields = ('canonical_name',)
         filter_horizontal = ('members',)  # Provides a more user-friendly widget for ManyToMany relations
         readonly_fields = ('cn', 'canonical_name', 'distinguished_name')  # Fields that should be read-only in the admin
         list_per_page = 40
@@ -41,10 +42,15 @@ try:
             return qs.prefetch_related('members')
 
         def has_delete_permission(self, request, obj=None):
-            return False
+            return True
         
         def has_add_permission(self, request, obj=None):
             return False
+        
+        def get_readonly_fields(self, request, obj=None):
+            if obj:  # This is the case when obj is already created i.e. it's an edit
+                return self.readonly_fields + ('members',)
+            return self.readonly_fields
 
 except ImportError:
     print("ADGroup model is not available for registration in the admin site.")

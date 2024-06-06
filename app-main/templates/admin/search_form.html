@@ -5,8 +5,8 @@
   <script src="https://cdn.jsdelivr.net/npm/axios@1.6.7/dist/axios.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/qs@6.12.0/dist/qs.min.js"></script>
   <script src="{% static 'myview/js/base.js' %}"></script>
-  <script src="{% static 'js/admin/search_form.js' %}" type="text/javascript" defer></script>
-  <link rel="stylesheet" type="text/css" media="all" href="{% static 'css/admin/search_form.css' %}" />
+  <script src="{% static 'js/admin/vic_search_form.js' %}" type="text/javascript" defer></script>
+  <link rel="stylesheet" type="text/css" media="all" href="{% static 'css/admin/vic_search_form.css' %}" />
 
 {% if cl.search_fields %}
 <div id="toolbar">
@@ -14,11 +14,11 @@
     <div><!-- DIV needed for valid HTML -->
       
       <!-- if path is /admin/baAT5gt52eCRX7bu58msxF5XQtbY4bye/myview/adorganizationalunitlimiter/ then --> 
-      <div id="vicre-adorganizationalunitlimiter-searchbar" class="vicre-adorganizationalunitlimiter-tooltip">
+      <div id="vicre-search-and-find-by-canonicalname-searchbar" class="vicre-search-and-find-by-canonicalname-tooltip">
           <label for="searchbar">
               <img src="{% static 'admin/img/search.svg' %}" alt="Search">
           </label>
-          <span class="vicre-adorganizationalunitlimiter-tooltiptext">
+          <span class="vicre-search-and-find-by-canonicalname-tooltiptext">
               Will search directly in AD, search syntax is: <br>
               canonicalName: win.dtu.dk/DTUBaseUsers
           </span>

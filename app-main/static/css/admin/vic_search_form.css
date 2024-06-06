@@ -1,4 +1,4 @@
-#vicre-adorganizationalunitlimiter-searchbar {
+#vicre-search-and-find-by-canonicalname-searchbar {
     /* will be overwritten by javascript */
     display: none;
 
@@ -9,12 +9,12 @@
     display: inline-block;
 }
 
-.vicre-adorganizationalunitlimiter-tooltip {
+.vicre-search-and-find-by-canonicalname-tooltip {
     position: relative;
     display: inline-block;
   }
   
-  .vicre-adorganizationalunitlimiter-tooltip .vicre-adorganizationalunitlimiter-tooltiptext {
+  .vicre-search-and-find-by-canonicalname-tooltip .vicre-search-and-find-by-canonicalname-tooltiptext {
     visibility: hidden;
     
     background-color: rgba(0, 0, 0, 0.9);
@@ -33,7 +33,7 @@
     transition: opacity 0.3s;
   }
   
-  .vicre-adorganizationalunitlimiter-tooltip:hover .vicre-adorganizationalunitlimiter-tooltiptext {
+  .vicre-search-and-find-by-canonicalname-tooltip:hover .vicre-search-and-find-by-canonicalname-tooltiptext {
     visibility: visible;
     opacity: 1;
   }
