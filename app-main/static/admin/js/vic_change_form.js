@@ -1,3 +1,5 @@
+
+// --- vic's code --- //
 $(document).ready(function() {
     // Monitor the fields specifically for the change form endpoint
     let endpointChangeFormMonitor = setInterval(function() {
@@ -60,3 +62,5 @@ $(document).ready(function() {
         }
     }, 100);
 });
+
+// --- vic's code --- //

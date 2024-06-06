@@ -31,19 +31,20 @@ $(document).ready(function() {
 
 
 
-
-
-
     function setupSearchBarForUnitLimiter() {
         const searchBar = $('#searchbar');
 
         // Display expansion glass
         $('#vicre-search-and-find-by-canonicalname-searchbar').css('display', 'inline-block');
         $('#django-vanilla-searchbar').hide();
+        
 
         searchBar.on('input', function() {
             const input = $(this);
             const isValid = isValidCanonicalName(input.val());
+            const currentTheme = localStorage.getItem("theme") || "dark";
+            
+
 
             if (!input.val()) {
                 // Reset to default background color if input is empty
