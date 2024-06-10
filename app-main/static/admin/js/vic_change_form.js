@@ -29,7 +29,7 @@ $(document).ready(function() {
     
                     let response = await restAjax('POST', '/myview/ajax/', formData);
                     console.log('Response:', response);
-    
+
                     formData = new FormData();
                     formData.append('action', 'ajax_change_form_update_form_ad_groups');
                     formData.append('ad_groups', JSON.stringify(response.data));

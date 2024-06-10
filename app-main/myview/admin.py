@@ -31,10 +31,10 @@ try:
 
     @admin.register(ADGroupAssociation)
     class ADGroupAssociationAdmin(admin.ModelAdmin):
-        list_display = ('cn', 'canonical_name', 'distinguished_name')  # Fields to display in the admin list view
+        list_display = ('canonical_name', 'distinguished_name', 'member_count')  # Fields to display in the admin list view
         search_fields = ('canonical_name',)
         filter_horizontal = ('members',)  # Provides a more user-friendly widget for ManyToMany relations
-        readonly_fields = ('cn', 'canonical_name', 'distinguished_name')  # Fields that should be read-only in the admin
+        readonly_fields = ('canonical_name', 'distinguished_name', 'member_count')  # Fields that should be read-only in the admin
         list_per_page = 40
 
         def get_queryset(self, request):
@@ -51,6 +51,10 @@ try:
             if obj:  # This is the case when obj is already created i.e. it's an edit
                 return self.readonly_fields + ('members',)
             return self.readonly_fields
+        
+        def member_count(self, obj):
+            return obj.members.count()
+        member_count.short_description = 'Member Count'
 
 except ImportError:
     print("ADGroup model is not available for registration in the admin site.")
@@ -264,7 +268,7 @@ try:
 
     @admin.register(ADOrganizationalUnitLimiter)
     class ADOrganizationalUnitLimiterAdmin(admin.ModelAdmin):
-        list_display = ('canonical_name', 'distinguished_name')
+        list_display = ('canonical_name', 'distinguished_name','member_count')
         search_fields = ('canonical_name', 'distinguished_name')
         filter_horizontal = ('ad_groups',)  
         list_per_page = 10  # Display 10 objects per page
@@ -275,6 +279,9 @@ try:
         def has_add_permission(self, request, obj=None):
             return False
         
+        def member_count(self, obj):
+            return sum(group.members.count() for group in obj.ad_groups.all())  # Correctly counts the members in all ad_groups
+        member_count.short_description = 'Member Count'
 except ImportError:
     print("ADOU model is not available for registration in the admin site.")
     pass

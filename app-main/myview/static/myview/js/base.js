@@ -52,6 +52,7 @@ async function restAjax(method, url, data = {}, headers = {}) {
 
   } catch (error) {
     console.error('AJAX request failed:', error);
+    return error.response
   }
 }
 

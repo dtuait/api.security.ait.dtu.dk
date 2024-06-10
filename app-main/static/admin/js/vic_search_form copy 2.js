@@ -163,43 +163,20 @@ $(document).ready(function() {
         // Display expansion glass
         $('#vicre-search-and-find-by-canonicalname-searchbar').css('display', 'inline-block');
         $('#django-vanilla-searchbar').hide();
-        
 
         searchBar.on('input', function() {
             const input = $(this);
             const isValid = isValidCanonicalName(input.val());
-            const currentTheme = localStorage.getItem("theme") || "dark";
-        
-            // Define colors for dark and light modes
-            const colors = {
-                dark: {
-                    valid: '#006400', // Dark green
-                    invalid: '#8B0000', // Dark red
-                    defaultBg: '#333333', // Dark gray
-                    textColor: '#FFFFFF' // White text
-                },
-                light: {
-                    valid: '#90EE90', // Light green
-                    invalid: '#FFB6C1', // Light red
-                    defaultBg: '#FFFFFF', // White
-                    textColor: '#000000' // Black text
-                }
-            };
-        
-            const themeColors = colors[currentTheme];
-        
+
             if (!input.val()) {
                 // Reset to default background color if input is empty
-                input.css('backgroundColor', themeColors.defaultBg);
-                input.css('color', themeColors.textColor);
+                input.css('backgroundColor', '');
             } else if (isValid) {
-                // Set background color to green if the input is a valid canonical name
-                input.css('backgroundColor', themeColors.valid);
-                input.css('color', themeColors.textColor);
+                // Set background color to light green if the input is a valid canonical name
+                input.css('backgroundColor', 'lightgreen');
             } else {
-                // Set background color to red if the input is not a valid canonical name
-                input.css('backgroundColor', themeColors.invalid);
-                input.css('color', themeColors.textColor);
+                // Set background color to light red if the input is not a valid canonical name
+                input.css('backgroundColor', 'lightcoral');
             }
         });
 
@@ -217,37 +194,29 @@ $(document).ready(function() {
                 return;
             } // Guard clause for empty input
 
+
             const distinguishedName = canonicalToDistinguishedName(canonicalName, ENDS_WITH_A_COMMON_NAME);
             console.log(distinguishedName); // Output the distinguished name for testing
 
-            
             let formData = new FormData();
-            formData = new FormData();
-            formData.append('action', 'ajax__search_form__add_new_ad_group_associations');
-            formData.append('distinguished_name', distinguishedName);
-            try {
+            formData.append('action', 'active_directory_query');
+            formData.append('base_dn', 'DC=win,DC=dtu,DC=dk');
+            formData.append('search_filter', `(&(objectClass=group)(distinguishedName=${distinguishedName}))`);
+            formData.append('search_attributes', 'distinguishedName,canonicalName');
+            formData.append('limit', '1');
 
-                const response = await restAjax('POST', '/myview/ajax/', formData);
-
-                if (response.status === 200) {
-                    // Handle 200 OK status
-                    console.log('Success: ', response);
-                } else if (response.status === 201) {
-                    // Handle 201 Created status
-                    console.log('Created: ', response);
-                    location.reload();
-                } else if (response.status === 500) {
-                    // Handle 500 Internal Server Error status
-                    console.error('Server error: ', response);
-                    alert(`Server error: ${response.data.error}`);
-                } else {
-                    // Handle other statuses
-                    console.log('Other status: ', response);
-                }
-            } catch (error) {
-                // Handle any errors that occurred during the execution of the restAjax function
-                console.error('An error occurred: ', error);
+            let response = await restAjax('POST', '/myview/ajax/', formData);
+            if (!Array.isArray(response.data) || response.data.length !== 1) {
+                alert(`Nothing found on\n\ncanonicalName: ${canonicalName}\ndistinguishedName: ${distinguishedName}`);
+                location.reload();
             }
+
+            formData = new FormData();
+            formData.append('action', 'ajax_change_form_update_form_ad_groups');
+            formData.append('ad_groups', JSON.stringify(response.data));
+            response = await restAjax('POST', '/myview/ajax/', formData);
+            console.log('Reloading page...');
+            location.reload();
         });
     }
 

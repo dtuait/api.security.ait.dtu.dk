@@ -8,6 +8,7 @@ from django.db.utils import IntegrityError
 from django.utils.translation import gettext_lazy as _
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import ValidationError
 
 class BaseModel(models.Model):
     datetime_created = models.DateTimeField(auto_now_add=True)
@@ -48,17 +49,29 @@ class ADOrganizationalUnitLimiter(BaseModel):
         verbose_name = "AD Organizational Unit Limiter"
         verbose_name_plural = "AD Organizational Unit Limiters"
 
+
+    def save(self, *args, **kwargs):
+        if not self.distinguished_name.startswith('OU=') or not self.distinguished_name.endswith(',DC=win,DC=dtu,DC=dk'):
+            raise ValidationError("distinguished_name must start with 'OU=' and end with ',DC=win,DC=dtu,DC=dk'")
+        super().save(*args, **kwargs)
+
+
 # This model is used to associate AD groups with Django users
 class ADGroupAssociation(BaseModel):
     """
     This model represents an association between an AD group and a Django user.
     """
-    cn = models.CharField(max_length=255, verbose_name="Common Name")
-    canonical_name = models.CharField(max_length=1024)
-    distinguished_name = models.CharField(max_length=1024)
+    canonical_name = models.CharField(max_length=255, unique=True, null=False)
+    distinguished_name = models.CharField(max_length=255, unique=True, null=False)
     members = models.ManyToManyField(User, related_name='ad_group_members')
     def __str__(self):
         return self.cn
+    
+    def save(self, *args, **kwargs):
+        if not self.distinguished_name.startswith('CN=') or not self.distinguished_name.endswith(',DC=win,DC=dtu,DC=dk'):
+            raise ValidationError("distinguished_name must start with 'CN=' and end with ',DC=win,DC=dtu,DC=dk'")
+        super().save(*args, **kwargs)
+
 
     def sync_user_ad_groups(username):
         from active_directory.services import execute_active_directory_query

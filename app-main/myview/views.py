@@ -220,8 +220,7 @@ class AjaxView(BaseView):
                 base_dn = 'DC=win,DC=dtu,DC=dk'
                 distinguished_name = request.POST.get('distinguished_name')
                 search_filter = f'(&(objectClass=organizationalUnit)(distinguishedName={distinguished_name}))'
-                search_attributes = 'distinguishedName,canonicalName'
-                search_attributes = search_attributes.split(',') if search_attributes else ALL_ATTRIBUTES
+                search_attributes = 'distinguishedName,canonicalName'.split(',')
                 limit = 1
 
                 if limit is not None:
@@ -241,8 +240,10 @@ class AjaxView(BaseView):
                     distinguished_name=organizational_unit[0]['distinguishedName'][0]
                 )
 
-            
-                return JsonResponse({'success': 'New organizational unit created'}, status=201)
+                if created:
+                    return JsonResponse({'success': 'New organizational unit created'}, status=201)
+                else:
+                    return JsonResponse({'success': 'Organizational unit already exists'}, status=200)
 
 
             except Exception as e:
@@ -250,7 +251,48 @@ class AjaxView(BaseView):
                 if settings.DEBUG:
                     return JsonResponse({'error': str(e)}, status=500)
                 else:
-                    return JsonResponse({'error': 'Internal server error'}, status=500)
+                    return JsonResponse({'error': 'Could not find organizational unit'}, status=500)
+
+
+
+        elif action == 'ajax__search_form__add_new_ad_group_associations':      
+            try:  
+                # Extract the parameters from the POST request
+                base_dn = 'DC=win,DC=dtu,DC=dk'
+                distinguished_name = request.POST.get('distinguished_name')
+                search_filter = f'(&(objectClass=group)(distinguishedName={distinguished_name}))'
+                search_attributes = 'distinguishedName,canonicalName'.split(',')
+                limit = 1
+
+                if limit is not None:
+                    limit = int(limit)
+
+                # Perform the active directory query
+                organizational_unit = active_directory_query(base_dn=base_dn, search_filter=search_filter, search_attributes=search_attributes, limit=limit)
+
+                # If len(organizational_unit) != 1 then return error JsonResponse
+                if len(organizational_unit) != 1:
+                    raise ValueError(f"No match found for the distinguished name:\n{distinguished_name}")
+
+                # Get or create a new ADOrganizationalUnitLimiter
+                from .models import ADGroupAssociation
+                ad_group_assoc, created = ADGroupAssociation.objects.get_or_create(
+                    canonical_name=organizational_unit[0]['canonicalName'][0],
+                    distinguished_name=organizational_unit[0]['distinguishedName'][0]
+                )
+
+                if created:
+                    return JsonResponse({'success': 'New organizational unit created'}, status=201)
+                else:
+                    return JsonResponse({'success': 'Organizational unit already exists'}, status=200)
+
+
+            except Exception as e:
+                from django.conf import settings
+                if settings.DEBUG:
+                    return JsonResponse({'error': str(e)}, status=500)
+                else:
+                    return JsonResponse({'error': 'Could not find group'}, status=500)
 
 
     
@@ -260,11 +302,7 @@ class AjaxView(BaseView):
             # convert ad_ous[0] into a list. The data is JSON encoded in the POST request
             ad_ous = json.loads(ad_ous[0])
 
-            # logger.info(f"Session data before setting ad_ous: {request.session.items()}")
-
             request.session['ajax_change_form_update_form_ad_ous'] = ad_ous
-
-            # logger.info(f"Session data after setting ad_ous: {request.session.items()}")
 
             request.session.save()
 
