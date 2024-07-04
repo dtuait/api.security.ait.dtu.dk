@@ -1,11 +1,12 @@
 
-import requests
+import requests, json
 from ._graph_get_bearertoken import _get_bearertoken
 
 
-def get_user(user, select_param=None):
+def get_user(*, user_principal_name, select_parameters=None):
 
-    
+    # Microsoft api documentation
+    # https://learn.microsoft.com/en-us/graph/api/user-get?view=graph-rest-1.0&tabs=http    
 
     token = _get_bearertoken()
 
@@ -14,22 +15,26 @@ def get_user(user, select_param=None):
         'Content-Type': 'application/json'
     }
 
-    if select_param is not None:
-        api_endpoint = f"https://graph.microsoft.com/v1.0/users/{user}?{select_param}"
+
+    if select_parameters is not None:
+        api_endpoint = f"https://graph.microsoft.com/v1.0/users/{user_principal_name}?{select_parameters}"
     else:
-        api_endpoint = f"https://graph.microsoft.com/v1.0/users/{user}"
+        api_endpoint = f"https://graph.microsoft.com/v1.0/users/{user_principal_name}"
 
     response = requests.get(api_endpoint, headers=headers)
 
-    return response, response.status_code
+
+
+    return json.loads(response.text), response.status_code
 
 
 
 
 def run():
-    user = 'vicre-test01@dtudk.onmicrosoft.com'
-    response, status_code = get_user(user)
-    print(response)
+    user_principal_name = 'adm-vicre@dtu.dk'                    # will return status 200
+    # user_principal_name = 'adm-vicre-not-a-real-user@dtu.dk'    # will return status 404
+    response, status_code = get_user(user_principal_name=user_principal_name, select_parameters='$select=onPremisesImmutableId,userPrincipalName')
+    print(response.get('onPremisesImmutableId'))
 
 
 

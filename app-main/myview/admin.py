@@ -13,7 +13,6 @@ logger = logging.getLogger(__name__)
 
 
 
-
 try:
     from .models import IPLimiter
 
@@ -28,25 +27,51 @@ except ImportError:
 
 # Attempt to import the ADGroup model
 try:
+    from django.contrib import admin
+    from django.contrib import messages
     from .models import ADGroupAssociation
+    def sync_ad_group_members(modeladmin, request, queryset):
+        for obj in queryset:
+            ADGroupAssociation.sync_ad_group_members(obj)
+        modeladmin.message_user(request, "Selected AD group members synced successfully.", messages.SUCCESS)
+
+        sync_ad_group_members.short_description = "Sync selected AD group members"
 
     @admin.register(ADGroupAssociation)
     class ADGroupAssociationAdmin(admin.ModelAdmin):
-        list_display = ('cn', 'canonical_name', 'distinguished_name')  # Fields to display in the admin list view
-        search_fields = ('cn', 'canonical_name')  # Fields to include in the search box in the admin
+        list_display = ('canonical_name', 'distinguished_name', 'member_count')  # Fields to display in the admin list view
+        search_fields = ('canonical_name',)
         filter_horizontal = ('members',)  # Provides a more user-friendly widget for ManyToMany relations
-        readonly_fields = ('cn', 'canonical_name', 'distinguished_name')  # Fields that should be read-only in the admin
-        list_per_page = 10
+        readonly_fields = ('canonical_name', 'distinguished_name', 'member_count')  # Fields that should be read-only in the admin
+        list_per_page = 40
+        actions = [sync_ad_group_members]
+
 
         def get_queryset(self, request):
             qs = super().get_queryset(request)
             return qs.prefetch_related('members')
 
         def has_delete_permission(self, request, obj=None):
-            return False
+            return True
         
         def has_add_permission(self, request, obj=None):
             return False
+        
+        def get_readonly_fields(self, request, obj=None):
+            if obj:  # This is the case when obj is already created i.e. it's an edit
+                return self.readonly_fields + ('members',)
+            return self.readonly_fields
+        
+        def save_model(self, request, obj, form, change):
+            # Your custom logic here
+            from myview.models import ADGroupAssociation
+
+            ADGroupAssociation.sync_ad_group_members(obj)
+
+            super().save_model(request, obj, form, change)
+        def member_count(self, obj):
+            return obj.members.count()
+        member_count.short_description = 'Member Count'
 
 except ImportError:
     print("ADGroup model is not available for registration in the admin site.")
@@ -83,16 +108,6 @@ try:
     from .models import Endpoint
 
 
-    # class ResourceLimiterInline(GenericTabularInline):
-    #     model = Endpoint.limiter.through
-    #     ct_field = "limiter_type"
-    #     ct_fk_field = "limiter_id"
-
-    # @admin.register(IPLimiter)
-    # class IPLimiterAdmin(admin.ModelAdmin):
-    #     list_display = ('ip_address', 'description')
-    #     search_fields = ('ip_address',)
-
     class EndpointAdminForm(forms.ModelForm):
         class Meta:
             model = Endpoint
@@ -125,7 +140,6 @@ try:
     @admin.register(Endpoint)
     class EndpointAdmin(admin.ModelAdmin):
         list_display = ('path', 'method')
-        search_fields = ('path', 'method')
         filter_horizontal = ('ad_groups',) 
         readonly_fields = ('path', 'method')
         
@@ -144,14 +158,14 @@ try:
                 # get or create the group
                 try:
                     ad_group_assoc, created = ADGroupAssociation.objects.get_or_create(
-                        cn=group.cn,
                         canonical_name=group.canonical_name,
-                        defaults={'distinguished_name': group.distinguished_name}
+                        distinguished_name=group.distinguished_name,
                     )
+                    print(created)
                 except Exception as e:
                     print(f"Error creating ADGroupAssociation: {e}")
                 # print ad_group_assoc creted true or false
-                print(created)
+                
                 # add the group to the endpoint
                 obj.ad_groups.add(ad_group_assoc)
 
@@ -195,6 +209,10 @@ try:
         def has_delete_permission(self, request, obj=None):
             return False
         
+        def has_add_permission(self, request):
+            return False
+        
+
 
 
 except ImportError:
@@ -267,7 +285,7 @@ try:
 
     @admin.register(ADOrganizationalUnitLimiter)
     class ADOrganizationalUnitLimiterAdmin(admin.ModelAdmin):
-        list_display = ('canonical_name', 'distinguished_name')
+        list_display = ('canonical_name', 'distinguished_name','member_count')
         search_fields = ('canonical_name', 'distinguished_name')
         filter_horizontal = ('ad_groups',)  
         list_per_page = 10  # Display 10 objects per page
@@ -277,7 +295,10 @@ try:
         
         def has_add_permission(self, request, obj=None):
             return False
-
+        
+        def member_count(self, obj):
+            return sum(group.members.count() for group in obj.ad_groups.all())  # Correctly counts the members in all ad_groups
+        member_count.short_description = 'Member Count'
 except ImportError:
     print("ADOU model is not available for registration in the admin site.")
     pass

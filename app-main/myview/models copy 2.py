@@ -6,8 +6,9 @@ from active_directory.scripts.active_directory_query import active_directory_que
 from django.db import transaction
 from django.db.utils import IntegrityError
 from django.utils.translation import gettext_lazy as _
-from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import ValidationError
 
 class BaseModel(models.Model):
     datetime_created = models.DateTimeField(auto_now_add=True)
@@ -17,69 +18,67 @@ class BaseModel(models.Model):
         abstract = True
 
 
-class IPLimiter(BaseModel):
-    ip_address = models.CharField(max_length=15)  # e.g., "192.168.1.1"
+
+class LimiterType(models.Model):
+    """This model represents a type of limiter, associated only with the model type."""
+    name = models.CharField(max_length=255, unique=True)
     description = models.TextField(blank=True, default='')
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, null=True, blank=True, 
+                                     limit_choices_to={'model__in': ['iplimiter', 'adorganizationalunitlimiter']})
 
     def __str__(self):
-        return f"{self.ip_address} - {self.description}"
+        return self.name
 
-# this model is used to scope what part of a OU a user has access to
+class IPLimiter(BaseModel):
+    """This model represents a specific IP limiter."""
+    ip_address = models.CharField(max_length=15)
+    description = models.TextField(blank=True, default='')
+    ad_groups = models.ManyToManyField('ADGroupAssociation', related_name='ip_limiters', blank=True)
+
+    class Meta:
+        verbose_name = "IP Limiter"
+        verbose_name_plural = "IP Limiters"
+
 class ADOrganizationalUnitLimiter(BaseModel):
-    distinguished_name = models.CharField(max_length=1024) # checks if the queried abject is under this OU e.g. OU=FOOD,OU=DTUBaseUsers,DC=win,DC=dtu,DC=dk
-    
+    """This model represents an AD organizational unit limiter."""
+    canonical_name = models.CharField(max_length=1024)
+    distinguished_name = models.CharField(max_length=1024)
+    ad_groups = models.ManyToManyField('ADGroupAssociation', related_name='ad_organizational_unit_limiters', blank=True)
+
+    class Meta:
+        verbose_name = "AD Organizational Unit Limiter"
+        verbose_name_plural = "AD Organizational Unit Limiters"
+
+
+    def save(self, *args, **kwargs):
+        if not self.distinguished_name.startswith('OU=') or not self.distinguished_name.endswith(',DC=win,DC=dtu,DC=dk'):
+            raise ValidationError("distinguished_name must start with 'OU=' and end with ',DC=win,DC=dtu,DC=dk'")
+        if not self.canonical_name.startswith('win.dtu.dk/'):
+            raise ValidationError("canonical_name must start with 'win.dtu.dk/'")
+        super().save(*args, **kwargs)
 
     def __str__(self):
-        return self.distinguished_name
-
-    def sync_ad_ous(self):
-        base_dn = "DC=win,DC=dtu,DC=dk"
-        search_filter = "(objectClass=organizationalUnit)"
-        search_attributes = ['distinguishedName']
-
-        try:
-            ad_ous = active_directory_query(base_dn=base_dn, search_filter=search_filter, search_attributes=search_attributes)
-
-            # Extract the associations into a dictionary
-            associations = {}
-            for ou in ADOrganizationalUnitAssociation.objects.prefetch_related('members'):
-                associations[ou.distinguished_name] = [member.id for member in ou.members.all()]
-
-            # Delete existing OU associations
-            ADOrganizationalUnitAssociation.objects.all().delete()
-
-            with transaction.atomic():
-                new_ous = []
-                
-                for ou in ad_ous:
-                    distinguished_name = ou['distinguishedName'][0] if ou['distinguishedName'][0] else ''
-
-                    # Prepare new OU for creation
-                    new_ou = ADOrganizationalUnitAssociation(distinguished_name=distinguished_name)
-                    new_ous.append(new_ou)
-
-                # Bulk create new OUs
-                ADOrganizationalUnitAssociation.objects.bulk_create(new_ous)
-
-                # Reapply the associations
-                for ou in ADOrganizationalUnitAssociation.objects.filter(distinguished_name__in=associations.keys()):
-                    ou.members.set(User.objects.filter(id__in=associations[ou.distinguished_name]))
-
-            return True
-        except Exception as e:
-            print(f"An error occurred during sync ad ous operation: {e}")
-            return False
-
-
+        return self.canonical_name
 
 # This model is used to associate AD groups with Django users
 class ADGroupAssociation(BaseModel):
-    cn = models.CharField(max_length=255, verbose_name="Common Name")
-    canonical_name = models.CharField(max_length=1024)
-    distinguished_name = models.CharField(max_length=1024)
+    """
+    This model represents an association between an AD group and a Django user.
+    """
+    canonical_name = models.CharField(max_length=255, unique=True, null=False)
+    distinguished_name = models.CharField(max_length=255, unique=True, null=False)
     members = models.ManyToManyField(User, related_name='ad_group_members')
+
     def __str__(self):
-        return self.cn
+        return self.canonical_name
+    
+    def save(self, *args, **kwargs):
+        if not self.distinguished_name.startswith('CN=') or not self.distinguished_name.endswith(',DC=win,DC=dtu,DC=dk'):
+            raise ValidationError("distinguished_name must start with 'CN=' and end with ',DC=win,DC=dtu,DC=dk'")
+        if not self.canonical_name.startswith('win.dtu.dk/'):
+            raise ValidationError("canonical_name must start with 'win.dtu.dk/'")
+        super().save(*args, **kwargs)
+
 
     def sync_user_ad_groups(username):
         from active_directory.services import execute_active_directory_query
@@ -167,7 +166,7 @@ class ADGroupAssociation(BaseModel):
             print(f"An error occurred during sync ad groups operation: {e}")
             return False
   
-    def escape_ldap_filter_chars(self, s):
+    def _escape_ldap_filter_chars(self, s):
         escape_chars = {
             '\\': r'\5c',
             '*': r'\2a',
@@ -181,55 +180,66 @@ class ADGroupAssociation(BaseModel):
         return s
     
 
-    def create_new_users_if_not_exists(self, users):
+
+    # def user_is_synched_with_azure_ad(self, user):
+
+
+    
+
+
+    def _create_or_update_django_users_if_not_exists(self, users):
+        for user in users:
             try:
-                User = get_user_model()
-                new_users = []  # To collect new users                
                 
+                user_principal_name = user.get('userPrincipalName', [''])[0]
+                sam_accountname = user.get('sAMAccountName', [''])[0]
 
-                for user in users:
-                    dn = user['distinguishedName'][0] if user['distinguishedName'] else ''
-                    username = user['sAMAccountName'][0].lower() if user['sAMAccountName'] else ''
-                    first_name = user['givenName'][0] if user['givenName'] else ''
-                    last_name = user['sn'][0] if user['sn'] else ''
 
-                    if dn and username:
-                        # Check if the user exists in Django, and if not, create a new user instance
-                        if not User.objects.filter(username=username).exists():
-                            username_part = username.rsplit('-', 1)[-1]
-                            email = f'{username_part}@dtu.dk'
-                            is_superuser = username in ['adm-jaholm']
-                            is_staff = is_superuser  # Typically, superusers are also staff
-                            new_user = User(username=username, email=email, first_name=first_name, last_name=last_name, is_superuser=is_superuser, is_staff=is_staff)
-                            new_users.append(new_user)
-                User.objects.bulk_create(new_users)
-
+                if not user_principal_name.endswith('@dtu.dk'):
+                    raise ValueError(f"User {user_principal_name} does not end with @dtu.dk")
                 
+                # validate user
+                from graph.services import execute_get_user
+                user_data, status_code = execute_get_user(user_principal_name=user_principal_name, select_parameters='$select=onPremisesImmutableId')
+                if status_code != 200:                    
+                    raise ValueError(f"User {user_principal_name} not found")
+                on_premises_immutable_id = user_data.get('onPremisesImmutableId', '')               
+                from app.scripts.azure_user_is_synced_with_on_premise_users import azure_user_is_synced_with_on_premise_users
+                if not azure_user_is_synced_with_on_premise_users(sam_accountname=sam_accountname, on_premises_immutable_id=on_premises_immutable_id):
+                    raise ValueError(f"User {user_principal_name} is not synched with on-premise users")
 
+                # create new user if the user is synched with azure ad
+                username = sam_accountname
+                first_name = user.get('givenName', [''])[0]
+                last_name = user.get('sn', [''])[0]
+                email = user_principal_name
+
+                from app.scripts.create_or_update_django_user import create_or_update_django_user
+                create_or_update_django_user(username=username, first_name=first_name, last_name=last_name, email=email)
 
             except Exception as error:
                 print(f"An unexpected error occurred: {error}")
 
 
+
+
+
+
+    # This function syncs the members of the AD group with the database
     def sync_ad_group_members(self):
-            # print("Syncing AD group members...")
+            
             base_dn = "DC=win,DC=dtu,DC=dk"
-            search_filter = "(&(objectClass=user)(memberOf={}))".format(self.escape_ldap_filter_chars(self.distinguished_name))
-            # search_attributes = ['distinguishedName', 'sAMAccountName']  # Include 'sAMAccountName' here
-            search_attributes = ['distinguishedName', 'sAMAccountName', 'givenName', 'sn']
+            search_filter = "(&(objectClass=user)(memberOf={}))".format(self._escape_ldap_filter_chars(self.distinguished_name))
+            search_attributes = ['mS-DS-ConsistencyGuid', 'userPrincipalName', 'distinguishedName', 'sAMAccountName', 'givenName', 'sn']
 
             try:
                 # Perform the search on LDAP
                 current_members = active_directory_query(base_dn=base_dn, search_filter=search_filter, search_attributes=search_attributes)
 
-                
+                # This will only add users to django if those AD users are synched with Azure AD
+                self._create_or_update_django_users_if_not_exists(current_members)
 
-                # # filter out all users that does not startwith adm- or contians -adm-
-                # current_members = [user for user in current_members if user['sAMAccountName'][0].lower().startswith('adm-') or '-adm-' in user['sAMAccountName'][0].lower()]
-                
-                self.create_new_users_if_not_exists(current_members)
-
-                # remove all members from the group
+                # Remove all members from the group
                 self.members.clear()
 
                 # Fetch the current members of the group
@@ -256,16 +266,14 @@ class ADGroupAssociation(BaseModel):
         self.save()
 
 
+
 class Endpoint(BaseModel):
     path = models.CharField(max_length=255, unique=True)
     method = models.CharField(max_length=6, blank=True, default='')
     ad_groups = models.ManyToManyField('ADGroupAssociation', related_name='endpoints', blank=True)
-
-
-    # Content types for generic resource limiter association
-    limiter_type = models.ForeignKey(ContentType, on_delete=models.CASCADE, null=True, blank=True)
-    limiter_id = models.PositiveIntegerField(null=True, blank=True)
-    limiter = GenericForeignKey('limiter_type', 'limiter_id')
+    limiter_type = models.ForeignKey(LimiterType, on_delete=models.CASCADE, null=True, blank=True)
+    no_limit = models.BooleanField(default=False)
+    
 
     def __str__(self):
         return f"{self.method} {self.path}" if self.method else self.path

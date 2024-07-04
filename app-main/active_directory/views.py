@@ -105,7 +105,7 @@ class ActiveDirectoryQueryViewSet(APIAuthBaseViewSet):
         if limit is not None:
             limit = int(limit)
 
-        if search_attributes == 'ALL_ATTRIBUTES' or search_attributes is '*' or search_attributes == None:
+        if search_attributes == 'ALL_ATTRIBUTES' or search_attributes == '*' or search_attributes == None:
             search_attributes = ALL_ATTRIBUTES
         else:
             search_attributes = search_attributes.split(',')

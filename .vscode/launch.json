@@ -71,15 +71,27 @@
             "disableNetworkCache": true,
         },
 
-
         {
-            "name": "app.scripts.validate_user",
+            "name": "app.scripts.create_or_update_django_user",
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/app-main/manage.py",
             "args": [
                 "runscript",
-                "app.scripts.validate_user"
+                "app.scripts.create_or_update_django_user"
+            ],
+            "django": true,
+            "justMyCode": true
+        },
+
+        {
+            "name": "app.scripts.azure_user_is_synced_with_on_premise_users",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/app-main/manage.py",
+            "args": [
+                "runscript",
+                "app.scripts.azure_user_is_synced_with_on_premise_users"
             ],
             "django": true,
             "justMyCode": true
@@ -98,6 +110,18 @@
             "justMyCode": true
         },
 
+        {
+            "name": "myview.scripts.distinguished_to_canonical",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/app-main/manage.py",
+            "args": [
+                "runscript",
+                "myview.scripts.distinguished_to_canonical"
+            ],
+            "django": true,
+            "justMyCode": true
+        },
 
         {
             "name": "chatgpt_app.scripts.openai-test",

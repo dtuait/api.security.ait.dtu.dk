@@ -1,23 +1,15 @@
 from django.shortcuts import render
 from django.views import View
-from django.http import HttpResponseForbidden, JsonResponse
-from rest_framework.authtoken.models import Token
+from django.http import HttpResponseForbidden
 from django.shortcuts import render
 from django.shortcuts import render
 from .forms import UserLookupForm, LargeTextAreaForm
-from .models import ADGroupAssociation, Endpoint
+from .models import Endpoint
 import subprocess
 from django.utils.decorators import method_decorator
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.models import User
-from active_directory.scripts.active_directory_query import active_directory_query
-from ldap3 import ALL_ATTRIBUTES
-from rest_framework.response import Response
-import json
-from django.shortcuts import redirect
 import logging
-from django.contrib.contenttypes.models import ContentType
-from .models import LimiterType, IPLimiter, ADOrganizationalUnitLimiter
+
 
 logger = logging.getLogger(__name__)
 
@@ -130,147 +122,73 @@ class BaseView(View):
 
 
 
-class AjaxView(BaseView):
-
-    def post(self, request, *args, **kwargs):
-        # Extract an 'action' parameter from the POST request to determine which method to call
-        action = request.POST.get('action')
-
-        if action == 'clear_my_ad_group_cached_data':
-            # return dummy response - cache has been cleared
-            from django.core.cache import cache
-            try:
-                cache.clear()
-                return JsonResponse({'success': 'Cache cleared'})
-            except Exception as e:
-                return JsonResponse({'error': str(e)})
-
-
-
-        elif action == 'create_custom_token':
-            if request.user.is_authenticated:
-                return self.create_custom_token(request)
-            
-
-
-        elif action == 'copilot-chatgpt-basic':
-            if request.user.is_authenticated:
-                # return not implemented yet status 200
-                content = request.POST.get('content')
-                user = json.loads(content)
-
-                from chatgpt_app.scripts.openai_basic import get_openai_completion
-
-                message = get_openai_completion(
-                    system="You return 1 ldap3 query at a time. Give me a ldap3 query that returns user name vicre >> (sAMAccountName=vicre). Do not explain the query, just provide it.",
-                    user=user['user']
-                )
-
-                return JsonResponse({'message': message.content})
-
-
-                return JsonResponse({'error': 'Not implemented yet'}, status=200)
-            
-            
 
 
 
 
-        elif action == 'active_directory_query':
-            # Extract the parameters from the POST request
-            base_dn = request.POST.get('base_dn')
-            search_filter = request.POST.get('search_filter')
-            search_attributes = request.POST.get('search_attributes')
-            search_attributes = search_attributes.split(',') if search_attributes else ALL_ATTRIBUTES
-            limit = request.POST.get('limit')
-            
-            if limit is not None:
-                limit = int(limit)
-                
-            # Perform the active directory query
-            result = active_directory_query(base_dn=base_dn, search_filter=search_filter, search_attributes=search_attributes, limit=limit)
-            # return Response(result)
-            return JsonResponse(result, safe=False)
-        
-
-        
 
 
 
-        elif action == 'ajax_change_form_update_form_ad_groups':
-            # Extract ad_groups = [] from the POST request
-            ad_groups = request.POST.getlist('ad_groups')
-            # convert ad_groups[0] into a list. The data is JSON encoded in the POST request
-            ad_groups = json.loads(ad_groups[0])
-
-    
-            # logger.info(f"Session data before setting ad_groups: {request.session.items()}")
-
-            request.session['ajax_change_form_update_form_ad_groups'] = ad_groups
-
-            # logger.info(f"Session data after setting ad_groups: {request.session.items()}")
-            request.session.save()
-
-            # reload the page
-            # return redirect(path) # '/admin/myview/endpoint/1/change/'
-
-
-            return JsonResponse({'success': 'Form updated'})
-
-
-        elif action == 'ajax_search_form_add_new_organizational_unit':
-            # Extract ad_groups = [] from the POST request
-            organizational_unit = json.loads(request.POST.getlist('organizational_unit')[0])
-            # organizational_unit[0]['distinguishedName'][0]  >> 'OU=AIT,OU=DTUBaseUsers,DC=win,DC=dtu,DC=dk'
-            # organizational_unit[0]['canonicalName'][0]      >>'win.dtu.dk/DTUBaseUsers/AIT'
-            from .models import ADOrganizationalUnitLimiter
-            # class ADOrganizationalUnitLimiter(BaseModel):
-                # canonical_name = models.CharField(max_length=1024)
-                # distinguished_name = models.CharField(max_length=1024) # checks if the queried abject is under this OU e.g. OU=FOOD,OU=DTUBaseUsers,DC=win,DC=dtu,DC=dk
-
-            # Get or create a new ADOrganizationalUnitLimiter
-            ou_limiter, created = ADOrganizationalUnitLimiter.objects.get_or_create(
-                canonical_name=organizational_unit[0]['canonicalName'][0],
-                distinguished_name=organizational_unit[0]['distinguishedName'][0]
-            )
-
-
-            return JsonResponse({'success': 'Form updated'})
-    
-        elif action == 'ajax_change_form_update_form_ad_ous':
-            # Extract ad_ous from the POST request
-            ad_ous = request.POST.getlist('ad_ous')
-            # convert ad_ous[0] into a list. The data is JSON encoded in the POST request
-            ad_ous = json.loads(ad_ous[0])
-
-            # logger.info(f"Session data before setting ad_ous: {request.session.items()}")
-
-            request.session['ajax_change_form_update_form_ad_ous'] = ad_ous
-
-            # logger.info(f"Session data after setting ad_ous: {request.session.items()}")
-
-            request.session.save()
-
-            return JsonResponse({'success': 'Form updated'})
-
-            
-        else:
-            return JsonResponse({'error': 'Invalid AJAX action'}, status=400)
 
 
 
-    def sync_ad_groups(self, request):
-        # Your logic here
-        result = ADGroupAssociation.sync_ad_groups(None)
-        
-        return JsonResponse({'success': result})
 
 
-    def create_custom_token(self, request):
-        user = User.objects.get(username=request.user.username)
-        # Generate random string of length 255        
-        token = user.generate_new_custom_token()        
-        return JsonResponse({'custom_token': token.key})
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+from .ajax_view import AjaxView  # Import AjaxView from ajax_view.py
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -300,6 +218,48 @@ class FrontpagePageView(BaseView):
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 class MFAResetPageView(BaseView):
     form_class = UserLookupForm
     template_name = "myview/mfa-reset.html"
@@ -311,6 +271,44 @@ class MFAResetPageView(BaseView):
         context = super().get_context_data(**kwargs)
         context['form'] = form
         return render(request, self.template_name, context)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

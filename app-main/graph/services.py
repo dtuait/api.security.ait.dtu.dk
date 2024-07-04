@@ -8,12 +8,12 @@ def execute_hunting_query(query):
     response, status_code = run_hunting_query(query)
     return response.json(), status_code
 
-def execute_get_user(user, select_param):
-    response, status_code = get_user(user, select_param)
-    return response.json(), status_code
+def execute_get_user(user_principal_name, select_parameters):
+    data, status_code = get_user(user_principal_name=user_principal_name, select_parameters=select_parameters)
+    return data, status_code
 
 
-def execute_list_user_authentication_methods(user_id):
+def execute_list_user_authentication_methods(* user_id):
     response, status_code = list_user_authentication_methods(user_id)
     return response.json(), status_code
 

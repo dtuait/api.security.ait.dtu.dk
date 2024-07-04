@@ -20,14 +20,15 @@ def active_directory_connect():
         ad_server = os.getenv('ACTIVE_DIRECTORY_SERVER')
 
         # Connect to the server
-        bind_dn = f"CN={ad_username},OU=AIT,OU=DTUBaseUsers,DC=win,DC=dtu,DC=dk"
+        bind_dn = ad_username
+    
         
         server = Server(ad_server, use_ssl=True, get_info=ALL)
         conn = Connection(server, bind_dn, ad_password)
 
         # Check if the connection is successful
         if not conn.bind():
-            return None, "Failed to connect to Active Directory" 
+            return None, "Failed to connect to Active Directory"
 
         return conn, "Successfully connected to Active Directory", 
     except Exception as e:
