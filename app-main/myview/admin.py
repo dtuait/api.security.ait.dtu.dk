@@ -27,7 +27,15 @@ except ImportError:
 
 # Attempt to import the ADGroup model
 try:
+    from django.contrib import admin
+    from django.contrib import messages
     from .models import ADGroupAssociation
+    def sync_ad_group_members(modeladmin, request, queryset):
+        for obj in queryset:
+            ADGroupAssociation.sync_ad_group_members(obj)
+        modeladmin.message_user(request, "Selected AD group members synced successfully.", messages.SUCCESS)
+
+        sync_ad_group_members.short_description = "Sync selected AD group members"
 
     @admin.register(ADGroupAssociation)
     class ADGroupAssociationAdmin(admin.ModelAdmin):
@@ -36,6 +44,8 @@ try:
         filter_horizontal = ('members',)  # Provides a more user-friendly widget for ManyToMany relations
         readonly_fields = ('canonical_name', 'distinguished_name', 'member_count')  # Fields that should be read-only in the admin
         list_per_page = 40
+        actions = [sync_ad_group_members]
+
 
         def get_queryset(self, request):
             qs = super().get_queryset(request)
@@ -52,6 +62,13 @@ try:
                 return self.readonly_fields + ('members',)
             return self.readonly_fields
         
+        def save_model(self, request, obj, form, change):
+            # Your custom logic here
+            from myview.models import ADGroupAssociation
+
+            ADGroupAssociation.sync_ad_group_members(obj)
+
+            super().save_model(request, obj, form, change)
         def member_count(self, obj):
             return obj.members.count()
         member_count.short_description = 'Member Count'
@@ -141,14 +158,14 @@ try:
                 # get or create the group
                 try:
                     ad_group_assoc, created = ADGroupAssociation.objects.get_or_create(
-                        cn=group.cn,
                         canonical_name=group.canonical_name,
-                        defaults={'distinguished_name': group.distinguished_name}
+                        distinguished_name=group.distinguished_name,
                     )
+                    print(created)
                 except Exception as e:
                     print(f"Error creating ADGroupAssociation: {e}")
                 # print ad_group_assoc creted true or false
-                print(created)
+                
                 # add the group to the endpoint
                 obj.ad_groups.add(ad_group_assoc)
 

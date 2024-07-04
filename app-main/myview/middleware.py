@@ -1,16 +1,14 @@
 from django.conf import settings
 from django.contrib.auth import get_user_model, login, logout
-from django.contrib.auth.models import User
 from django.core.exceptions import ObjectDoesNotExist
-from django.http import HttpResponseForbidden, HttpResponseRedirect, HttpResponseServerError, Http404
+from django.http import Http404
+from django.http import JsonResponse
 from django.shortcuts import redirect
 from django.utils.deprecation import MiddlewareMixin
 from rest_framework.authtoken.models import Token
-from rest_framework.authentication import TokenAuthentication, get_authorization_header
 import logging
 import re
-from .models import Endpoint
-from .models import LimiterType, IPLimiter, ADOrganizationalUnitLimiter
+from .models import Endpoint, IPLimiter, ADOrganizationalUnitLimiter
 
 def get_client_ip(request):
     """Utility function to extract client's IP from request."""
@@ -126,6 +124,7 @@ class AccessControlMiddleware(MiddlewareMixin):
 
                 except User.DoesNotExist:
                     raise Http404("User does not exist")
+                    
 
 
                 
@@ -293,7 +292,7 @@ class AccessControlMiddleware(MiddlewareMixin):
             cache_key = f"user_ad_groups_{user.id}"
 
             # Sync user AD groups
-            ADGroupAssociation.sync_user_ad_groups(user.username)
+            ADGroupAssociation.sync_user_ad_groups(username=user.username)
             user_ad_groups = user.ad_group_members.all()
 
             # Cache for a specified time using AD_GROUP_CACHE_TIMEOUT from settings
@@ -366,12 +365,12 @@ class AccessControlMiddleware(MiddlewareMixin):
         # DEBUG mode: Mock authentication for testing without actual credentials
         if settings.DEBUG and not token:
             self.handle_debug_mode(request, normalized_request_path)    
-            # return self.get_response(request)
+
 
         # Authenticate user based on token, if provided
         if token and not token.startswith('<token>'):
             if not self.authenticate_by_token(request, token):
-                return HttpResponseForbidden('Invalid token.')
+                return JsonResponse({'error': 'Invalid API token.'}, status=403)
 
 
 
@@ -399,19 +398,18 @@ class AccessControlMiddleware(MiddlewareMixin):
         elif request.user.is_authenticated:
             # Check for endpoint access
             is_user_authorized_for_endpoint, endpoint = self.is_user_authorized_for_endpoint(request, normalized_request_path)
-            is_user_authorized_for_resource = self.is_user_authorized_for_resource(endpoint, request)
+            if not is_user_authorized_for_endpoint:
+                return JsonResponse({'error': 'Access denied. You are not authorized to access this endpoint.'}, status=403)
 
+            is_user_authorized_for_resource = self.is_user_authorized_for_resource(endpoint, request)
+            
             if is_user_authorized_for_endpoint and is_user_authorized_for_resource:
                 is_authorized = True
-
             else:
-                # from django.http import JsonResponse
-                # return JsonResponse({'message': 'Access denied.'}, status=403)
-                return HttpResponseForbidden('Access denied.')
+                return JsonResponse({'error': 'Access denied. You are not authorized to access this ressource.'}, status=403)
 
 
         if is_authorized:
-
             return self.get_response(request)
         else:
             # For unauthenticated users, redirect to login
