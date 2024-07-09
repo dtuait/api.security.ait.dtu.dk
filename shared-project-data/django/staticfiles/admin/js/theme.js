@@ -39,7 +39,7 @@
         function initTheme() {
             // set theme defined in localStorage if there is one, or fallback to auto mode
             const currentTheme = localStorage.getItem("theme");
-            currentTheme ? setTheme(currentTheme) : setTheme("auto");
+            currentTheme ? setTheme(currentTheme) : setTheme("dark"); // modified from auto to dark
         }
 
         function setupTheme() {
