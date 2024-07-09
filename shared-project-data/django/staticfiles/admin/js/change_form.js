@@ -1,4 +1,7 @@
 'use strict';
+
+
+// --- vanilla code written by djangoes framwork --- //
 {
     const inputTags = ['BUTTON', 'INPUT', 'SELECT', 'TEXTAREA'];
     const modelName = document.getElementById('django-admin-form-add-constants').dataset.modelName;
@@ -14,3 +17,4 @@
         }
     }
 }
+// --- vanilla code written by djangoes framwork --- //
