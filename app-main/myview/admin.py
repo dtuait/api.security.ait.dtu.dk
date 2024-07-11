@@ -154,7 +154,7 @@ try:
             # Sync members for each group in ad_groups
             ad_groups = form.cleaned_data.get('ad_groups', [])
             for group in ad_groups:
-                ADGroupAssociation.sync_ad_group_members(group)
+                
                 # get or create the group
                 try:
                     ad_group_assoc, created = ADGroupAssociation.objects.get_or_create(
@@ -171,8 +171,6 @@ try:
 
             # Save the object again to save the changes to ad_groups
             obj.save()
-            
-            ADGroupAssociation.delete_unused_groups()
 
         def formfield_for_manytomany(self, db_field, request, **kwargs):
             if db_field.name == "ad_groups":
@@ -273,15 +271,9 @@ except ImportError:
 
 try:
     from .models import ADOrganizationalUnitLimiter
-    from django.db.models import Q
-
     from django.contrib import admin
-    from django.db.models import Q
     from django.contrib.admin.widgets import FilteredSelectMultiple
     from django.db import models
-
-    from django.contrib import admin
-    from .models import ADOrganizationalUnitLimiter
 
     @admin.register(ADOrganizationalUnitLimiter)
     class ADOrganizationalUnitLimiterAdmin(admin.ModelAdmin):
@@ -289,9 +281,10 @@ try:
         search_fields = ('canonical_name', 'distinguished_name')
         filter_horizontal = ('ad_groups',)  
         list_per_page = 10  # Display 10 objects per page
+        readonly_fields = ('canonical_name', 'distinguished_name')  # Make these fields read-only
 
         def has_delete_permission(self, request, obj=None):
-            return False
+            return True
         
         def has_add_permission(self, request, obj=None):
             return False
