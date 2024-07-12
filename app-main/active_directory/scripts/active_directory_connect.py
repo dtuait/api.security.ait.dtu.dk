@@ -6,6 +6,7 @@ from ldap3.core.exceptions import LDAPKeyError
 # Load .env file
 # Import load_dotenv
 from dotenv import load_dotenv
+
 dotenv_path = '/usr/src/project/.devcontainer/.env'
 load_dotenv(dotenv_path=dotenv_path)
 
