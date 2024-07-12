@@ -3,7 +3,7 @@ import os
 import json
 import time
 import requests
-from dotenv import load_dotenv, set_key
+from dotenv import load_dotenv
 from ._graph_get_bearertoken import _get_bearertoken
 
 # # Function to generate a new token
@@ -29,8 +29,8 @@ from ._graph_get_bearertoken import _get_bearertoken
 
 
 # Load environment variables from .env file
-env_path = '/usr/src/project/app-main/.env'
-load_dotenv(dotenv_path=env_path)
+dotenv_path = '/usr/src/project/.devcontainer/.env'
+load_dotenv(dotenv_path=dotenv_path)
 
 def run_hunting_query(query):
 
