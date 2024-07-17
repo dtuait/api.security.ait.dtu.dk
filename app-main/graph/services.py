@@ -13,7 +13,7 @@ def execute_get_user(user_principal_name, select_parameters):
     return data, status_code
 
 
-def execute_list_user_authentication_methods(* user_id):
+def execute_list_user_authentication_methods(user_id):
     response, status_code = list_user_authentication_methods(user_id)
     return response.json(), status_code
 

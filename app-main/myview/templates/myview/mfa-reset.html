@@ -21,10 +21,10 @@
     <form method="post">
         {% csrf_token %}
         <div class="mb-3">
-            <label for="id_username" class="form-label">Username
-                <i class="bi bi-question-circle-fill" data-bs-toggle="tooltip" data-bs-placement="right" title="Azure principal name&lt;br&gt; vicre-test01@dtudk.onmicrosoft.com &lt;br&gt; vicre@dtu.dk" data-bs-html="true"></i>
+            <label for="id-userprincipalname" class="form-label">userPrincipalName
+                <i class="bi bi-question-circle-fill" data-bs-toggle="tooltip" data-bs-placement="right" title="userPrincipalName&lt;br&gt; vicre-test01@dtudk.onmicrosoft.com &lt;br&gt; vicre@dtu.dk" data-bs-html="true"></i>
             </label>
-            {{ form.username }}
+            <input type="text" class="form-control" id="id-userprincipalname" name="userprincipalname" required value="vicre-test01@dtudk.onmicrosoft.com">
         </div>
         <button type="submit" id="mfa-user-lookup-submit-btn" class="btn btn-primary">
             Submit
@@ -32,7 +32,7 @@
         </button>
     </form>
 
-    <div id="dataContainer">
+    <div id="cards-container">
         <!-- Cards will be appended here -->
     </div>
 </div>

@@ -363,13 +363,9 @@ class DeleteMfaViewSet(APIAuthBaseViewSet):
         try:
             response, status_code = delete_authentication_method(user_id__or__user_principalname, microsoft_authenticator_method_id)
 
-            # if the status code is 204, then the method was deleted successfully. Then create a response with the status code
-            if status_code == 204:
-                return Response(status=status.HTTP_204_NO_CONTENT)
-            else:
-                return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-            # return Response(response, status=status_code)
+            return Response(response=response, status=status_code)
+
 
 
             
