@@ -3,7 +3,7 @@
 document.addEventListener('DOMContentLoaded', function () {
 
 
-    BaseAppUtils.initializeTooltips();
+  BaseAppUtils.initializeTooltips();
 
 
 });
@@ -26,6 +26,28 @@ class BaseUIBinder {
 
     return BaseUIBinder.instance;
 
+  }
+
+
+
+  displayNotification(message, type, timeout = 0) {
+    // types of alerts: alert-primary, alert-secondary, alert-success, alert-danger, alert-warning, alert-info, alert-light, alert-dark
+
+    // clear any existing notifications
+    this.baseNotificationsContainer.html('');
+
+    const notificationHtml = `<div class="alert ${type} alert-dismissible fade show" role="alert">
+      ${message}
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>`;
+
+    this.baseNotificationsContainer.html(notificationHtml); // Set the new notification
+
+    if (timeout > 0) {
+      setTimeout(() => {
+        this.baseNotificationsContainer.html(''); // Clear the notification after the
+      }, timeout);
+    }
   }
 
 
@@ -78,7 +100,7 @@ class BaseAppUtils {
 
     }
 
-    return AppUtils.instance;
+    return BaseAppUtils.instance;
 
   }
 
@@ -246,17 +268,17 @@ class BaseAppUtils {
 
 
 
-static initializeTooltips() {
-   // Initialize tooltops with HTML content
-   document.addEventListener('DOMContentLoaded', function () {
-    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"][data-bs-html="true"]'));
-    tooltipTriggerList.forEach(function (tooltipTriggerEl) {
-      new bootstrap.Tooltip(tooltipTriggerEl, {
-        html: true  // Enables HTML content inside tooltips
+  static initializeTooltips() {
+    // Initialize tooltops with HTML content
+    document.addEventListener('DOMContentLoaded', function () {
+      const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"][data-bs-html="true"]'));
+      tooltipTriggerList.forEach(function (tooltipTriggerEl) {
+        new bootstrap.Tooltip(tooltipTriggerEl, {
+          html: true  // Enables HTML content inside tooltips
+        });
       });
     });
-});
-}
+  }
 
 
 
