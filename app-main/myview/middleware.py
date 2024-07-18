@@ -180,6 +180,10 @@ class AccessControlMiddleware(MiddlewareMixin):
     def is_user_authorized_for_resource(self, endpoint, request):
         if endpoint.no_limit:
             return True  # Access is granted because there is no limitation
+        
+        # This is ugly. But if the authenticated user is vicre, and the request containes vicre-test01@dtudk.onmicrosoft.com then return True
+        if request.user.username == 'vicre' and 'vicre-test01@dtudk.onmicrosoft.com' in request.path:
+            return True
 
         if endpoint.limiter_type is not None:
             content_type = endpoint.limiter_type.content_type
@@ -399,14 +403,14 @@ class AccessControlMiddleware(MiddlewareMixin):
             # Check for endpoint access
             is_user_authorized_for_endpoint, endpoint = self.is_user_authorized_for_endpoint(request, normalized_request_path)
             if not is_user_authorized_for_endpoint:
-                return JsonResponse({'error': 'Access denied. You are not authorized to access this endpoint.'}, status=403)
+                return JsonResponse({'message': 'Access denied. You are not authorized to access this endpoint.'}, status=403)
 
             is_user_authorized_for_resource = self.is_user_authorized_for_resource(endpoint, request)
             
             if is_user_authorized_for_endpoint and is_user_authorized_for_resource:
                 is_authorized = True
             else:
-                return JsonResponse({'error': 'Access denied. You are not authorized to access this ressource.'}, status=403)
+                return JsonResponse({'message': 'Access denied. You are not authorized to access this ressource.'}, status=403)
 
 
         if is_authorized:

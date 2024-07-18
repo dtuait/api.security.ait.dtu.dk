@@ -234,6 +234,19 @@ class BaseAppUtils {
 
 
 
+  displayNotification(message, type) {
+    const alertType = type === 'success' ? 'alert-success' : 'alert-warning';
+    const notificationHtml = `<div class="alert ${alertType} alert-dismissible fade show" role="alert">
+          ${message}
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>`;
+
+    const notificationsContainer = document.getElementById('notifications-container');
+    notificationsContainer.innerHTML = notificationHtml; // Add the notification to the container
+  }
+
+
+
 
   updateSessionStorage(data, prefix) {
     // example updateSessionStorage({userPrincipalObj: data}, 'myApp');
@@ -278,40 +291,14 @@ class BaseAppUtils {
    * @param {string} triggerSelector - Selector for the element that triggers the modal.
    * @param {string} modalId - Unique ID for the modal.
    * @param {Object} options - Optional settings for modal customization.
-   * 
-   * example usage:
-   * setModal('#myButton', 'myModal', {
-   *   title: 'My Modal Title',
-   *   body: '<p>This is the modal body</p>',
-   *   footer: '<button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>',
-   *   eventListeners: [
-   *   {
-   *     selector: '.save-btn',
-   *     event: 'click',
-   *     handler: function() {
-   *       alert('Save button clicked');
-   *     }
-   *   }
-   *   ]
-   *   });
-   *
-   * note that you dont need to set an event listener, you can do that after the modal is created
-   * 
-   * @returns {Object} - The modal instance.
-   * 
    */
-
-  
   setModal(triggerSelector, modalId, options = {}) {
     // this function assumes that each that a mudal is uniqie to a trigger
 
 
-    // Check if an element with the ID stored in modalId exists in the document
     if ($('#' + modalId).length) {
-      // If the element exists, remove it from the document
       $('#' + modalId).remove();
     }
-
 
     // if options are provided, use them to update the modal
 
@@ -345,6 +332,10 @@ class BaseAppUtils {
     // Append the modal to the body
     $('body').append(modalHtml);
     const modalInstance = new bootstrap.Modal(document.getElementById(modalId), { keyboard: false });
+    // // Use Bootstrap to handle the modal
+    // const modalInstance = new bootstrap.Modal(document.getElementById(modalId), {
+    //   keyboard: false
+    // });
 
     // Attach event listeners specified in options
     eventListeners.forEach(({ selector, event, handler }) => {
@@ -357,8 +348,6 @@ class BaseAppUtils {
     $(triggerSelector).off('click').on('click', function () {
       modalInstance.show();
     });
-
-    return modalInstance;
 
   }
 

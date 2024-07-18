@@ -358,25 +358,21 @@ class DeleteMfaViewSet(APIAuthBaseViewSet):
 
 
     def delete_mfa(self, request, user_id__or__user_principalname, microsoft_authenticator_method_id):
-        from .services import execute_delete_user_authentication_method as delete_authentication_method
+        from .services import execute_microsoft_authentication_method as delete_authentication_method
 
         try:
             response, status_code = delete_authentication_method(user_id__or__user_principalname, microsoft_authenticator_method_id)
 
-            # if the status code is 204, then the method was deleted successfully. Then create a response with the status code
-            if status_code == 204:
-                return Response(status=status.HTTP_204_NO_CONTENT)
-            else:
-                return Response(status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-            # return Response(response, status=status_code)
+            return Response(response, status=status_code)
+
 
 
             
 
         except Exception as e:
-            # return JsonResponse({'status': 'error', 'message': 'Failed to delete authentication method.'}, status=403)
-            return Response({'status': 'error', 'message': 'You do not have permission to delete methods on this user'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return JsonResponse({'status': 'error', 'message': 'Failed to delete authentication method.'}, status=403)
+            # return Response({'status': 'error', 'message': 'You do not have permission to delete methods on this user'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         
 
@@ -386,6 +382,99 @@ class DeleteMfaViewSet(APIAuthBaseViewSet):
 
 
 
+
+
+class DeletePhoneViewSet(APIAuthBaseViewSet):
+
+
+    autho_bearer_token = openapi.Parameter(
+        'Authorization',  # name of the header        
+        in_=openapi.IN_HEADER,  # where the parameter is located
+        description="Required. Must be in the format '\<token\> or real token'.",
+        type=openapi.TYPE_STRING,  # type of the parameter
+        required=True,  # if the header is required or not
+        default='<token>'  # default value
+    )
+
+    user_path_param = openapi.Parameter(
+        'user_id__or__user_principalname',  # name of the path parameter
+        in_=openapi.IN_PATH,  # location of the parameter
+        description="The username requested for deletion of Phone.",
+        type=openapi.TYPE_STRING,  # type of the parameter
+        required=True,  # if the path parameter is required
+        default='vicre-test01@dtudk.onmicrosoft.com',  # default value
+        override=True  # override the default value
+    )
+
+    phone_authenticator_method_id = openapi.Parameter(
+        'phone_authenticator_method_id',  # name of the path parameter
+        in_=openapi.IN_PATH,  # location of the parameter
+        description="The authentication method id for the Phone solution to be deleted",
+        type=openapi.TYPE_STRING,  # type of the parameter
+        required=True,  # if the path parameter is required
+        default=None,  # default value
+        override=True  # override the default value
+    )
+
+    @swagger_auto_schema(
+        manual_parameters=[autho_bearer_token, user_path_param, phone_authenticator_method_id],
+        operation_description="""
+        Incoming user MFA solutions will be deleted, thereby giving users space to re-enable MFA by deleting their MFA solution on the app, then visiting office.com and signing in with <user>@dtu.dk to re-enable MFA.
+
+        Microsoft Phone API documentation: https://learn.microsoft.com/en-us/graph/api/phoneauthenticationmethod-delete?view=graph-rest-1.0&tabs=http
+
+        How the call looks when calling microsoft api: https://graph.microsoft.com/v1.0/users/{azure_user_principal_id}/authentication/microsoftAuthenticatorMethods/{authentication_method_id}
+
+        
+
+        Curl:
+        ```
+        curl -X 'DELETE'
+            \t'http://localhost:6081/v1.0/graph/users/vicre-test01%40dtudk.onmicrosoft.com/phone-authentication-methods/171397f2-804e-4664-8ede-c4b3adf6bbb0'
+            \t-H 'accept: application/json'
+            \t-H 'Authorization: <token>'
+            \t-H 'X-CSRFToken: zVFVMDNniqLL9sdWjjcsvYrOb4haiVgfgEj5joiOqEydy18O5jQ24yPqwlPQNrFa'
+        ```
+        Request URL
+        ```
+        http://localhost:6081/v1.0/graph/users/vicre-test01%40dtudk.onmicrosoft.com/phone-authentication-methods/171397f2-804e-4664-8ede-c4b3adf6bbb0
+        ```
+        Response is 204 No content. This means that the request was successful and the MFA was deleted.       
+
+
+
+        """,
+        responses={
+            204: 'Successfully deleted phone', # No content - meaning the request was successful
+            400: 'Error: 1',
+            404: 'Error: 2',
+            500: 'Error: Internal server error'
+        },
+  
+    )
+
+
+    @action(detail=False, methods=['delete'], url_path='delete_phone')
+
+
+    def delete_phone(self, request, user_id__or__user_principalname, phone_authenticator_method_id):
+        from .services import execute_phone_authentication_method as phone_authentication_method
+
+        try:
+            response, status_code = phone_authentication_method(user_id__or__user_principalname, phone_authenticator_method_id)
+
+
+            return Response(response, status=status_code)
+
+
+
+            
+
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': 'Failed to delete phone authentication method.'}, status=403)
+            # return Response({'status': 'error', 'message': 'You do not have permission to delete methods on this user'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        
 
 
 

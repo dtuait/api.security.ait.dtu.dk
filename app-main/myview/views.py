@@ -3,7 +3,7 @@ from django.views import View
 from django.http import HttpResponseForbidden
 from django.shortcuts import render
 from django.shortcuts import render
-from .forms import UserLookupForm, LargeTextAreaForm
+from .forms import LargeTextAreaForm
 from .models import Endpoint
 import subprocess
 from django.utils.decorators import method_decorator
@@ -24,7 +24,8 @@ class BaseView(View):
         required_endpoints = [
             {'method': 'GET', 'path': '/graph/v1.0/get-user/{user}'},
             {'method': 'GET', 'path': '/graph/v1.0/list/{user_id__or__user_principalname}/authentication-methods'},
-            {'method': 'DELETE', 'path': '/graph/v1.0/users/{user_id__or__user_principalname}/authentication-methods/{microsoft_authenticator_method_id}'},
+            {'method': 'DELETE', 'path': '/graph/v1.0/users/{user_id__or__user_principalname}/microsoft-authentication-methods/{microsoft_authenticator_method_id}'},
+            {'method': 'DELETE', 'path': '/graph/v1.0/users/{user_id__or__user_principalname}/phone-authentication-methods/{phone_authenticator_method_id}'},
             {'method': 'GET', 'path': '/active-directory/v1.0/query'}
         ]
 
@@ -159,11 +160,6 @@ class BaseView(View):
 
 
 
-from .ajax_view import AjaxView  # Import AjaxView from ajax_view.py
-
-
-
-
 
 
 
@@ -261,16 +257,24 @@ class FrontpagePageView(BaseView):
 
 
 class MFAResetPageView(BaseView):
-    form_class = UserLookupForm
+
     template_name = "myview/mfa-reset.html"
 
     def get(self, request, *args, **kwargs):
         if not self.user_has_mfa_reset_access():
             return HttpResponseForbidden("You do not have access to this page.")
-        form = self.form_class()
         context = super().get_context_data(**kwargs)
-        context['form'] = form
         return render(request, self.template_name, context)
+
+
+
+
+
+
+
+
+
+
 
 
 

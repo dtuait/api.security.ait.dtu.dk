@@ -72,13 +72,13 @@ class AppUtils {
         const port = window.location.port;
 
         if (method['@odata.type'] === '#microsoft.graph.microsoftAuthenticatorAuthenticationMethod') {
-            buttonClassSuffix = 'mfa';
-            enabledOrDisabled = 'enabled';
+            buttonClassSuffix = 'ismfa';
+            enabledOrDisabled = '';
         } else if (method['@odata.type'] === '#microsoft.graph.phoneAuthenticationMethod') {
-            buttonClassSuffix = 'phone';
-            enabledOrDisabled = 'enabled';
+            buttonClassSuffix = 'ismfa';
+            enabledOrDisabled = '';
         } else {
-            buttonClassSuffix = 'undetermined';
+            buttonClassSuffix = 'notmfa';
             enabledOrDisabled = 'disabled';
         }
         modalOptions = this.assignModalOptions(protocol, server, port, buttonClassSuffix);
@@ -87,17 +87,12 @@ class AppUtils {
 
     assignModalOptions(protocol, server, port, buttonClassSuffix) {
         let modalOptions = { title: '', body: '' };
-        if (buttonClassSuffix === 'mfa') {
-            modalOptions.title = 'Microsoft Authenticator Method';
-            modalOptions.body = 'This authentication method is Microsoft Authenticator.';
-        } 
-        else if (buttonClassSuffix === 'phone'){
-            modalOptions.title = 'Phone Method';
-            modalOptions.body = 'This authentication method is Phone.';
-        }
-        else {
-            modalOptions.title = `This is an undetermined method`;
+        if (buttonClassSuffix === 'password' || buttonClassSuffix === 'notmfa') {
+            modalOptions.title = `${buttonClassSuffix === 'password' ? 'Password' : 'Not MFA'} Authentication Method`;
             modalOptions.body = `This authentication method is disabled because it is not an MFA method. If you want to DELETE it, you can do it via the API:<br><a href="${protocol}//${server}:${port}/myview/swagger/">${protocol}//${server}:${port}/myview/swagger/</a>`;
+        } else {
+            modalOptions.title = 'MFA Method';
+            modalOptions.body = 'This authentication method is MFA.';
         }
         return modalOptions;
     }
@@ -135,7 +130,7 @@ class AppUtils {
 
 
 
-            
+            const infoDialogDisplay = app.baseAppUtils.setModal(`#${card.infoButtonId}`, `info-${card.modalId}`, modalOptions); // Set the modal for the info button    
 
 
             const deleteConfirmButtonId = `delete-confirm-button`;
@@ -154,13 +149,7 @@ class AppUtils {
                         handler: async function () {
                             try {
                                 console.log("deleteConfirmButtonId clicked");
-                                if (buttonClassSuffix === 'mfa') {
-                                await app.appUtils.deleteMicrosoftAuthenticationMethod(app, userPrincipalName, authenticationMethod.id);
-                                } else if (buttonClassSuffix === 'phone') {
-                                await app.appUtils.deletePhoneAuthenticationMethod(app, userPrincipalName, authenticationMethod.id);
-                                } else {
-                                    throw new Error(`This authentication method is disabled because it is not an MFA method. If you want to DELETE it, you can do it via the API.`);
-                                }
+                                await app.appUtils.deleteAuthenticationMethod(app, userPrincipalName, authenticationMethod.id);
                                 app.baseUIBinder.displayNotification(`The authentication method was successfully deleted. Refreshes the page in 2 seconds`, 'alert-success');
                                 app.appUtils.setUserPrincipalNameQueryParam(userPrincipalName);
                                 setTimeout(() => {
@@ -171,7 +160,7 @@ class AppUtils {
                                 app.baseUIBinder.displayNotification(`${error} `, 'alert-danger');
                                 console.log(error);
                             } finally {
-                                
+                                deleteDialogDisplay.hide();
                             }
                         }
                     },
@@ -184,12 +173,35 @@ class AppUtils {
                     }
                 ]
             };
-            app.baseAppUtils.setModal(`#${card.deleteButtonId}`, `delete-${card.deleteButtonId}`, deleteModalOptions);
-            app.baseAppUtils.setModal(`#${card.infoButtonId}`, `info-${card.modalId}`, modalOptions); // Set the modal for the info button    
+            const deleteDialogDisplay = app.baseAppUtils.setModal(`#${card.deleteButtonId}`, `delete-${card.deleteButtonId}`, deleteModalOptions);
 
 
 
-     
+            // Attach event listeners to the delete confirmation modal buttons
+            $(`#${deleteConfirmButtonId}`).on('click', async function () {
+                try {
+                    app.baseUIBinder.displayNotification(`The authentication method was successfully deleted. Refreshes the page in 5 seconds`, 'alert-success');
+                    app.appUtils.setUserPrincipalNameQueryParam(userPrincipalName);
+                    setTimeout(() => {
+                        location.reload();
+                    }, 5000);
+
+                    deleteDialogDisplay.hide();
+                } catch (error) {
+                    app.baseUIBinder.displayNotification(`${error} `, 'alert-danger');
+                    console.log(error);
+                } finally {
+                    deleteDialogDisplay.hide();
+                }
+            });
+
+
+            console.log('deleteCancelButtonId', deleteCancelButtonId);
+            console.log($(`#${deleteConfirmButtonId}`));
+
+            $(`#${deleteCancelButtonId}`).on('click', function () {
+                console.log("deleteCancelButtonId clicked");
+            });
 
 
         } catch (error) {
@@ -218,8 +230,8 @@ class AppUtils {
     }
 
 
-    async deleteMicrosoftAuthenticationMethod(app, userEmail, authID) {
-        const url = `/graph/v1.0/users/${encodeURIComponent(userEmail)}/microsoft-authentication-methods/${authID}`;
+    async deleteAuthenticationMethod(app, userEmail, authID) {
+        const url = `/graph/v1.0/users/${encodeURIComponent(userEmail)}/authentication-methods/${authID}`;
 
         let response;
         try {
@@ -245,31 +257,6 @@ class AppUtils {
     }
 
 
-    async deletePhoneAuthenticationMethod(app, userEmail, authID) {
-        const url = `/graph/v1.0/users/${encodeURIComponent(userEmail)}/phone-authentication-methods/${authID}`;
-
-        let response;
-        try {
-            const headers = {
-                'accept': 'application/json'
-            };
-
-            response = await app.baseAppUtils.restAjax('DELETE', url, headers);
-            // const response = {'status': 204}
-            // Check for a 204 status code specifically
-
-            if (response.status !== 204) {
-                throw new Error(`phoneDeleteAuthenticationMethod \t ${response.data.message}, ${response.status}`)
-            }
-
-            return response;
-
-            // Since no content is expected, you might not need to return the response
-            // But you can return the status for confirmation or further checks
-        } catch (error) {
-            throw error; // Allowing the caller to handle errors
-        }
-    }
 
 
     constructAuthenticationMethodCard(method, formattedDate, buttonClassSuffix, enabledOrDisabled) {
