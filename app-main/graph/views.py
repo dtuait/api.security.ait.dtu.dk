@@ -371,8 +371,8 @@ class DeleteMfaViewSet(APIAuthBaseViewSet):
             
 
         except Exception as e:
-            # return JsonResponse({'status': 'error', 'message': 'Failed to delete authentication method.'}, status=403)
-            return Response({'status': 'error', 'message': 'You do not have permission to delete methods on this user'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return JsonResponse({'status': 'error', 'message': 'Failed to delete authentication method.'}, status=403)
+            # return Response({'status': 'error', 'message': 'You do not have permission to delete methods on this user'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         
 
