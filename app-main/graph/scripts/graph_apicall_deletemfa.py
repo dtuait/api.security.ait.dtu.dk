@@ -26,11 +26,10 @@ def delete_authentication_method(azure_user_principal_id ,authentication_method_
     
 
     response = requests.delete(api_endpoint, headers=headers)
-    # creae a mock request response object
-    # response = requests.models.Response()
+
     # response.status_code = 204
      
-
+    # 204 means successfully deleted
     return response, response.status_code
 
 

@@ -130,7 +130,7 @@ class AppUtils {
 
 
 
-            
+            const infoDialogDisplay = app.baseAppUtils.setModal(`#${card.infoButtonId}`, `info-${card.modalId}`, modalOptions); // Set the modal for the info button    
 
 
             const deleteConfirmButtonId = `delete-confirm-button`;
@@ -160,7 +160,7 @@ class AppUtils {
                                 app.baseUIBinder.displayNotification(`${error} `, 'alert-danger');
                                 console.log(error);
                             } finally {
-                                
+                                deleteDialogDisplay.hide();
                             }
                         }
                     },
@@ -173,12 +173,35 @@ class AppUtils {
                     }
                 ]
             };
-            app.baseAppUtils.setModal(`#${card.deleteButtonId}`, `delete-${card.deleteButtonId}`, deleteModalOptions);
-            app.baseAppUtils.setModal(`#${card.infoButtonId}`, `info-${card.modalId}`, modalOptions); // Set the modal for the info button    
+            const deleteDialogDisplay = app.baseAppUtils.setModal(`#${card.deleteButtonId}`, `delete-${card.deleteButtonId}`, deleteModalOptions);
 
 
 
-     
+            // Attach event listeners to the delete confirmation modal buttons
+            $(`#${deleteConfirmButtonId}`).on('click', async function () {
+                try {
+                    app.baseUIBinder.displayNotification(`The authentication method was successfully deleted. Refreshes the page in 5 seconds`, 'alert-success');
+                    app.appUtils.setUserPrincipalNameQueryParam(userPrincipalName);
+                    setTimeout(() => {
+                        location.reload();
+                    }, 5000);
+
+                    deleteDialogDisplay.hide();
+                } catch (error) {
+                    app.baseUIBinder.displayNotification(`${error} `, 'alert-danger');
+                    console.log(error);
+                } finally {
+                    deleteDialogDisplay.hide();
+                }
+            });
+
+
+            console.log('deleteCancelButtonId', deleteCancelButtonId);
+            console.log($(`#${deleteConfirmButtonId}`));
+
+            $(`#${deleteCancelButtonId}`).on('click', function () {
+                console.log("deleteCancelButtonId clicked");
+            });
 
 
         } catch (error) {
