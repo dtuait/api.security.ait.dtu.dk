@@ -24,7 +24,8 @@ class BaseView(View):
         required_endpoints = [
             {'method': 'GET', 'path': '/graph/v1.0/get-user/{user}'},
             {'method': 'GET', 'path': '/graph/v1.0/list/{user_id__or__user_principalname}/authentication-methods'},
-            {'method': 'DELETE', 'path': '/graph/v1.0/users/{user_id__or__user_principalname}/authentication-methods/{microsoft_authenticator_method_id}'},
+            {'method': 'DELETE', 'path': '/graph/v1.0/users/{user_id__or__user_principalname}/microsoft-authentication-methods/{microsoft_authenticator_method_id}'},
+            {'method': 'DELETE', 'path': '/graph/v1.0/users/{user_id__or__user_principalname}/phone-authentication-methods/{phone_authenticator_method_id}'},
             {'method': 'GET', 'path': '/active-directory/v1.0/query'}
         ]
 

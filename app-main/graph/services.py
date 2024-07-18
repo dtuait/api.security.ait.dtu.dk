@@ -2,7 +2,8 @@
 from .scripts.graph_apicall_runhuntingquery import run_hunting_query
 from .scripts.graph_apicall_getuser import get_user
 from .scripts.graph_apicall_listuserauthenticationmethods import list_user_authentication_methods
-from .scripts.graph_apicall_deletemfa import delete_authentication_method
+from .scripts.graph_apicall_deletemfa import microsoft_authentication_method
+from .scripts.graph_apicall_deletephone import phone_authentication_method
 
 def execute_hunting_query(query):
     response, status_code = run_hunting_query(query)
@@ -18,7 +19,13 @@ def execute_list_user_authentication_methods(user_id):
     return response.json(), status_code
 
 
-def execute_delete_user_authentication_method(azure_user_principal_id ,authentication_method_id):
-    response, status_code = delete_authentication_method(azure_user_principal_id, authentication_method_id)
+def execute_phone_authentication_method(azure_user_principal_id ,authentication_method_id):
+    response, status_code = phone_authentication_method(azure_user_principal_id, authentication_method_id)
+    # Response is empty and status code is 204
+    return response, status_code
+
+
+def execute_microsoft_authentication_method(azure_user_principal_id ,authentication_method_id):
+    response, status_code = microsoft_authentication_method(azure_user_principal_id, authentication_method_id)
     # Response is empty and status code is 204
     return response, status_code

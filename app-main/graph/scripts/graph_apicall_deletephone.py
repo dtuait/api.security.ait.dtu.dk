@@ -4,7 +4,7 @@ from ._graph_get_bearertoken import _get_bearertoken
 # from ._graph_get_user_authentication_methods import get_user_authentication_methods
 
 
-def microsoft_authentication_method(azure_user_principal_id ,authentication_method_id):
+def phone_authentication_method(azure_user_principal_id ,authentication_method_id):
 
     token = _get_bearertoken()
 
@@ -22,7 +22,7 @@ def microsoft_authentication_method(azure_user_principal_id ,authentication_meth
 
     
     # https://graph.microsoft.com/v1.0/users/vicre-test01@dtudk.onmicrosoft.com/authentication/microsoftAuthenticatorMethods/123e4441-eadf-4950-883d-fea123988824
-    api_endpoint = f"https://graph.microsoft.com/v1.0/users/{azure_user_principal_id}/authentication/microsoftAuthenticatorMethods/{authentication_method_id}"
+    api_endpoint = f"https://graph.microsoft.com/v1.0/users/{azure_user_principal_id}/authentication/phoneMethods/{authentication_method_id}"
     
 
     response = requests.delete(api_endpoint, headers=headers)
@@ -38,8 +38,7 @@ def microsoft_authentication_method(azure_user_principal_id ,authentication_meth
 def run():
     azure_user_principal_id = '3358461b-2b36-4019-a2b7-2da92001cf7c'
     authentication_method_id = 'f18a98ad-7fc4-4294-8814-4fbdea4ef13b'
-    response, status_code = microsoft_authentication_method(azure_user_principal_id, authentication_method_id)
-    # print(response)
+    response, status_code = phone_authentication_method(azure_user_principal_id, authentication_method_id)
     print(status_code)
 
 
