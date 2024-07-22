@@ -4,6 +4,19 @@ import time
 import os
 
 
+def update_env_file(env_path, key, new_value):
+    # Read the existing content
+    with open(env_path, 'r') as file:
+        lines = file.readlines()
+
+    # Update the specific key with new value
+    with open(env_path, 'w') as file:
+        for line in lines:
+            if line.startswith(key):
+                key_name, _ = line.split('=', 1)
+                file.write(f'{key_name}={new_value}\n')
+            else:
+                file.write(line)
 
 
 # Function to generate a new token
@@ -35,7 +48,7 @@ def _get_bearertoken():
     
 
     # Load environment variables from .env file
-    env_path = '/usr/src/project/app-main/.env'
+    env_path = '/usr/src/project/.devcontainer/.env'
     load_dotenv(dotenv_path=env_path)
 
     # Get the expiration time from the environment variables
@@ -51,10 +64,15 @@ def _get_bearertoken():
 
         # Update the .env file with the new token and expiration time
         # Replace 3600 with the actual lifetime of the token in seconds
-        set_key(env_path, "GRAPH_ACCESS_BEARER_TOKEN", new_token)
-        set_key(env_path, "GRAPH_ACCESS_BEARER_TOKEN_EXPIRES_ON", str(current_time + 3600))
-        # Reload the environment variables
-        load_dotenv(dotenv_path=env_path, override=True)
+        try:
+            # set_key(env_path, "GRAPH_ACCESS_BEARER_TOKEN", new_token)
+            # set_key(env_path, "GRAPH_ACCESS_BEARER_TOKEN_EXPIRES_ON", str(current_time + 3600))
+            update_env_file(env_path, 'GRAPH_ACCESS_BEARER_TOKEN', new_token)
+            update_env_file(env_path, 'GRAPH_ACCESS_BEARER_TOKEN_EXPIRES_ON', str(current_time + 3600))
+            # Reload the environment variables
+            load_dotenv(dotenv_path=env_path, override=True)
+        except Exception as e:
+            print("An error occurred while updating the .env file:", str(e))
 
     # Use the token to perform the hunting query
     token = os.getenv("GRAPH_ACCESS_BEARER_TOKEN")
