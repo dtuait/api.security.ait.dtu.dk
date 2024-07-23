@@ -43,10 +43,10 @@ case $username in
         ;;
 esac
 
-git config --global --add safe.directory /usr/src/project
-git config --global --add safe.directory /mnt/project
-git config --global --add safe.directory /usr/src/project/.devcontainer/.docker-migrate
-git config --global --add safe.directory /usr/src/project/.devcontainer/.docker-image-builder
+# git config --global --add safe.directory /usr/src/project
+# git config --global --add safe.directory /mnt/project
+# git config --global --add safe.directory /usr/src/project/.devcontainer/.docker-migrate
+# git config --global --add safe.directory /usr/src/project/.devcontainer/.docker-image-builder
 git config pull.rebase true
 
 # show current pip freeze
