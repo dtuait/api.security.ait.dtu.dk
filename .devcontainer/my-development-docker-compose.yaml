@@ -1,18 +1,26 @@
 version: '3.8'
 
 # development command - the only differnce is command in xx-api-security-ait-dtu-dk-app-main is commented out
-# docker compose -p dev-api-security-ait-dtu-dk -f ./my-development-docker-compose.yaml up -d
+# docker-compose -p dev-api-security-ait-dtu-dk -f ./my-development-docker-compose.yaml up -d
 # production command
-# docker compose -p prod-api-security-ait-dtu-dk -f ./my-production-docker-compose.yaml up -d
+# docker-compose -p prod-api-security-ait-dtu-dk -f ./my-production-docker-compose.yaml up -d
 
 services:
   xx-api-security-ait-dtu-dk-app-main:
-    image: dtuait/api-security-ait-dtu-dk-app-main:python-3.10-bullseye-django-4.2.11-27-03-2024-venv-myversion-1.0.6
+    image: dtuait/api-security-ait-dtu-dk-app-main:python-3.10-bullseye-django-4.2.11-27-03-2024-venv-myversion-1.0.9
+    user: "${HOST_UID}:${HOST_GID}"  # Set user to dockeruser
+    # user: dockeruser
+    command: sleep infinity
+    # entrypoint: ["bash", "/entrypoint.sh"] # the script has already runned in the Dockerfile
     restart: always
     tty: true
     volumes:
       - ..:/usr/src/project
       - ../shared-project-data:/mnt/shared-project-data
+      # - ./entrypoint.sh:/entrypoint.sh # you dont need to mount it since it is already in the image
+    environment:
+      - HOST_UID=${DOCKERUSER_UID} # Replace with the host's UID - dockeruser I alwways use 65000
+      - HOST_GID=${DOCKERUSER_GID} # Replace with the host's GID - dockeruser I alwways use 65000
     networks:
       - shared_network
 

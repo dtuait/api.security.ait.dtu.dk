@@ -8,12 +8,16 @@ version: '3.8'
 services:
   xx-api-security-ait-dtu-dk-app-main:
     image: dtuait/api-security-ait-dtu-dk-app-main:python-3.10-bullseye-django-4.2.11-27-03-2024-venv-myversion-1.0.6
-    command: 'bash -c "cd /usr/src/project/app-main && source /usr/src/venvs/app-main/bin/activate && python3 manage.py runserver 0.0.0.0:8121"'
+    entrypoint: ["./entrypoint.sh", "bash", "-c", "cd /usr/src/project/app-main && source /usr/src/venvs/app-main/bin/activate && python3 manage.py runserver 0.0.0.0:8121"]
     restart: always
     tty: true
     volumes:
       - ..:/usr/src/project
       - ../shared-project-data:/mnt/shared-project-data
+      - ./entrypoint.sh:/entrypoint.sh
+    environment:
+      - HOST_UID=1001 # Replace with the host's UID - dockeruser
+      - HOST_GID=1001 # Replace with the host's GID - dockeruser
     networks:
       - shared_network
 
