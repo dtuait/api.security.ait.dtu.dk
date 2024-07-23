@@ -37,3 +37,4 @@ app-main/data.json
 .postStartCommandMarker
 .updateContentCommandMarker
 .bashrc
+.gitconfig
