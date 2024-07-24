@@ -132,14 +132,7 @@ class GetUserViewSet(APIAuthBaseViewSet):
 
         response, status_code = execute_get_user(user, select_param)
 
-        return Response(response, status=status_code)
-
-
-
-
-        # return Response({'error': 'Not implemented'}, status=status.HTTP_501_NOT_IMPLEMENTED)
-
-
+        return JsonResponse(response, status=status_code)
 
 
 
@@ -244,7 +237,7 @@ class ListUserAuthenticationMethodsViewSet(APIAuthBaseViewSet):
 
         response, status_code = execute_list_user_authentication_methods(user_id__or__user_principalname)
 
-        return Response(response, status=status_code)
+        return JsonResponse(response, status=status_code)
 
         # return Response({'error': 'Not implemented'}, status=status.HTTP_501_NOT_IMPLEMENTED)
 
@@ -364,7 +357,9 @@ class DeleteMfaViewSet(APIAuthBaseViewSet):
             response, status_code = delete_authentication_method(user_id__or__user_principalname, microsoft_authenticator_method_id)
 
 
-            return Response(response, status=status_code)
+            # if response.status_code == 204:
+            if status_code == 204:
+                return JsonResponse({'status': 'success', 'message': 'Successfully deleted authentication method.'}, status=204)
 
 
 
@@ -464,8 +459,8 @@ class DeletePhoneViewSet(APIAuthBaseViewSet):
             response, status_code = phone_authentication_method(user_id__or__user_principalname, phone_authenticator_method_id)
 
 
-            return Response(response, status=status_code)
-
+            if status_code == 204:
+                return JsonResponse({'status': 'success', 'message': 'Successfully deleted authentication method.'}, status=204)
 
 
             

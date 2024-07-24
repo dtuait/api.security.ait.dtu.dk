@@ -43,18 +43,10 @@ class AppUtils {
 
         const url = `/graph/v1.0/list/${encodeURIComponent(userPrincipalName)}/authentication-methods`;
 
-        try {
+        const response = await app.baseAppUtils.restAjax('GET', url);
 
-            const response = await app.baseAppUtils.restAjax('GET', url);
+        return response;
 
-            if (response.status !== 200) {
-                throw new Error(`getUserAuthenticationMethods \t ${response.data.message}, ${response.status}`)
-            }
-
-            return response;
-        } catch (error) {
-            throw error;
-        }
     }
 
 
@@ -90,8 +82,8 @@ class AppUtils {
         if (buttonClassSuffix === 'mfa') {
             modalOptions.title = 'Microsoft Authenticator Method';
             modalOptions.body = 'This authentication method is Microsoft Authenticator.';
-        } 
-        else if (buttonClassSuffix === 'phone'){
+        }
+        else if (buttonClassSuffix === 'phone') {
             modalOptions.title = 'Phone Method';
             modalOptions.body = 'This authentication method is Phone.';
         }
@@ -104,19 +96,14 @@ class AppUtils {
 
     async fetchAndDisplayUserAuthenticationMethods(app) {
 
-        try {
+        const userAuthenticationMethods = await this.getUserAuthenticationMethods(app);
+        // clear the card container
+        app.uiBinder.cardsContainer.empty();
+        userAuthenticationMethods.value.forEach(authenticationMethod => {
+            this.displayAuthenticationMethod(app, authenticationMethod);
+        });
 
-            const userAuthenticationMethods = await app.appUtils.getUserAuthenticationMethods(app);
 
-            // clear the card container
-            app.uiBinder.cardsContainer.empty();
-            userAuthenticationMethods.data.value.forEach(authenticationMethod => {
-                this.displayAuthenticationMethod(app, authenticationMethod);
-            });
-
-        } catch (error) {
-            throw error;
-        }
 
 
     }
@@ -135,7 +122,7 @@ class AppUtils {
 
 
 
-            
+
 
 
             const deleteConfirmButtonId = `delete-confirm-button`;
@@ -155,9 +142,9 @@ class AppUtils {
                             try {
                                 console.log("deleteConfirmButtonId clicked");
                                 if (buttonClassSuffix === 'mfa') {
-                                await app.appUtils.deleteMicrosoftAuthenticationMethod(app, userPrincipalName, authenticationMethod.id);
+                                    await app.appUtils.deleteMicrosoftAuthenticationMethod(app, userPrincipalName, authenticationMethod.id);
                                 } else if (buttonClassSuffix === 'phone') {
-                                await app.appUtils.deletePhoneAuthenticationMethod(app, userPrincipalName, authenticationMethod.id);
+                                    await app.appUtils.deletePhoneAuthenticationMethod(app, userPrincipalName, authenticationMethod.id);
                                 } else {
                                     throw new Error(`This authentication method is disabled because it is not an MFA method. If you want to DELETE it, you can do it via the API.`);
                                 }
@@ -166,12 +153,12 @@ class AppUtils {
                                 setTimeout(() => {
                                     location.reload();
                                 }, 2000);
-            
+
                             } catch (error) {
                                 app.baseUIBinder.displayNotification(`${error} `, 'alert-danger');
                                 console.log(error);
                             } finally {
-                                
+
                             }
                         }
                     },
@@ -189,7 +176,7 @@ class AppUtils {
 
 
 
-     
+
 
 
         } catch (error) {
@@ -203,16 +190,16 @@ class AppUtils {
     setUserPrincipalNameQueryParam(userPrincipalName) {
         // Create a URL object based on the current location
         const currentUrl = new URL(window.location);
-    
+
         // Access the URL's search parameters
         const searchParams = currentUrl.searchParams;
-    
+
         // Set or update the userPrincipalName parameter
         searchParams.set('userPrincipalName', userPrincipalName);
-    
+
         // Construct the new URL with the updated search parameters
         const newUrl = `${currentUrl.origin}${currentUrl.pathname}?${searchParams.toString()}`;
-    
+
         // Use history.pushState to change the URL without reloading the page
         window.history.pushState({ path: newUrl }, '', newUrl);
     }
@@ -222,26 +209,16 @@ class AppUtils {
         const url = `/graph/v1.0/users/${encodeURIComponent(userEmail)}/microsoft-authentication-methods/${authID}`;
 
         let response;
-        try {
-            const headers = {
-                'accept': 'application/json'
-            };
 
-            response = await app.baseAppUtils.restAjax('DELETE', url, headers);
-            // const response = {'status': 204}
-            // Check for a 204 status code specifically
 
-            if (response.status !== 204) {
-                throw new Error(`deleteAuthenticationMethod \t ${response.data.message}, ${response.status}`)
-            }
+        const headers = {
+            'accept': 'application/json'
+        };
 
-            return response;
+        response = await app.baseAppUtils.restAjax('DELETE', url, { headers: headers });
 
-            // Since no content is expected, you might not need to return the response
-            // But you can return the status for confirmation or further checks
-        } catch (error) {
-            throw error; // Allowing the caller to handle errors
-        }
+        return response;
+
     }
 
 
@@ -249,26 +226,19 @@ class AppUtils {
         const url = `/graph/v1.0/users/${encodeURIComponent(userEmail)}/phone-authentication-methods/${authID}`;
 
         let response;
-        try {
+
             const headers = {
                 'accept': 'application/json'
             };
 
-            response = await app.baseAppUtils.restAjax('DELETE', url, headers);
+            response = await app.baseAppUtils.restAjax('DELETE', url, { headers: headers });
             // const response = {'status': 204}
             // Check for a 204 status code specifically
 
-            if (response.status !== 204) {
-                throw new Error(`phoneDeleteAuthenticationMethod \t ${response.data.message}, ${response.status}`)
-            }
 
             return response;
 
-            // Since no content is expected, you might not need to return the response
-            // But you can return the status for confirmation or further checks
-        } catch (error) {
-            throw error; // Allowing the caller to handle errors
-        }
+
     }
 
 
@@ -352,33 +322,35 @@ class App {
     }
 
     _setBindings() {
-
-        // Set binding for user lookup form submission
-        this.uiBinder.mfaUserLookupSubmitBtn.on('click', this.handleUserLookup.bind(this));
+        this.uiBinder.mfaUserLookupSubmitBtn.on('click', (event) => {
+            event.preventDefault();
+            this.handleUserLookup(event, this)
+        });
     }
 
-    async handleUserLookup(event) {
-        event.preventDefault();
+
+    async handleUserLookup(event, app) {
+
 
         // this.baseUIBinder.displayNotification("Hello World", "alert-info");
-        this.uiBinder.spinner.show();
-        this.uiBinder.mfaUserLookupSubmitBtn.prop('disabled', true);
+        app.uiBinder.spinner.show();
+        app.uiBinder.mfaUserLookupSubmitBtn.prop('disabled', true);
 
         try {
 
-            await this.appUtils.validateUserPrincipalName(this.uiBinder.userPrincipalName.val());
+            await app.appUtils.validateUserPrincipalName(app.uiBinder.userPrincipalName.val());
 
-            await this.appUtils.fetchAndDisplayUserAuthenticationMethods(this)
+            await app.appUtils.fetchAndDisplayUserAuthenticationMethods(app)
 
-            this.baseUIBinder.displayNotification('User lookup successful', 'alert-info', 5000);
+            app.baseUIBinder.displayNotification('User lookup successful', 'alert-info', 5000);
 
         } catch (error) {
-            this.baseUIBinder.displayNotification(`${error} `, 'alert-danger');
+            app.baseUIBinder.displayNotification(`${error} `, 'alert-danger');
             console.log(error);
         } finally {
-            this.uiBinder.spinner.hide();
-            this.appUtils.setUserPrincipalNameQueryParam(this.uiBinder.userPrincipalName.val());
-            this.uiBinder.mfaUserLookupSubmitBtn.prop('disabled', false);
+            app.uiBinder.spinner.hide();
+            app.appUtils.setUserPrincipalNameQueryParam(app.uiBinder.userPrincipalName.val());
+            app.uiBinder.mfaUserLookupSubmitBtn.prop('disabled', false);
         }
 
 
@@ -413,7 +385,6 @@ class UIBinder {
 
         return UIBinder.instance;
     }
-
 
 
 

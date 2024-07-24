@@ -117,52 +117,61 @@ class BaseAppUtils {
    * @param {Object} headers - Optional. Additional headers to send.
    * @returns {Promise<Object>} The response data or an error object.
    */
-  async restAjax(method, url, options = { headers: {}, data: {} }) {
+  async restAjax(method, url, options = {headers: {}, data: {}}) {
+
+    // Initialize data with fallback to an empty object
     let data = options.data || {};
-    let headers = options.headers || {};
-  
-    // Check if data is FormData or a plain object and handle accordingly
+    
+    // Check if data is FormData or a plain object
     if (data instanceof FormData) {
+      // Handle as FormData
       console.log('Data is FormData');
     } else if (typeof data === 'object' && data !== null && !(data instanceof Array)) {
+      // Handle as JSON/Object
       console.log('Data is a plain object');
-      headers['Content-Type'] = 'application/json'; // Set header for JSON
-      data = JSON.stringify(data); // Stringify data for JSON
     } else {
-      throw new Error('Invalid data type: data must be either an Object or FormData');
+      throw new Error('restAjax() Invalid data type: data must be either an Object or FormData');
     }
-  
-    // Add CSRF token for Django compatibility
-    const csrfToken = document.cookie.match(/csrftoken=([\w-]+)/)?.[1];
-    if (csrfToken) {
-      headers['X-CSRFToken'] = csrfToken;
+
+    // Set up headers for JSON or FormData
+    if (!(data instanceof FormData) && !(options.headers['Content-Type'])) {
+      options.headers['Content-Type'] = 'application/json';
+      data = JSON.stringify(data);
     }
-  
-    // Perform the request using fetch
-    try {
-      const response = await fetch(url, {
-        method: method,
-        headers: new Headers(headers),
-        body: (method !== 'GET' && method !== 'HEAD') ? data : undefined,
-        credentials: 'include' // Ensure credentials are sent with requests (e.g., cookies)
-      });
-  
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
+
+    
+
+
+      let response;
+
+      const headers = options.headers || {};
+
+      // Determine if the data is FormData or JSON, and adjust headers accordingly
+      const isFormData = data instanceof FormData;
+      if (!isFormData && !(data instanceof URLSearchParams) && data !== null && Object.keys(data).length !== 0) {
+        data = JSON.stringify(data); // Convert data to JSON string if it's an object
+        headers['Content-Type'] = 'application/json'; // Set appropriate content type for JSON
       }
 
-      if (response.status === 204) {
-        return {};
-    } else {
-        return await response.json();
-    }
+      // Add CSRF token for Django compatibility
+      const csrfToken = document.cookie.match(/csrftoken=([\w-]+)/)?.[1];
+      if (csrfToken) headers['X-CSRFToken'] = csrfToken;
 
-      
-    } catch (error) {
-      console.error('Request failed:', error);
-      throw error; // Re-throw the error for further handling if needed
-    }
+      // Perform the request using Axios
+      response = await axios({
+        method: method,
+        url: url,
+        data: isFormData ? data : Qs.stringify(data),
+        headers: headers,
+        withCredentials: true,
+      });
+
+      return response;
+
+
   }
+  
+
 
 
 

@@ -197,8 +197,3 @@ class ADInactiveComputersViewset(viewsets.ViewSet):
         inactive_computers = get_inactive_computers(days, ou)
 
         return Response(inactive_computers, status=status.HTTP_200_OK)
-
-        # 
-        
-        # return Response({"error": "Not implemented"}, status=status.HTTP_501_NOT_IMPLEMENTED)
-    

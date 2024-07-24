@@ -39,24 +39,24 @@
                 <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                     <!-- Add additional nav items here as needed -->
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'schema-swagger-ui' %}">{% trans "Swagger API Documentation" %}</a>
+                        <a class="nav-link" href="{% url 'schema-swagger-ui' %}">{% trans "API Documentation" %}</a>
                     </li>
-                    
-                    
-                <!-- Dropdown -->
-                {% if debug %}
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        API Assistant
-                    </a>
-                    <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
-                        <li><a class="dropdown-item" href="{% url 'active-directory-copilot' %}">{% trans "Active Directory" %}</a></li>
-                        <!-- <li><a class="dropdown-item" href="#">Option 2</a></li> -->
-                        <!-- <li><hr class="dropdown-divider"></li> -->
-                        <!-- <li><a class="dropdown-item" href="#">Option 3</a></li> -->
-                    </ul>
-                </li>
-                {% endif %}
+                        
+                        
+                    <!-- Dropdown -->
+                    {% if debug %}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            API Assistant
+                        </a>
+                        <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
+                            <li><a class="dropdown-item" href="{% url 'active-directory-copilot' %}">{% trans "Active Directory" %}</a></li>
+                            <!-- <li><a class="dropdown-item" href="#">Option 2</a></li> -->
+                            <!-- <li><hr class="dropdown-divider"></li> -->
+                            <!-- <li><a class="dropdown-item" href="#">Option 3</a></li> -->
+                        </ul>
+                    </li>
+                    {% endif %}
 
                     {% if user_has_mfa_reset_access %}
                     <li class="nav-item">
@@ -95,15 +95,7 @@
         <!-- dynamic main-content ends here -->
     </main>
 
-    <!-- <footer>
-        <div class="footer-content">
-            <div class="box-left">
-            </div>
-            <div class="box-right">
-            </div>
-        </div>
-    </footer> -->
-
+    
     <footer>
         <div class="footer-content">
             <div class="box-left">

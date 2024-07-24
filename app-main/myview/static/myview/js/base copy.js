@@ -115,10 +115,25 @@ class BaseAppUtils {
    * @param {Object} headers - Optional. Additional headers to send.
    * @returns {Promise<Object>} The response data or an error object.
    */
-  async restAjax(method, url, data = {}, headers = {}) {
+  async restAjax(method, url, options = {headers: {}, data: {}}) {
 
     let response;
+
+    // check if data is instance of Object or formData
+    let data = options.data || {};
+    if (data === null) data = {};
+
+    if (typeof data !== 'object') {
+          
+      throw new Error('Data must be an object or FormData');
+    }
+
+
     try {
+
+      const headers = options.headers || {};
+
+
       // Determine if the data is FormData or JSON, and adjust headers accordingly
       const isFormData = data instanceof FormData;
       if (!isFormData && !(data instanceof URLSearchParams) && data !== null && Object.keys(data).length !== 0) {
@@ -234,19 +249,6 @@ class BaseAppUtils {
 
 
 
-  displayNotification(message, type) {
-    const alertType = type === 'success' ? 'alert-success' : 'alert-warning';
-    const notificationHtml = `<div class="alert ${alertType} alert-dismissible fade show" role="alert">
-          ${message}
-          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-      </div>`;
-
-    const notificationsContainer = document.getElementById('notifications-container');
-    notificationsContainer.innerHTML = notificationHtml; // Add the notification to the container
-  }
-
-
-
 
   updateSessionStorage(data, prefix) {
     // example updateSessionStorage({userPrincipalObj: data}, 'myApp');
@@ -269,15 +271,18 @@ class BaseAppUtils {
 
 
   static initializeTooltips() {
-    // Initialize tooltops with HTML content
-    document.addEventListener('DOMContentLoaded', function () {
+    try {
+      // Initialize tooltips with HTML content
       const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"][data-bs-html="true"]'));
       tooltipTriggerList.forEach(function (tooltipTriggerEl) {
         new bootstrap.Tooltip(tooltipTriggerEl, {
           html: true  // Enables HTML content inside tooltips
         });
       });
-    });
+    } catch (error) {
+      console.error('Failed to load tooltips styling:', error);
+      throw new Error('Failed to load tooltips styling');
+    }
   }
 
 
@@ -291,14 +296,40 @@ class BaseAppUtils {
    * @param {string} triggerSelector - Selector for the element that triggers the modal.
    * @param {string} modalId - Unique ID for the modal.
    * @param {Object} options - Optional settings for modal customization.
+   * 
+   * example usage:
+   * setModal('#myButton', 'myModal', {
+   *   title: 'My Modal Title',
+   *   body: '<p>This is the modal body</p>',
+   *   footer: '<button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>',
+   *   eventListeners: [
+   *   {
+   *     selector: '.save-btn',
+   *     event: 'click',
+   *     handler: function() {
+   *       alert('Save button clicked');
+   *     }
+   *   }
+   *   ]
+   *   });
+   *
+   * note that you dont need to set an event listener, you can do that after the modal is created
+   * 
+   * @returns {Object} - The modal instance.
+   * 
    */
+
+
   setModal(triggerSelector, modalId, options = {}) {
     // this function assumes that each that a mudal is uniqie to a trigger
 
 
+    // Check if an element with the ID stored in modalId exists in the document
     if ($('#' + modalId).length) {
+      // If the element exists, remove it from the document
       $('#' + modalId).remove();
     }
+
 
     // if options are provided, use them to update the modal
 
@@ -332,10 +363,6 @@ class BaseAppUtils {
     // Append the modal to the body
     $('body').append(modalHtml);
     const modalInstance = new bootstrap.Modal(document.getElementById(modalId), { keyboard: false });
-    // // Use Bootstrap to handle the modal
-    // const modalInstance = new bootstrap.Modal(document.getElementById(modalId), {
-    //   keyboard: false
-    // });
 
     // Attach event listeners specified in options
     eventListeners.forEach(({ selector, event, handler }) => {
@@ -348,6 +375,8 @@ class BaseAppUtils {
     $(triggerSelector).off('click').on('click', function () {
       modalInstance.show();
     });
+
+    return modalInstance;
 
   }
 
