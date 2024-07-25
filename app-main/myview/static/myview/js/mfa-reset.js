@@ -222,6 +222,36 @@ class AppUtils {
     }
 
 
+    
+    async handleUserLookup(event, app) {
+        event.preventDefault();
+
+        // this.baseUIBinder.displayNotification("Hello World", "alert-info");
+        app.uiBinder.spinner.show();
+        app.uiBinder.mfaUserLookupSubmitBtn.prop('disabled', true);
+
+        try {
+
+            await app.appUtils.validateUserPrincipalName(app.uiBinder.userPrincipalName.val());
+
+            await app.appUtils.fetchAndDisplayUserAuthenticationMethods(app)
+
+            app.baseUIBinder.displayNotification('User lookup successful', 'alert-info', 5000);
+
+        } catch (error) {
+            app.baseUIBinder.displayNotification(`${error} `, 'alert-danger');
+            console.log(error);
+        } finally {
+            app.uiBinder.spinner.hide();
+            app.appUtils.setUserPrincipalNameQueryParam(app.uiBinder.userPrincipalName.val());
+            app.uiBinder.mfaUserLookupSubmitBtn.prop('disabled', false);
+        }
+
+
+
+    }
+
+
     async deletePhoneAuthenticationMethod(app, userEmail, authID) {
         const url = `/graph/v1.0/users/${encodeURIComponent(userEmail)}/phone-authentication-methods/${authID}`;
 
@@ -322,40 +352,16 @@ class App {
     }
 
     _setBindings() {
-        this.uiBinder.mfaUserLookupSubmitBtn.on('click', (event) => {
-            event.preventDefault();
-            this.handleUserLookup(event, this)
-        });
+        this.uiBinder.mfaUserLookupSubmitBtn.on('click', this.handleUserLookUpbinder.bind(this));
     }
 
 
-    async handleUserLookup(event, app) {
-
-
-        // this.baseUIBinder.displayNotification("Hello World", "alert-info");
-        app.uiBinder.spinner.show();
-        app.uiBinder.mfaUserLookupSubmitBtn.prop('disabled', true);
-
-        try {
-
-            await app.appUtils.validateUserPrincipalName(app.uiBinder.userPrincipalName.val());
-
-            await app.appUtils.fetchAndDisplayUserAuthenticationMethods(app)
-
-            app.baseUIBinder.displayNotification('User lookup successful', 'alert-info', 5000);
-
-        } catch (error) {
-            app.baseUIBinder.displayNotification(`${error} `, 'alert-danger');
-            console.log(error);
-        } finally {
-            app.uiBinder.spinner.hide();
-            app.appUtils.setUserPrincipalNameQueryParam(app.uiBinder.userPrincipalName.val());
-            app.uiBinder.mfaUserLookupSubmitBtn.prop('disabled', false);
-        }
-
-
-
+    handleUserLookUpbinder(event) {
+        event.preventDefault();
+        this.appUtils.handleUserLookup(event, this)
     }
+
+
 
     static getInstance(uiBinder = UIBinder.getInstance(), baseUIBinder = BaseUIBinder.getInstance(), appUtils = AppUtils.getInstance(), baseAppUtils = BaseAppUtils.getInstance()) {
         if (!App.instance) {
@@ -418,7 +424,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const userPrincipalName = urlParams.get('userPrincipalName');
     if (userPrincipalName) {
         app.uiBinder.userPrincipalName.val(userPrincipalName);
-        app.handleUserLookup(new Event('click'));
+        app.handleUserLookUpbinder(new Event('click'));
     }
 
 
