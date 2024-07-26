@@ -2,21 +2,16 @@
 *.old
 *.log
 *.bak
-
 __pycache__/
-
 app/venv/
 app-main/venv/
 examples/venv/
 .migrate/
-
 # examples/
-
-
 shared-project-data/
 
 
-
+.bash
 app-main/db.sqlite3
 
 .migrate/
@@ -38,3 +33,4 @@ app-main/data.json
 .updateContentCommandMarker
 .bashrc
 .gitconfig
+.bash_history
