@@ -1,13 +1,12 @@
-version: '3.8'
 
 # development command - the only differnce is command in xx-api-security-ait-dtu-dk-app-main is commented out
-# docker-compose -p dev-api-security-ait-dtu-dk -f ./my-development-docker-compose.yaml up -d
+# docker compose -p dev-api-security-ait-dtu-dk -f ./my-development-docker-compose.yaml up -d
 # production command
-# docker-compose -p prod-api-security-ait-dtu-dk -f ./my-production-docker-compose.yaml up -d
+# docker compose -p prod-api-security-ait-dtu-dk -f ./my-production-docker-compose.yaml up -d
 
 services:
   xx-api-security-ait-dtu-dk-app-main:
-    image: dtuait/api-security-ait-dtu-dk-app-main:python-3.10-bullseye-django-4.2.11-27-03-2024-venv-myversion-1.0.9
+    image: dtuait/api-security-ait-dtu-dk-app-main:python-3.10-bullseye-django-4.2.11-27-03-2024-venv-myversion-1.0.11
     user: "${HOST_UID}:${HOST_GID}"  # Set user to dockeruser
     # user: dockeruser
     command: sleep infinity
