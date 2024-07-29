@@ -45,6 +45,8 @@ class AccessControlMiddleware(MiddlewareMixin):
         """Compare endpoint path with placeholders against the actual request path."""
         print(f"Original endpoint path: {endpoint_path}")
         print(f"Original request path: {request_path}")
+
+        # if the path starts 
         
         # Replace placeholders in endpoint path with regex pattern
         pattern = re.sub(r'\{[^}]*\}', '[^/]+', endpoint_path)
@@ -61,6 +63,10 @@ class AccessControlMiddleware(MiddlewareMixin):
         match = compiled_pattern.match(request_path) is not None
         print(f"Does the request path match the pattern? {'Yes' if match else 'No'}")
         
+        # if endpoint_path and request_path both stars with /openapi/v1.0/documentation/ then return True
+        if endpoint_path.startswith('/openapi/v1.0/documentation/') and request_path.startswith('/openapi/v1.0/documentation/'):
+            return True
+
         return match
 
 
@@ -406,7 +412,8 @@ class AccessControlMiddleware(MiddlewareMixin):
                 return JsonResponse({'message': 'Access denied. You are not authorized to access this endpoint.'}, status=403)
 
             is_user_authorized_for_resource = self.is_user_authorized_for_resource(endpoint, request)
-            
+
+                
             if is_user_authorized_for_endpoint and is_user_authorized_for_resource:
                 is_authorized = True
             else:

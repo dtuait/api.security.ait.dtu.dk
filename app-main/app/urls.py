@@ -64,6 +64,9 @@ urlpatterns = [
     # active directory api
     path('', include('active_directory.urls')),
 
+    # openAPI documentation api
+    path('', include('openapi.urls')),
+
     # path('admin/app/ajax/', AjaxView.as_view(), name='admin-app-ajax'),
 
 
