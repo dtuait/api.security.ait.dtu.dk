@@ -22,13 +22,6 @@
 <div class="container my-4">    
     <div class="container my-4">
         <!-- New button to generate a new token -->
-        <i class="bi bi-question-circle-fill" data-bs-toggle="tooltip" data-bs-placement="right" title="Forexample if added yourself to a group after you login. Cache remains 15 minutes" data-bs-html="true"></i>
-        <button id="deleteADGroupCacheBtn" class="btn btn-primary">
-            Delete Cache <span id="loadingSpinnerDeleteADGroupCacheBtn" class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="display: none;"></span>
-        </button>
-    </div>
-    <div class="container my-4">
-        <!-- New button to generate a new token -->
         <i class="bi bi-question-circle-fill" data-bs-toggle="tooltip" data-bs-placement="right" title="The token will only be displayed once!" data-bs-html="true"></i>
         <button id="generateTokenBtn" class="btn btn-primary">
             Generate New Token
@@ -43,7 +36,7 @@
                     <tr>
                         <th scope="col">#</th>
                         <th scope="col">Endpoint</th>
-                        <th scope="col"><i class="bi bi-question-circle-fill" data-bs-toggle="tooltip" data-bs-placement="right" title="These groups gives you permission to the endpoint" data-bs-html="true"></i> AD Group</th>
+                        <!-- <th scope="col"><i class="bi bi-question-circle-fill" data-bs-toggle="tooltip" data-bs-placement="right" title="These groups gives you permission to the endpoint" data-bs-html="true"></i> AD Group</th> -->
                         <th scope="col">Limiter Type</th>
                         <th scope="col">Unrestricted Access</th>
                     </tr>
@@ -53,12 +46,14 @@
                     <tr>
                         <th scope="row">{{ forloop.counter }}</th>
                         <td>{{ endpoint.method }} {{ endpoint.path }}</td>
-                        <td>
+                        <!-- <td> not working rigth now -->
+                            {% comment %}
                             {% for ad_group in endpoint.ad_groups %}  <!-- Adjusted to use the filtered groups -->
                                 {{ ad_group.cn }}
                                 {% if not forloop.last %}, {% endif %}
                             {% endfor %}
-                        </td>
+                            {% endcomment %}
+                        <!-- </td> -->
                         <td>{{ endpoint.limiter_type }}</td>
                         <td>{{ endpoint.no_limit|yesno:"Yes,No" }}</td> <!-- Displays 'Yes' if no_limit is True, 'No' otherwise -->
                     </tr>

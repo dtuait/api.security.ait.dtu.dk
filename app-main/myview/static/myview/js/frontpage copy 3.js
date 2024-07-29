@@ -99,9 +99,22 @@ class App {
                     selector: '#modalConfirmBtn',
                     event: 'click',
                     handler: (event) => {
-                        // how do i access modalId in this scope?
-                        this.handleCreateNewApiToken(event, modalId, this);
+                        this.handleCreateNewApiToken(event, this);
                     }
+
+                    // handler: async function () {
+                    //     const button = $(this);
+                    //     const spinner = $('#loadingSpinnerGenerateTokenBtn');
+                    //     // Show the spinner and disable the button
+                    //     spinner.show();
+                    //     button.prop('disabled', true);
+                    //     alert('Save button clicked');
+
+                    //     let formData = new FormData(); 
+                    //     formData.append('action', 'create_custom_token');
+
+                    //     let response;
+                    // }
                 }
             ]
         });
@@ -111,7 +124,7 @@ class App {
 
 
 
-    async handleCreateNewApiToken(event, modalId, app = App.getInstance()) {
+    async handleCreateNewApiToken(event, app = App.getInstance()) {
         event.preventDefault();
         const button = $(this);
         const spinner = $('#loadingSpinnerGenerateTokenBtn');
@@ -135,36 +148,9 @@ class App {
             if (!errorOccurred) {
                 // if success
                 app.baseUIBinder.displayNotification('Token generated successfully!', 'alert-success');
-
-                const token = response.custom_token;
-                
-                const modalBody = `
-                <p>Your new token is:</p>
-                <pre id="token">${token}</pre>
-                <button id="copyButton" type="button" class="btn btn-primary">Copy Token</button>
-                <span id="copyMessage" style="display: none;">Copied!</span>
-                `
-
-                const eventListeners = [
-                    {
-                        selector: '#copyButton',
-                        event: 'click',
-                        handler: (event) => {
-                            const token = document.getElementById('token').innerText;
-                            navigator.clipboard.writeText(token);
-
-                            let copyMessage = document.getElementById('copyMessage');
-                            copyMessage.style.display = 'inline';
-                            setTimeout(function () {
-                                copyMessage.style.display = 'none';
-                            }, 800);  // Message will disappear after 2 seconds
-                        }
-                    }
-                ]
-
-                app.baseAppUtils.updateModalContent(modalId, {modalBody: modalBody, eventListeners});
+                app.appUtils.showTokenSubModal(response.custom_token);
             }
-
+            
             // Hide the spinner and enable the button
             spinner.hide();
             button.prop('disabled', false);
@@ -310,8 +296,47 @@ class AppUtils {
     }
 
 
+    showTokenSubModal(token) {
+        const subModalId = 'tokenDisplayModal';
+        const modalHtml = `
+    <div class="modal fade" id="${subModalId}" tabindex="-1" aria-labelledby="${subModalId}Label" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="${subModalId}Label">Your New Token</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Your new token is:</p>
+                <pre id="token">${token}</pre>
+                <button id="copyButton" type="button" class="btn btn-primary">Copy Token</button>
+                <span id="copyMessage" style="display: none;">Copied!</span>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
 
-        
+<script>
+document.getElementById('copyButton').addEventListener('click', function() {
+    var token = document.getElementById('token').innerText;
+    navigator.clipboard.writeText(token);
+
+    var copyMessage = document.getElementById('copyMessage');
+    copyMessage.style.display = 'inline';
+    setTimeout(function() {
+        copyMessage.style.display = 'none';
+    }, 800);  // Message will disappear after 2 seconds
+});
+</script>
+    `;
+        $('body').append(modalHtml);
+
+        const subModalInstance = new bootstrap.Modal(document.getElementById(subModalId));
+        subModalInstance.show();
+    }
 
 
 

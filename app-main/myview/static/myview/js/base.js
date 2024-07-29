@@ -395,6 +395,37 @@ class BaseAppUtils {
 
 
 
+  updateModalContent(modalID, content = {modalTitle: '', modalBody: '', modalFooter: '', eventListeners: []}) {
+
+    // Get the modal
+    const modal = $('#' + modalID);
+
+    // Update the modal title if provided
+    if (content.modalTitle) {
+        modal.find('.modal-title').text(content.modalTitle);
+    }
+
+    // Update the modal body if provided
+    if (content.modalBody) {
+        modal.find('.modal-body').html(content.modalBody);
+    }
+
+    // Update the modal footer if provided
+    if (content.modalFooter) {
+        modal.find('.modal-footer').html(content.modalFooter);
+    }
+
+    // Attach event listeners specified in options
+    const eventListeners = content.eventListeners || [];
+    eventListeners.forEach(({ selector, event, handler }) => {
+        // remove existing event listeners to prevent multiple bindings
+        $(document).off(event, `#${modalID} ${selector}`).on(event, `#${modalID} ${selector}`, handler);
+        // $(document).on(event, `#${modalId} ${selector}`, handler);
+    });
+
+
+}
+
 
 
 

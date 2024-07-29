@@ -78,7 +78,7 @@ except ImportError:
 
 
 try:
-   from .views import AjaxView
+   from .ajax_view import AjaxView
 
    urlpatterns += [
       path('ajax/', AjaxView.as_view(), name='ajax'),

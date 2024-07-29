@@ -7,7 +7,7 @@
             "program": "${workspaceFolder}/app-main/manage.py",
             "args": [
                 "runserver",
-                "0.0.0.0:6082",
+                "0.0.0.0:6081",
                 "--settings",
                 "app.localhost_debug_true_settings"
             ],
@@ -20,7 +20,7 @@
             "runtimeExecutable": "C:\\Program Files\\chromium\\chrome-win\\chrome.exe",
             "request": "launch",
             "type": "msedge",
-            "url": "http://localhost:6082/admin/baAT5gt52eCRX7bu58msxF5XQtbY4bye/",
+            "url": "http://localhost:6081/admin/baAT5gt52eCRX7bu58msxF5XQtbY4bye/",
             "webRoot": "${workspaceFolder}/app-main",
             "disableNetworkCache": true,
         },
@@ -31,7 +31,7 @@
             "program": "${workspaceFolder}/app-main/manage.py",
             "args": [
                 "runserver",
-                "0.0.0.0:6082",
+                "0.0.0.0:6081",
                 "--settings",
                 "app.localhost_debug_false_settings"
             ],
@@ -43,7 +43,7 @@
             "runtimeExecutable": "C:\\Program Files\\chromium\\chrome-win\\chrome.exe",
             "request": "launch",
             "type": "msedge",
-            "url": "http://localhost:6082/myview/frontpage/",
+            "url": "http://localhost:6081/myview/frontpage/",
             "webRoot": "${workspaceFolder}/app-main/myview",
             "disableNetworkCache": true,
         },
@@ -401,7 +401,7 @@
             "runtimeExecutable": "C:\\Program Files\\chromium\\chrome-win\\chrome.exe",
             "request": "launch",
             "type": "msedge",
-            "url": "http://localhost:6082/myview/mfa-reset/",
+            "url": "http://localhost:6081/myview/mfa-reset/",
             "webRoot": "${workspaceFolder}/app-main/myview",
             "disableNetworkCache": true
         },

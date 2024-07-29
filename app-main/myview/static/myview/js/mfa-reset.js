@@ -3,6 +3,139 @@ console.log('MFA Reset JS loaded');
 
 
 
+class App {
+    constructor(uiBinder = UIBinder.getInstance(), baseUIBinder = BaseUIBinder.getInstance(), appUtils = AppUtils.getInstance(), baseAppUtils = BaseAppUtils.getInstance()) {
+
+        if (!App.instance) {
+            this.uiBinder = uiBinder;
+            this.baseUIBinder = baseUIBinder;
+            this.appUtils = appUtils;
+            this.baseAppUtils = baseAppUtils;
+            this._setBindings();
+            App.instance = this;
+        }
+
+        return App.instance;
+    }
+
+    _setBindings() {
+        this.uiBinder.mfaUserLookupSubmitBtn.on('click', this.handleUserLookUpbinder.bind(this));
+    }
+
+
+    handleUserLookUpbinder(event) {
+        event.preventDefault();
+        this.appUtils.handleUserLookup(event, this)
+    }
+
+
+
+    static getInstance(uiBinder = UIBinder.getInstance(), baseUIBinder = BaseUIBinder.getInstance(), appUtils = AppUtils.getInstance(), baseAppUtils = BaseAppUtils.getInstance()) {
+        if (!App.instance) {
+            App.instance = new App(uiBinder, baseUIBinder, appUtils, baseAppUtils);
+        }
+        return App.instance;
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -336,40 +469,107 @@ class AppUtils {
 
 
 
-class App {
-    constructor(uiBinder = UIBinder.getInstance(), baseUIBinder = BaseUIBinder.getInstance(), appUtils = AppUtils.getInstance(), baseAppUtils = BaseAppUtils.getInstance()) {
-
-        if (!App.instance) {
-            this.uiBinder = uiBinder;
-            this.baseUIBinder = baseUIBinder;
-            this.appUtils = appUtils;
-            this.baseAppUtils = baseAppUtils;
-            this._setBindings();
-            App.instance = this;
-        }
-
-        return App.instance;
-    }
-
-    _setBindings() {
-        this.uiBinder.mfaUserLookupSubmitBtn.on('click', this.handleUserLookUpbinder.bind(this));
-    }
-
-
-    handleUserLookUpbinder(event) {
-        event.preventDefault();
-        this.appUtils.handleUserLookup(event, this)
-    }
 
 
 
-    static getInstance(uiBinder = UIBinder.getInstance(), baseUIBinder = BaseUIBinder.getInstance(), appUtils = AppUtils.getInstance(), baseAppUtils = BaseAppUtils.getInstance()) {
-        if (!App.instance) {
-            App.instance = new App(uiBinder, baseUIBinder, appUtils, baseAppUtils);
-        }
-        return App.instance;
-    }
-}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -401,6 +601,91 @@ class UIBinder {
         return UIBinder.instance;
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
