@@ -64,10 +64,10 @@ urlpatterns = [
     path('', include('active_directory.urls')),
 
     # defender api
-    path('', include('defender.urls')),
+    # path('', include('defender.urls')),
 
     # openAPI documentation api -  you can just use /myview/swagger/?format=openapi instead
-    path('', include('openapi.urls')),
+    # path('', include('openapi.urls')),
 
 
 
