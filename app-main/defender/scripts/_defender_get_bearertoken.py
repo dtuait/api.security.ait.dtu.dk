@@ -26,10 +26,10 @@ def _generate_new_token():
     url = 'https://login.microsoftonline.com/' + os.getenv("AZURE_TENANT_ID") + '/oauth2/token'
 
     data = {
-        'resource': os.getenv("GRAPH_RESOURCE"),
-        'client_id': os.getenv("GRAPH_CLIENT_ID"),
-        'client_secret': os.getenv("GRAPH_CLIENT_SECRET"),
-        'grant_type': os.getenv("GRAPH_GRANT_TYPE")
+        'resource': os.getenv("DEFENDER_RESOURCE"),
+        'client_id': os.getenv("DEFENDER_CLIENT_ID"),
+        'client_secret': os.getenv("DEFENDER_CLIENT_SECRET"),
+        'grant_type': os.getenv("DEFENDER_GRANT_TYPE")
     }
 
     response = requests.post(url, data=data)
@@ -52,7 +52,7 @@ def _get_bearertoken():
     load_dotenv(dotenv_path=env_path)
 
     # Get the expiration time from the environment variables
-    expires_on = int(os.getenv("GRAPH_ACCESS_BEARER_TOKEN_EXPIRES_ON"))
+    expires_on = int(os.getenv("DEFENDER_ACCESS_BEARER_TOKEN_EXPIRES_ON"))
 
     # Get the current time as a Unix timestamp
     current_time = int(time.time())
@@ -65,24 +65,20 @@ def _get_bearertoken():
         # Update the .env file with the new token and expiration time
         # Replace 3600 with the actual lifetime of the token in seconds
         try:
-            update_env_file(env_path, 'GRAPH_ACCESS_BEARER_TOKEN', new_token)
-            update_env_file(env_path, 'GRAPH_ACCESS_BEARER_TOKEN_EXPIRES_ON', str(current_time + 3600))
+            update_env_file(env_path, 'DEFENDER_ACCESS_BEARER_TOKEN', new_token)
+            update_env_file(env_path, 'DEFENDER_ACCESS_BEARER_TOKEN_EXPIRES_ON', str(current_time + 3600))
             # Reload the environment variables
             load_dotenv(dotenv_path=env_path, override=True)
         except Exception as e:
             print("An error occurred while updating the .env file:", str(e))
 
     # Use the token to perform the hunting query
-    token = os.getenv("GRAPH_ACCESS_BEARER_TOKEN")
+    token = os.getenv("DEFENDER_ACCESS_BEARER_TOKEN")
     return token
 
 
 
 def run():
-    # # Generate a new token
-    # new_token = generate_new_token()
-    # message = new_token
-    # print(message)
 
 
     response = _get_bearertoken()

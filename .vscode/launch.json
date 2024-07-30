@@ -210,6 +210,19 @@
         //     "django": true,
         //     "justMyCode": true
         // }
+
+        ,{
+            "name": "Python: defender_apicall_getmachine",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/app-main/manage.py",
+            "args": [
+                "runscript",
+                "defender.scripts.defender_apicall_getmachine"
+            ],
+            "django": true,
+            "justMyCode": true
+        }
         // ,{
         //     "name": "Python: graph_apicall_listuserauthenticationmethods",
         //     "type": "debugpy",

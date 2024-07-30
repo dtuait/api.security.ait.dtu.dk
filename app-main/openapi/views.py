@@ -77,6 +77,7 @@ class APIEndpointsListView(APIView):
         }
     )
     def get(self, request):
+        # This need to be a script
         openapi_url = 'http://localhost:6081/myview/swagger/?format=openapi'
         response = requests.get(openapi_url)
         if response.status_code != 200:

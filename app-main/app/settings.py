@@ -86,7 +86,6 @@ INSTALLED_APPS = [
     'django_extensions',
     'rest_framework',
     'rest_framework.authtoken',
-    'django_cas_ng',
     'sccm',
     'drf_yasg',
     'app_mod',
@@ -94,6 +93,7 @@ INSTALLED_APPS = [
     'active_directory',
     'misc',
     'chatgpt_app',
+    'defender',
 ]
 
 # MIDDLEWARE = [
@@ -220,7 +220,6 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 AUTHENTICATION_BACKENDS = (
     'django.contrib.auth.backends.ModelBackend',
-    'django_cas_ng.backends.CASBackend',
 )
 
 

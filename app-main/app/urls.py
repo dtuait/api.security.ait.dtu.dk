@@ -19,7 +19,6 @@ from django.urls import path, include
 from django.views.generic import RedirectView
 from django.conf import settings
 from django.conf.urls.static import static
-from django_cas_ng.views import LoginView, LogoutView
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponseRedirect
 from django.urls import reverse
@@ -64,8 +63,13 @@ urlpatterns = [
     # active directory api
     path('', include('active_directory.urls')),
 
-    # openAPI documentation api
+    # defender api
+    path('', include('defender.urls')),
+
+    # openAPI documentation api -  you can just use /myview/swagger/?format=openapi instead
     path('', include('openapi.urls')),
+
+
 
     # path('admin/app/ajax/', AjaxView.as_view(), name='admin-app-ajax'),
 
