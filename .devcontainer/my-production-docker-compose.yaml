@@ -6,7 +6,7 @@
 
 services:
   xx-api-security-ait-dtu-dk-app-main:
-    image: dtuait/api-security-ait-dtu-dk-app-main:python-3.10-bullseye-django-4.2.11-27-03-2024-venv-myversion-1.0.12
+    image: dtuait/api-security-ait-dtu-dk-app-main:python-3.10-bullseye-django-4.2.11-27-03-2024-venv-myversion-1.0.13
     user: "65000:65000"  # Set user to dockeruser
 
     # development command
