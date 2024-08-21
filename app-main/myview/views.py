@@ -9,7 +9,7 @@ import subprocess
 from django.utils.decorators import method_decorator
 from django.contrib.auth.decorators import login_required
 import logging
-
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -48,14 +48,22 @@ class BaseView(View):
         try:
             branch = subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD']).decode('utf-8').strip()
             commit = subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode('utf-8').strip()
+            last_updated = subprocess.check_output(['git', 'log', '-1', '--format=%cd']).decode('utf-8').strip()
+
+            # Parse the last_updated date string and reformat it
+            last_updated_dt = datetime.strptime(last_updated, '%a %b %d %H:%M:%S %Y %z')
+            last_updated_formatted = last_updated_dt.strftime('%H:%M %d-%m-%Y')
         except subprocess.CalledProcessError:
             # Default values if git commands fail
             branch = "unknown"
             commit = "unknown"
-        return branch, commit
+            last_updated = "unknown"
+        return branch, commit, last_updated_formatted
 
     def get_context_data(self, **kwargs):
-        branch, commit = self.get_git_info()
+        branch, commit, last_updated = self.get_git_info()
+        
+        # Existing context setup
         user_ad_groups = self.request.user.ad_group_members.all()
         user_endpoints = Endpoint.objects.filter(ad_groups__in=user_ad_groups).prefetch_related('ad_groups').distinct()
         user_ad_group_ids = user_ad_groups.values_list('id', flat=True)
@@ -63,7 +71,6 @@ class BaseView(View):
         # Filter endpoints to include only user-specific group access information
         filtered_endpoints = []
         for endpoint in user_endpoints:
-            # Filter ad_groups to include only those where the user is a member
             filtered_groups = endpoint.ad_groups.filter(members=self.request.user)
             filtered_endpoints.append({
                 'method': endpoint.method,
@@ -72,7 +79,6 @@ class BaseView(View):
                 'limiter_type': endpoint.limiter_type.name if endpoint.limiter_type else "None",
                 'no_limit': endpoint.no_limit
             })
-        
 
         # Fetch Limiter Types that the user is associated with
         from .models import LimiterType, IPLimiter, ADOrganizationalUnitLimiter
@@ -97,15 +103,14 @@ class BaseView(View):
                 }
                 associated_limiter_types.append(limiter_type_info)
 
-        # for all limiter types check if a group that request.user is member of is associated with the group
-
         from django.conf import settings
         context = {
             'base_template': self.base_template,
             'git_branch': branch,
             'git_commit': commit,
+            'last_updated': last_updated,
             'is_superuser': self.request.user.is_superuser,
-            'user_endpoints': filtered_endpoints,  # Replace with the filtered list
+            'user_endpoints': filtered_endpoints,
             'user_ad_groups': user_ad_groups,
             'user_has_mfa_reset_access': self.user_has_mfa_reset_access(),
             'debug': settings.DEBUG,
@@ -113,6 +118,7 @@ class BaseView(View):
         }
 
         return context
+
 
     def get(self, request, **kwargs):
 
