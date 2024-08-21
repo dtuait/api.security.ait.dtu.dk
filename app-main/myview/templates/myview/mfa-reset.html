@@ -1,18 +1,11 @@
 {% extends base_template %}
 
-
 {% load i18n static %}
 
-{# title #}
 {% block title %}MFA Reset{% endblock %}
 
+{% block dynamic_head_content %}{% endblock %}
 
-{% block dynamic_head_content %}
-
-{% endblock %}
-
-
-<!-- headline for the page -->
 {% block headline %}MFA Reset{% endblock %}
 
 {% block main-content %}
@@ -33,7 +26,7 @@
     </form>
 
     <div id="cards-container">
-        <!-- Cards will be appended here -->
+        <!-- Cards or messages will be appended here -->
     </div>
 </div>
 
