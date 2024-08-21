@@ -252,7 +252,73 @@ class ListUserAuthenticationMethodsViewSet(APIAuthBaseViewSet):
 
 
 
+from .services import execute_delete_software_mfa_method  # Import the service
 
+class DeleteSoftwareMfaViewSet(APIAuthBaseViewSet):
+
+    autho_bearer_token = openapi.Parameter(
+        'Authorization',
+        in_=openapi.IN_HEADER,
+        description="Required. Must be in the format '\<token\> or real token'.",
+        type=openapi.TYPE_STRING,
+        required=True,
+        default='<token>'
+    )
+
+    user_path_param = openapi.Parameter(
+        'user_id__or__user_principalname',
+        in_=openapi.IN_PATH,
+        description="The username requested for deletion of software MFA.",
+        type=openapi.TYPE_STRING,
+        required=True,
+        default='vicre-test01@dtudk.onmicrosoft.com',
+        override=True
+    )
+
+    software_oath_method_id = openapi.Parameter(
+        'software_oath_method_id',
+        in_=openapi.IN_PATH,
+        description="The authentication method ID for the software MFA solution to be deleted.",
+        type=openapi.TYPE_STRING,
+        required=True,
+        default=None,
+        override=True
+    )
+
+    @swagger_auto_schema(
+        manual_parameters=[autho_bearer_token, user_path_param, software_oath_method_id],
+        operation_description="""
+        Deletes a user's software-based MFA method, such as those using apps like Google Authenticator.
+
+        Curl example:
+        ```
+        curl -X 'DELETE'
+        \t'http://localhost:6081/v1.0/graph/users/vicre-test01%40dtudk.onmicrosoft.com/software-authentication-methods/38870367-9eb1-4568-9056-23c141f777de'
+        \t-H 'accept: application/json'
+        \t-H 'Authorization: <token>'
+        ```
+        Response: 204 No content
+        """,
+        responses={
+            204: 'Successfully deleted software MFA method',
+            400: 'Error: Bad request',
+            404: 'Error: Not found',
+            500: 'Error: Internal server error'
+        },
+    )
+
+    @action(detail=False, methods=['delete'], url_path='delete_software_mfa')
+    def delete_software_mfa(self, request, user_id__or__user_principalname, software_oath_method_id):
+        try:
+            response, status_code = execute_delete_software_mfa_method(user_id__or__user_principalname, software_oath_method_id)
+
+            if status_code == 204:
+                return JsonResponse({'status': 'success', 'message': 'Successfully deleted software MFA method.'}, status=204)
+            else:
+                return JsonResponse({'status': 'error', 'message': 'Failed to delete software MFA method.'}, status=status_code)
+
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
 
 
 

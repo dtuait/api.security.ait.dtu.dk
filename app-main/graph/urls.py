@@ -1,10 +1,5 @@
-from django.urls import path, include
-from rest_framework.routers import DefaultRouter
-from .views import HuntingQueryViewSet, DeleteMfaViewSet, DeletePhoneViewSet, UnlockMfaViewSet, GetUserViewSet, ListUserAuthenticationMethodsViewSet
-
-# router = DefaultRouter()
-
-# router.register(r'graph/security/runHuntingQuery', GraphHuntingViewSet, basename='hunting')
+from django.urls import path
+from .views import DeleteMfaViewSet, DeletePhoneViewSet, GetUserViewSet, ListUserAuthenticationMethodsViewSet, DeleteSoftwareMfaViewSet
 
 urlpatterns = [
     path('graph/v1.0/get-user/<str:user>', GetUserViewSet.as_view({'get': 'get_user'})),
@@ -17,8 +12,6 @@ urlpatterns = [
 
     path('graph/v1.0/users/<str:user_id__or__user_principalname>/phone-authentication-methods/<str:phone_authenticator_method_id>', DeletePhoneViewSet.as_view({'delete': 'delete_phone'})),
     
-
-    
+    path('graph/v1.0/users/<str:user_id__or__user_principalname>/software-authentication-methods/<str:software_oath_method_id>', DeleteSoftwareMfaViewSet.as_view({'delete': 'delete_software_mfa'})),
 
 ]
-
