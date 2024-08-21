@@ -1,0 +1,1 @@
+added nano to dockerfile
