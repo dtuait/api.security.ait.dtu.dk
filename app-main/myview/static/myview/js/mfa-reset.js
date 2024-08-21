@@ -202,6 +202,9 @@ class AppUtils {
         } else if (method['@odata.type'] === '#microsoft.graph.phoneAuthenticationMethod') {
             buttonClassSuffix = 'phone';
             enabledOrDisabled = 'enabled';
+        } else if (method['@odata.type'] === '#microsoft.graph.softwareOathAuthenticationMethod') {
+            buttonClassSuffix = 'software-oath';
+            enabledOrDisabled = 'enabled';
         } else {
             buttonClassSuffix = 'undetermined';
             enabledOrDisabled = 'disabled';
@@ -219,6 +222,10 @@ class AppUtils {
         else if (buttonClassSuffix === 'phone') {
             modalOptions.title = 'Phone Method';
             modalOptions.body = 'This authentication method is Phone.';
+        }
+        else if (buttonClassSuffix === 'software-oath') {
+            modalOptions.title = 'Software Oath Method';
+            modalOptions.body = 'This authentication method is Software Oath.';
         }
         else {
             modalOptions.title = `This is an undetermined method`;
@@ -241,7 +248,16 @@ class AppUtils {
 
     }
 
+    async deleteSoftwareAuthenticationMethod(app, userEmail, authID) {
+        const url = `/graph/v1.0/users/${encodeURIComponent(userEmail)}/software-authentication-methods/${authID}`;
 
+        const headers = {
+            'accept': 'application/json'
+        };
+
+        const response = await app.baseAppUtils.restAjax('DELETE', url, { headers: headers });
+        return response;
+    }
 
     displayAuthenticationMethod(app, authenticationMethod) {
 
@@ -278,6 +294,8 @@ class AppUtils {
                                     await app.appUtils.deleteMicrosoftAuthenticationMethod(app, userPrincipalName, authenticationMethod.id);
                                 } else if (buttonClassSuffix === 'phone') {
                                     await app.appUtils.deletePhoneAuthenticationMethod(app, userPrincipalName, authenticationMethod.id);
+                                } else if (buttonClassSuffix === 'software-oath') {
+                                    await app.appUtils.deleteSoftwareAuthenticationMethod(app, userPrincipalName, authenticationMethod.id);
                                 } else {
                                     throw new Error(`This authentication method is disabled because it is not an MFA method. If you want to DELETE it, you can do it via the API.`);
                                 }
@@ -466,117 +484,6 @@ class AppUtils {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 class UIBinder {
     constructor() {
 
@@ -603,100 +510,6 @@ class UIBinder {
 }
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 document.addEventListener('DOMContentLoaded', function () {
 
 
@@ -714,13 +527,4 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
 });
-
-
-
-
-
-
-
-
-
 
