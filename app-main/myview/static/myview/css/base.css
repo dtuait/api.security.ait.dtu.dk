@@ -81,7 +81,7 @@
 
 
     /* footer variables starts here */
-    --footer-height: 64px;
+    --footer-height: 120px;
     /* footer variables ends here */
 }
 
@@ -887,50 +887,28 @@ main .headline-description {
 
 /* FOOTER STYLING STARTS HERE */
 footer {
-    overflow: auto;
-    width: auto;
-    height: var(--footer-height);
+    width: 100%;
     background: var(--primary-background-color);
+    height: var(--footer-height);
+    padding: 0;
+    padding-left: 20px;
+    padding-top: 20px;
+    padding-bottom: 20px;
+}
+
+.footer-content p {
+    margin: 0;
 }
 
 .footer-content {
     width: 100%;
-    height: 100%;
-    display: flex;
-    flex-direction: row;
-    justify-content: space-between;
+    max-width: var(--primary-site-width-max);
+    margin: 0 auto;
+
+    flex-wrap: wrap; /* Allows wrapping in case of small screens */
 }
 
-.footer-content .box-left {
-    width: 200px;
-    height: 100%;
-}
 
-.footer-content .box-right {
-    width: 400px;
-    height: 100%;
-    display: flex;
-}
 
-.footer-content .box-right .browsers-msg {
-    display: flex;
-    align-items: center;
-    font-size: small;
-}
-
-.footer-content .box-right .github-img {
-    display: flex;
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: center;
-    width: fit-content;
-    height: 100%;
-}
-
-.footer-content .box-right .github-img>img {
-    margin-left: 10px;
-    width: 32px;
-    height: 32px;
-}
 
 /* FOOTER STYLING ENDS HERE */
