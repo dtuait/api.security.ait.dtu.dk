@@ -1,10 +1,10 @@
 version: 2
 updates:
   - package-ecosystem: "pip"
-    directory: "/"  # The root directory of your project
+    directory: "/"  # The root directory
     schedule:
       interval: "weekly"
-    ignore:
-      - dependency-name: "*"
-        paths:
-          - ".devcontainer/.docker-image-builder-archive/*"
+  - package-ecosystem: "pip"
+    directory: "/another-directory-to-monitor"  # Another directory you want to monitor
+    schedule:
+      interval: "weekly"
