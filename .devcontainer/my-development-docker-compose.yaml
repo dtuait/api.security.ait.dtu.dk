@@ -6,7 +6,16 @@
 
 services:
   xx-api-security-ait-dtu-dk-app-main:
-    image: dtuait/api-security-ait-dtu-dk-app-main:python-3.10-bullseye-django-4.2.11-27-03-2024-venv-myversion-1.0.18
+    # image: dtuait/api-security-ait-dtu-dk-app-main:python-3.10-bullseye-django-4.2.11-27-03-2024-venv-myversion-1.0.18
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PYTHON_VERSION: 3.10
+        DEBIAN_VERSION: bullseye
+        DJANGO_VERSION: 4.2.11
+        VENV_VERSION: 27-03-2024
+        MY_VERSION: 1.0.19
     user: dockeruser
 
     # development command
