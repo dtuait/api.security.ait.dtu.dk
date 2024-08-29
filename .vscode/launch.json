@@ -135,18 +135,18 @@
         //     "justMyCode": true
         // }
 
-        // ,{
-        //     "name": "chatgpt_app.scripts.openai_basic",
-        //     "type": "debugpy",
-        //     "request": "launch",
-        //     "program": "${workspaceFolder}/app-main/manage.py",
-        //     "args": [
-        //         "runscript",
-        //         "chatgpt_app.scripts.openai_basic"
-        //     ],
-        //     "django": true,
-        //     "justMyCode": true
-        // }
+        ,{
+            "name": "chatgpt_app.scripts.openai_basic",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/app-main/manage.py",
+            "args": [
+                "runscript",
+                "chatgpt_app.scripts.openai_basic"
+            ],
+            "django": true,
+            "justMyCode": true
+        }
         // ,{
         //     "name": "active_directory.scripts.active_directory_query",
         //     "type": "debugpy",

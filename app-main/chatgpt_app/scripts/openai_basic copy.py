@@ -1,16 +1,7 @@
-import openai
+from openai import OpenAI
 from dotenv import load_dotenv
 import os, requests, json
-from pydantic import BaseModel
 
-
-# Define the Pydantic model for the structured output
-class LDAPQueryFormat(BaseModel):
-    base_dn: str
-    search_filter: str
-    search_attributes: list[str]
-    limit: int
-    excluded_attributes: list[str]
 
 def run():
 
@@ -44,28 +35,18 @@ def run():
 
 
 
-
-    return_format = (
-        "{\n"
-        "  \"Base DN\": \"DC=win,DC=dtu,DC=dk\",\n"
-        "  \"Search Filter\": \"(objectClass=user)\",\n"
-        "  \"Search Attributes\": \"cn, pwdLastSet\",\n"
-        "  \"Limit\": \"100\",\n"
-        "  \"Excluded Attributes\": \"thumbnailPhoto\"\n"
-        "}"
-    )
-
-
     # # Example usage with keyword arguments
-    response_json = get_openai_completion(
-        system=endpoint_info_json,
-        user="Give me a query that returns all users where pwdLastSet is before 2024. The object should be of type user.",
-        response_format=LDAPQueryFormat
+    message = get_openai_completion(
+        system="endpoint_info_json",
+        user="Give me a list of all users, with their username, when they last logged in, and when they last set their password, across the entire domain."
     )
 
-    response_object = json.loads(response_json)
+    # Give me a query that returns all user where pwdLastSet is before 2024. The object should be of type user
 
-    print(response_object)
+    # print(message.content)
+
+
+
 
 if __name__ == "__main__":
     run()
@@ -73,31 +54,26 @@ if __name__ == "__main__":
 
 
 
-def get_openai_completion(system: str, user: str, response_format):
+def get_openai_completion(system: str, user: str):
     # Specify the environment file path
     env_path = '/usr/src/project/.devcontainer/.env'
     load_dotenv(dotenv_path=env_path)
 
     # Create OpenAI client and set the API key
-    openai.api_key = os.getenv("OPENAI_API_KEY")
-
-    # Modify the user prompt to include the return format
-    user_prompt = f"{user}"
+    client = OpenAI()
+    client.api_key = os.getenv("OPENAI_API_KEY")
 
     # Create completion using the OpenAI API
-    completion = openai.ChatCompletion.create(
-        model="gpt-4",  # or "gpt-3.5-turbo"
+    completion = client.chat.completions.create(
+        model="gpt-4o-mini",
         messages=[
             {"role": "system", "content": system},
-            {"role": "user", "content": user_prompt},
-        ],
-        format=response_format,  # Adjust this depending on the library's supported options
+            {"role": "user", "content": user}
+        ]
     )
 
-    # Return the message content from the response
-    return completion['choices'][0]['message']['content']
-
-
+    # Print the message from the response
+    return completion.choices[0].message
 
 
 def get_endpoint_documentation(swagger_url: str, path: str):
@@ -118,5 +94,3 @@ def get_endpoint_documentation(swagger_url: str, path: str):
         return endpoint_doc
     else:
         return None
-    
-    

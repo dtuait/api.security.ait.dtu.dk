@@ -25,17 +25,19 @@ class ActiveDirectoryQueryViewSet(APIAuthBaseViewSet):
 
     @swagger_auto_schema(
         method='get',
-        operation_description="""Query Active Directory based on given criteria. This endpoint allows querying for
-        Active Directory objects with flexibility in specifying which attributes to return, applying filters, and
-        pagination control. The synergy between the parameters allows for tailored queries. For instance, 'base_dn'
-        specifies the starting point within the AD structure. 'search_filter' narrows down the objects based on
-        specified conditions. 'search_attributes' controls which attributes of the objects are retrieved, and 'limit'
-        provides pagination capability. 'excluded_attributes' can further refine the returned data by excluding
-        specified attributes from the response, enhancing query efficiency and relevance.
+        operation_description="""
         
+        Uses standard LDAP synstax to query the Active Directory.
         
-        Get infomation about a specific user, based on initial
-        (sAMAccountName=vicre)
+Example Queries:
+English Query: "Give me a list of all users, with their username, when they last logged in, and when they last set their password, across the entire domain."
+
+LDAP Query:
+- Base DN: (DC=win,DC=dtu,DC=dk)
+- Search filter: (objectClass=user)
+- Search attributes: (sAMAccountName, lastLogon, pwdLastSet)
+- Limit: 100 - you can limit the number of results returned, leave empty for all results.
+
 
         
         """,
