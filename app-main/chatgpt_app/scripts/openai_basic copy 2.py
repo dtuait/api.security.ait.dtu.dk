@@ -1,4 +1,4 @@
-import openai
+from openai import OpenAI
 from dotenv import load_dotenv
 import os, requests, json
 from pydantic import BaseModel
@@ -79,25 +79,26 @@ def get_openai_completion(system: str, user: str, response_format):
     load_dotenv(dotenv_path=env_path)
 
     # Create OpenAI client and set the API key
-    openai.api_key = os.getenv("OPENAI_API_KEY")
+    client = OpenAI()
+    client.api_key = os.getenv("OPENAI_API_KEY")
 
     # Modify the user prompt to include the return format
-    user_prompt = f"{user}"
+    user_prompt = (
+        f"{user}"
+    )
 
     # Create completion using the OpenAI API
-    completion = openai.ChatCompletion.create(
-        model="gpt-4",  # or "gpt-3.5-turbo"
+    completion = client.beta.chat.completions.parse(
+        model="gpt-4o-mini",
         messages=[
             {"role": "system", "content": system},
             {"role": "user", "content": user_prompt},
         ],
-        format=response_format,  # Adjust this depending on the library's supported options
+        response_format=response_format,
     )
 
     # Return the message content from the response
-    return completion['choices'][0]['message']['content']
-
-
+    return completion.choices[0].message
 
 
 def get_endpoint_documentation(swagger_url: str, path: str):
