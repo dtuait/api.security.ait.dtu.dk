@@ -190,6 +190,10 @@ class AccessControlMiddleware(MiddlewareMixin):
         # This is ugly. But if the authenticated user is vicre, and the request containes vicre-test01@dtudk.onmicrosoft.com then return True
         if request.user.username == 'vicre' and 'vicre-test01@dtudk.onmicrosoft.com' in request.path:
             return True
+        
+        # This is ugly. But if the authenticated user is vicre, and the request containes itsecurity@dtu.dk then return True
+        if request.user.username == 'vicre' and 'itsecurity@dtu.dk' in request.path:
+            return True
 
         if endpoint.limiter_type is not None:
             content_type = endpoint.limiter_type.content_type
