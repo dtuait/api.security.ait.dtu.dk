@@ -373,7 +373,7 @@ class AppUtils {
     }
 
 
-    
+
     async handleUserLookup(event, app) {
         event.preventDefault();
 
@@ -408,16 +408,16 @@ class AppUtils {
 
         let response;
 
-            const headers = {
-                'accept': 'application/json'
-            };
+        const headers = {
+            'accept': 'application/json'
+        };
 
-            response = await app.baseAppUtils.restAjax('DELETE', url, { headers: headers });
-            // const response = {'status': 204}
-            // Check for a 204 status code specifically
+        response = await app.baseAppUtils.restAjax('DELETE', url, { headers: headers });
+        // const response = {'status': 204}
+        // Check for a 204 status code specifically
 
 
-            return response;
+        return response;
 
 
     }
