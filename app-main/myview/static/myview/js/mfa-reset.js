@@ -182,7 +182,6 @@ class AppUtils {
 
     }
 
-
     prepareMethodDetails(method) {
         const date = new Date(method.createdDateTime);
         const formattedDate = date.toLocaleString('en-GB', { timeZone: 'UTC' });
