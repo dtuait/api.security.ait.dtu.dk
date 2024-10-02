@@ -1,6 +1,7 @@
 import os
 import openai
 import json
+import requests  # To fetch the Swagger JSON
 
 def get_nt_time_from_date(year, month=1, day=1):
     """
@@ -13,55 +14,83 @@ def get_nt_time_from_date(year, month=1, day=1):
     nt_time = int(delta.total_seconds() * 10000000)
     return nt_time
 
+def get_nt_time_for_days_ago(days_ago):
+    """
+    Calculate the NT time format for the date 'days_ago' days before today.
+    """
+    import datetime
+    nt_epoch = datetime.datetime(1601, 1, 1)
+    target_date = datetime.datetime.now() - datetime.timedelta(days=days_ago)
+    delta = target_date - nt_epoch
+    nt_time = int(delta.total_seconds() * 10000000)
+    return nt_time
+
 def run():
     openai.api_key = os.getenv("OPENAI_API_KEY")
 
-    
+    # Fetch the Swagger JSON from the endpoint
+    swagger_url = 'http://localhost:6081/myview/swagger/?format=openapi'  # Replace with your actual URL
+    response = requests.get(swagger_url)
+    swagger_data = response.json()
 
+    # The documentation is in this value
+    active_directory_description = swagger_data['paths']['/active-directory/v1.0/query']['get']['description']
+
+    # Include the API summary in the system prompt
+    system_prompt = (
+        "You are an assistant that provides Active Directory query parameters based on user requests. "
+        "Here is the API information:\n\n"
+        f"{active_directory_description}\n"
+        "Use this information to help answer the user's requests."
+    )
 
     messages = [
         {
             "role": "system",
-            "content": (
-                "You are an assistant that provides Active Directory query parameters based on user requests. "
-                "When providing the final response, always output the data using the 'generate_ad_query_parameters' function."
-            )
+            "content": system_prompt
         },
         {
             "role": "user",
-            "content": "Give me all users that have a password older than 2010."
+            "content": "Give me all PCs where last login is more five months ago, but less than 6 mounths ago, and is not disabled. Under institute SUS"
         }
     ]
 
-    # Define the functions
+    # Define the functions, including get_nt_time_for_days_ago
     functions = [
         {
             "name": "get_nt_time_from_date",
-            "description": "Calculate NT time format from a given date. Useful for constructing LDAP queries with date-based filters.",
+            "description": "Calculate NT time format from a given date.",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "year": {
                         "type": "integer",
-                        "description": "The year component of the date. Example: 2005"
+                        "description": "Year component of the date. Example: 2022"
                     },
                     "month": {
                         "type": "integer",
-                        "description": "The month component of the date (1-12). Default is 1.",
-                        "default": 1,
-                        "minimum": 1,
-                        "maximum": 12
+                        "description": "Month component of the date (1-12)."
                     },
                     "day": {
                         "type": "integer",
-                        "description": "The day component of the date (1-31). Default is 1.",
-                        "default": 1,
-                        "minimum": 1,
-                        "maximum": 31
+                        "description": "Day component of the date (1-31)."
                     }
                 },
-                "required": ["year"],
-                "additionalProperties": False
+                "required": ["year", "month", "day"]
+            }
+        },
+        {
+            "name": "get_nt_time_for_days_ago",
+            "description": "Calculate NT time format for the date 'days_ago' days before today.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "days_ago": {
+                        "type": "integer",
+                        "description": "Number of days before today. Example: 30"
+                    }
+                },
+                "required": ["days_ago"]
             }
         },
         {
@@ -72,7 +101,7 @@ def run():
                 "properties": {
                     "limit": {
                         "type": "integer",
-                        "description": "Limit for number of results. Example: 100"
+                        "description": "Limit for number of results. Example: 1000"
                     },
                     "base_dn": {
                         "type": "string",
@@ -80,15 +109,19 @@ def run():
                     },
                     "search_filter": {
                         "type": "string",
-                        "description": "LDAP search filter. Example: '(objectClass=user)'"
+                        "description": "LDAP search filter. Example: '(&(objectClass=computer)(lastLogonTimestamp<=[NT_TIME]))'"
                     },
                     "search_attributes": {
                         "type": "string",
-                        "description": "Comma-separated list of attributes to retrieve, or 'ALL_ATTRIBUTES' to fetch all. Example: 'cn,mail'"
+                        "description": "Comma-separated list of attributes to retrieve. Example: 'cn,lastLogonTimestamp'"
                     },
                     "excluded_attributes": {
                         "type": "string",
-                        "description": "Comma-separated list of attributes to exclude from the results. Default is 'thumbnailPhoto'. Example: 'thumbnailPhoto,someOtherAttribute'"
+                        "description": "Comma-separated list of attributes to exclude from the results. Default is 'thumbnailPhoto'."
+                    },
+                    "explanation": {
+                        "type": "string",
+                        "description": "A human-readable explanation of the query."
                     }
                 },
                 "required": [
@@ -96,14 +129,14 @@ def run():
                     "search_filter",
                     "search_attributes",
                     "limit",
-                    "excluded_attributes"
-                ],
-                "additionalProperties": False
+                    "excluded_attributes",
+                    "explanation"
+                ]
             }
         }
     ]
 
-    # First API call
+    # First API call to process the user's request
     response = openai.ChatCompletion.create(
         model="gpt-4-0613",
         messages=messages,
@@ -117,27 +150,27 @@ def run():
         function_name = assistant_message["function_call"]["name"]
         arguments = json.loads(assistant_message["function_call"]["arguments"])
 
-        if function_name == "get_nt_time_from_date":
-            nt_time = get_nt_time_from_date(**arguments)
+        if function_name == "get_nt_time_for_days_ago":
+            # Call the function to calculate NT time
+            nt_time_result = get_nt_time_for_days_ago(**arguments)
 
             # Append the assistant's message and function response to messages
             messages.append(assistant_message)
             messages.append({
                 "role": "function",
                 "name": function_name,
-                "content": json.dumps({"nt_time": nt_time})
+                "content": json.dumps({"nt_time": nt_time_result})
             })
 
-            # Second API call
-            final_response = openai.ChatCompletion.create(
+            # Second API call after calculating NT time
+            second_response = openai.ChatCompletion.create(
                 model="gpt-4-0613",
                 messages=messages,
                 functions=functions
             )
 
-            assistant_message = final_response.choices[0].message
+            assistant_message = second_response.choices[0].message
 
-            # Check if the assistant wants to call another function
             if assistant_message.get("function_call"):
                 function_name = assistant_message["function_call"]["name"]
                 arguments = json.loads(assistant_message["function_call"]["arguments"])

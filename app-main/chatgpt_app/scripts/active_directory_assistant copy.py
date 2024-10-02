@@ -16,7 +16,7 @@ def get_nt_time_from_date(year, month=1, day=1):
 def run():
     openai.api_key = os.getenv("OPENAI_API_KEY")
 
-    
+    # get system content from /myview/swagger/?format=openapi
 
 
     messages = [
@@ -24,7 +24,7 @@ def run():
             "role": "system",
             "content": (
                 "You are an assistant that provides Active Directory query parameters based on user requests. "
-                "When providing the final response, always output the data using the 'generate_ad_query_parameters' function."
+                "Inject infomation from /myview/swagger/?format=openapi, here."
             )
         },
         {

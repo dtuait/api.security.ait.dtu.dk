@@ -1,6 +1,7 @@
 import os
 import openai
 import json
+import requests  # To fetch the Swagger JSON
 
 def get_nt_time_from_date(year, month=1, day=1):
     """
@@ -16,20 +17,31 @@ def get_nt_time_from_date(year, month=1, day=1):
 def run():
     openai.api_key = os.getenv("OPENAI_API_KEY")
 
+    # Fetch the Swagger JSON from the endpoint
+    swagger_url = 'http://localhost:6081/myview/swagger/?format=openapi'  # Replace with your actual URL
+    response = requests.get(swagger_url)
+    swagger_data = response.json()
+
+    ## the documentation is in this value
+    active_directory_description = swagger_data['paths']['/active-directory/v1.0/query']['get']['description']
     
 
+    # Include the API summary in the system prompt
+    system_prompt = (
+        "You are an assistant that provides Active Directory query parameters based on user requests. "
+        "Here is the API information:\n\n"
+        f"{active_directory_description}\n"
+        "Use this information to help answer the user's requests."
+    )
 
     messages = [
         {
             "role": "system",
-            "content": (
-                "You are an assistant that provides Active Directory query parameters based on user requests. "
-                "When providing the final response, always output the data using the 'generate_ad_query_parameters' function."
-            )
+            "content": system_prompt
         },
         {
             "role": "user",
-            "content": "Give me all users that have a password older than 2010."
+            "content": "Give me all pc's where lastlogin is more that a month a go"
         }
     ]
 
