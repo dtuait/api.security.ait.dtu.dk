@@ -1,11 +1,41 @@
-def run_assistant_query(user_query):
-    import os
-    import openai
-    import json
-    import requests
-    from active_directory.services import execute_active_directory_query
-    from datetime import datetime, date
+import os
+import openai
+import json
+import requests  # To fetch the Swagger JSON
+from active_directory.services import execute_active_directory_query
+from datetime import datetime, date
 
+def get_nt_time_from_date(year, month=1, day=1):
+    """
+    Calculate the NT time format from a given date.
+    """
+    import datetime
+    nt_epoch = datetime.datetime(1601, 1, 1)
+    target_date = datetime.datetime(year, month, day)
+    delta = target_date - nt_epoch
+    nt_time = int(delta.total_seconds() * 10000000)
+    return nt_time
+
+def get_nt_time_for_days_ago(days_ago):
+    """
+    Calculate the NT time format for the date 'days_ago' days before today.
+    """
+    import datetime
+    nt_epoch = datetime.datetime(1601, 1, 1)
+    target_date = datetime.datetime.now() - datetime.timedelta(days=days_ago)
+    delta = target_date - nt_epoch
+    nt_time = int(delta.total_seconds() * 10000000)
+    return nt_time
+
+def datetime_to_str(o):
+    """
+    Helper function to convert datetime objects to strings for JSON serialization.
+    """
+    if isinstance(o, (datetime, date)):
+        return o.isoformat()
+    raise TypeError(f'Object of type {o.__class__.__name__} is not JSON serializable')
+
+def run():
     openai.api_key = os.getenv("OPENAI_API_KEY")
 
     # Fetch the Swagger JSON from the endpoint
@@ -31,11 +61,11 @@ def run_assistant_query(user_query):
         },
         {
             "role": "user",
-            "content": user_query
+            "content": "Giv mig en liste med alle de brugere som ikke har skiftet password siden 2022. Under DTUBASEUSERS  Vis kun brugere der ikke er disabled. Se bort fra brugere som har Hvis max 3 (limit 3), sAMAccountName,pwdLastSet"
         }
     ]
 
-    # Define the functions
+    # Define the functions, including get_nt_time_for_days_ago
     functions = [
         {
             "name": "get_nt_time_from_date",
@@ -117,7 +147,7 @@ def run_assistant_query(user_query):
     ]
 
     # Initialize variable to store NT time
-    nt_time = None
+    nt_time_2020 = None
 
     # First API call to process the user's request
     response = openai.ChatCompletion.create(
@@ -136,7 +166,7 @@ def run_assistant_query(user_query):
         if function_name == "get_nt_time_from_date":
             # Call the function to calculate NT time
             nt_time_result = get_nt_time_from_date(**arguments)
-            nt_time = nt_time_result
+            nt_time_2020 = nt_time_result
 
             # Append the assistant's message and function response to messages
             messages.append(assistant_message)
@@ -160,8 +190,8 @@ def run_assistant_query(user_query):
 
             # Replace placeholder with actual NT time
             search_filter = arguments["search_filter"]
-            if nt_time is not None:
-                search_filter = search_filter.replace("{NT_TIME}", str(nt_time))
+            if nt_time_2020 is not None:
+                search_filter = search_filter.replace("{NT_TIME}", str(nt_time_2020))
             arguments["search_filter"] = search_filter
 
             # Now execute the Active Directory query
@@ -186,22 +216,15 @@ def run_assistant_query(user_query):
 
             arguments["active_directory_query_result"] = convert_datetimes(query_result)
 
-            # Return the arguments dictionary
-            return arguments
+            # Output the final result
+            print(json.dumps(arguments, indent=2, ensure_ascii=False))
+            return
         else:
-            raise Exception(f"Function '{function_name}' is not recognized.")
+            print(f"Function '{function_name}' is not recognized.")
+            return
 
     # If no function call, output the assistant's message
-    raise Exception("No function call was made by the assistant.")
+    print(assistant_message["content"])
 
-# You need to define get_nt_time_from_date function if not already defined
-def get_nt_time_from_date(year, month=1, day=1):
-    """
-    Calculate the NT time format from a given date.
-    """
-    import datetime
-    nt_epoch = datetime.datetime(1601, 1, 1)
-    target_date = datetime.datetime(year, month, day)
-    delta = target_date - nt_epoch
-    nt_time = int(delta.total_seconds() * 10000000)
-    return nt_time
+if __name__ == "__main__":
+    run()
