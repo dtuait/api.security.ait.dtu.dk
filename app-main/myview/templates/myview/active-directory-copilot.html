@@ -22,13 +22,15 @@
             <label for="copilot-submit-textarea-field" class="form-label">Copilot
                 <i class="bi bi-question-circle-fill" data-bs-toggle="tooltip" data-bs-placement="right" title="Enter your query for Active Directory" data-bs-html="true"></i>
             </label>
-            <textarea id="copilot-submit-textarea-field" name="text" cols="60" rows="1" required="" class="form-control" style="padding-right: 80px;">
-                List af brugere som ikke har skiftet password siden 2022. Limit 3
-                </textarea>
-            <button type="submit" id="copilot-submit-btn" class="btn btn-primary">
-                Go
-                <span id="loadingSpinnerCopilot" class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="display: none;"></span>
-            </button>
+            <textarea id="copilot-submit-textarea-field" name="text" cols="60" rows="1" required="" class="form-control" style="padding-right: 80px;">Give me a query with users from 'win.dtu.dk/AIT/CIS/SOC', and include the 'pwdLastSet' attribute for each user.</textarea>
+            <div class="d-flex align-items-center mt-2">
+                <button type="submit" id="copilot-submit-btn" class="btn btn-primary me-2">
+                    Go
+                </button>
+                <div id="loadingSpinnerCopilot" class="spinner-border text-primary" role="status" style="display: none;">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
         </div>
     </form>
 
@@ -40,5 +42,8 @@
     </div>
 </div>
 
+<!-- Include necessary scripts -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="{% static 'myview/js/base.js' %}" defer></script>
 <script src="{% static 'myview/js/active-directory-copilot.js' %}" defer></script>
 {% endblock %}
