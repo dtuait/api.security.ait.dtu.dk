@@ -49,7 +49,7 @@ def _get_bearertoken():
 
     # Load environment variables from .env file
     env_path = '/usr/src/project/.devcontainer/.env'
-    load_dotenv(dotenv_path=env_path)
+    load_dotenv(dotenv_path=env_path, override=True)
 
     # Get the expiration time from the environment variables
     expires_on = int(os.getenv("GRAPH_ACCESS_BEARER_TOKEN_EXPIRES_ON"))
@@ -60,17 +60,26 @@ def _get_bearertoken():
     # Check if the token is expired
     if current_time > expires_on:
         # Generate a new token
-        new_token = _generate_new_token()
+        
+
 
         # Update the .env file with the new token and expiration time
         # Replace 3600 with the actual lifetime of the token in seconds
         try:
+            # throw error if retunrn none, else update the env file
+            new_token = _generate_new_token()
+
+            if new_token is None:
+                raise Exception("Failed to generate a new token")
+        
             update_env_file(env_path, 'GRAPH_ACCESS_BEARER_TOKEN', new_token)
             update_env_file(env_path, 'GRAPH_ACCESS_BEARER_TOKEN_EXPIRES_ON', str(current_time + 3600))
+            
             # Reload the environment variables
             load_dotenv(dotenv_path=env_path, override=True)
+
         except Exception as e:
-            print("An error occurred while updating the .env file:", str(e))
+            return str(e)
 
     # Use the token to perform the hunting query
     token = os.getenv("GRAPH_ACCESS_BEARER_TOKEN")

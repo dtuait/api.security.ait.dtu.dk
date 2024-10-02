@@ -19,15 +19,9 @@ from django.urls import path, include
 from django.views.generic import RedirectView
 from django.conf import settings
 from django.conf.urls.static import static
-from django.contrib.auth.decorators import login_required
-from django.http import HttpResponseRedirect
-from django.urls import reverse
 from django.views.generic.base import RedirectView
-from msal import ConfidentialClientApplication
-from django.shortcuts import redirect
 from .views import msal_callback, msal_login, msal_director, msal_logout
 from dotenv import load_dotenv
-import os
 from django.views.static import serve
 from django.urls import re_path
 dotenv_path = '/usr/src/project/.devcontainer/.env'

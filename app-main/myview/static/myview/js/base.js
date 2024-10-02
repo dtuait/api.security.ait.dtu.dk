@@ -120,7 +120,7 @@ class BaseAppUtils {
   async restAjax(method, url, options = { headers: {}, data: {} }) {
     let data = options.data || {};
     let headers = options.headers || {};
-  
+
     // Check if data is FormData or a plain object and handle accordingly
     if (data instanceof FormData) {
       console.log('Data is FormData');
@@ -131,13 +131,13 @@ class BaseAppUtils {
     } else {
       throw new Error('Invalid data type: data must be either an Object or FormData');
     }
-  
+
     // Add CSRF token for Django compatibility
     const csrfToken = document.cookie.match(/csrftoken=([\w-]+)/)?.[1];
     if (csrfToken) {
       headers['X-CSRFToken'] = csrfToken;
     }
-  
+
     // Perform the request using fetch
     try {
       const response = await fetch(url, {
@@ -146,18 +146,17 @@ class BaseAppUtils {
         body: (method !== 'GET' && method !== 'HEAD') ? data : undefined,
         credentials: 'include' // Ensure credentials are sent with requests (e.g., cookies)
       });
-  
+
       if (!response.ok) {
         throw new Error(`HTTP error! Status: ${response.status}`);
       }
 
       if (response.status === 204) {
         return {};
-    } else {
+      } else {
         return await response.json();
-    }
+      }
 
-      
     } catch (error) {
       console.error('Request failed:', error);
       throw error; // Re-throw the error for further handling if needed
@@ -395,36 +394,36 @@ class BaseAppUtils {
 
 
 
-  updateModalContent(modalID, content = {modalTitle: '', modalBody: '', modalFooter: '', eventListeners: []}) {
+  updateModalContent(modalID, content = { modalTitle: '', modalBody: '', modalFooter: '', eventListeners: [] }) {
 
     // Get the modal
     const modal = $('#' + modalID);
 
     // Update the modal title if provided
     if (content.modalTitle) {
-        modal.find('.modal-title').text(content.modalTitle);
+      modal.find('.modal-title').text(content.modalTitle);
     }
 
     // Update the modal body if provided
     if (content.modalBody) {
-        modal.find('.modal-body').html(content.modalBody);
+      modal.find('.modal-body').html(content.modalBody);
     }
 
     // Update the modal footer if provided
     if (content.modalFooter) {
-        modal.find('.modal-footer').html(content.modalFooter);
+      modal.find('.modal-footer').html(content.modalFooter);
     }
 
     // Attach event listeners specified in options
     const eventListeners = content.eventListeners || [];
     eventListeners.forEach(({ selector, event, handler }) => {
-        // remove existing event listeners to prevent multiple bindings
-        $(document).off(event, `#${modalID} ${selector}`).on(event, `#${modalID} ${selector}`, handler);
-        // $(document).on(event, `#${modalId} ${selector}`, handler);
+      // remove existing event listeners to prevent multiple bindings
+      $(document).off(event, `#${modalID} ${selector}`).on(event, `#${modalID} ${selector}`, handler);
+      // $(document).on(event, `#${modalId} ${selector}`, handler);
     });
 
 
-}
+  }
 
 
 
