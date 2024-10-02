@@ -30,8 +30,6 @@ class CopilotApp {
             var totalLineCount = Math.max(lineCount, wrappedLineCount);
             $(this).attr('rows', totalLineCount);
         });
-
-        this.uiBinder.downloadJsonBtn.on('click', this.appUtils.downloadJsonFile.bind(this.appUtils));
     }
 
     async handleCopilotRequest(event) {
@@ -48,25 +46,43 @@ class CopilotApp {
         this.uiBinder.loadingSpinnerCopilot.show();
         this.uiBinder.copilotSubmitBtn.prop('disabled', true);
 
-        let response;
-
         try {
-            response = await this.baseAppUtils.restAjax('POST', '/myview/ajax/', { data: formData });
+            let response = await fetch('/myview/ajax/', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': this.baseAppUtils.getCSRFToken(),
+                },
+                credentials: 'include',
+            });
 
-            if (response.active_directory_query_result) {
-                console.log(response);
+            if (response.ok) {
+                // Get the filename from the Content-Disposition header
+                let disposition = response.headers.get('Content-Disposition');
+                let filename = 'active_directory_query_result.xlsx';
+                if (disposition && disposition.indexOf('attachment') !== -1) {
+                    let filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
+                    let matches = filenameRegex.exec(disposition);
+                    if (matches != null && matches[1]) { 
+                        filename = matches[1].replace(/['"]/g, '');
+                    }
+                }
 
-                // Display the result
-                this.uiBinder.copilotResultContainer.show();
-                this.uiBinder.copilotResult.text(JSON.stringify(response, null, 2));
+                let blob = await response.blob();
+                // Create a link to download the file
+                let url = window.URL.createObjectURL(blob);
+                let a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
 
-                // Store the result for download
-                this.appUtils.queryResult = response;
-
-            } else if (response.error) {
-                this.baseUIBinder.displayNotification(response.error, 'alert-warning');
+                this.baseUIBinder.displayNotification('File downloaded successfully.', 'alert-success');
             } else {
-                this.baseUIBinder.displayNotification('An unknown error occurred.', 'alert-warning');
+                let errorResponse = await response.json();
+                this.baseUIBinder.displayNotification(errorResponse.error || 'An error occurred.', 'alert-danger');
             }
         } catch (error) {
             console.log('Error:', error);
@@ -137,6 +153,8 @@ class CopilotUIBinder {
         return CopilotUIBinder.instance;
     }
 }
+
+
 
 document.addEventListener('DOMContentLoaded', function () {
     const app = CopilotApp.getInstance();
