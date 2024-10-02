@@ -302,6 +302,8 @@ userAccountControl Flags:
 | TRUSTED_FOR_DELEGATION| 0x80000      | 524288   | Account is trusted for delegation.             |
 | USE_DES_KEY_ONLY      | 0x200000     | 2097152  | Use only DES encryption types for this account.|
 
+# POLICIES
+Computer objects in Active Directory are automatically disabled after six months of inactivity. This means if a computer account hasn't logged onto the domain within that period, it will be deactivated. This policy helps maintain security and efficiency by removing outdated or unused computer accounts from the system. Both experts and non-experts should note that regular activity is required to keep computer accounts active, ensuring that only current devices have access to network resources.
 
 """,
         manual_parameters=[
