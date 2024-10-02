@@ -3,10 +3,21 @@
     padding: 0.3125em;  /* 5px assuming a base font-size of 16px */
 }
 
-
 #copilot-submit-btn {
     position: absolute;
     bottom: 0;
     right: 0;
     padding: 0.3125em;
+}
+
+/* Styles for the result container */
+#copilot-result-container {
+    margin-top: 20px;
+}
+
+#copilot-result {
+    background-color: #f8f9fa;
+    padding: 15px;
+    border: 1px solid #dee2e6;
+    overflow-x: auto;
 }

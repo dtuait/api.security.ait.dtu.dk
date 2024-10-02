@@ -1,57 +1,44 @@
 {% extends base_template %}
 
-
 {% load i18n static %}
 
 {# title #}
-{% block title %}Copilot (Preview){% endblock %}
-
+{% block title %}Active Directory Copilot{% endblock %}
 
 {% block dynamic_head_content %}
-
+<link rel="stylesheet" type="text/css" media="all" href="{% static 'myview/css/active-directory-copilot.css' %}" />
 {% endblock %}
 
-
 <!-- headline for the page -->
-{% block headline %}Copilot (Preview){% endblock %}
+{% block headline %}Active Directory Copilot{% endblock %}
 
 {% block main-content %}
 <div class="container my-4">
-    <h2>Copilot (Preview)</h2>
+    <h2>Active Directory Copilot</h2>
 
-
-    get /active-directory/v1.0/query
-    <form method="post">
+    <form method="post" id="copilot-form">
         {% csrf_token %}
         <div class="mb-3 position-relative">
-            <label for="input1" class="form-label">Authorization</label>
-            <input id="copilot-authorization" type="text" id="input1" class="form-control">
-
-            <label for="input1" class="form-label">base_dn</label>
-            <input id="copilot-base-dn" type="text" id="input1" class="form-control">
-        
-            <label for="input2" class="form-label">search_filter</label>
-            <input id="copilot-search-filter" type="text" id="input2" class="form-control">
-        
-            <label for="input3" class="form-label">search_attributes</label>
-            <input id="copilot-search-attributes" type="text" id="input3" class="form-control">
-
-            <label for="input3" class="form-label">limit</label>
-            <input id="copilot-search-limit" type="text" id="input3" class="form-control">
-
-
-            <label for="id_copilot" class="form-label">Copilot
-                <i class="bi bi-question-circle-fill" data-bs-toggle="tooltip" data-bs-placement="right" title="Text for chatbot" data-bs-html="true"></i>
+            <label for="copilot-submit-textarea-field" class="form-label">Copilot
+                <i class="bi bi-question-circle-fill" data-bs-toggle="tooltip" data-bs-placement="right" title="Enter your query for Active Directory" data-bs-html="true"></i>
             </label>
-            <textarea id="copilot-submit-textarea-field" name="text" cols="60" rows="1" required="" id="id_text" style="padding-right: 80px;"></textarea>
+            <textarea id="copilot-submit-textarea-field" name="text" cols="60" rows="1" required="" class="form-control" style="padding-right: 80px;">
+                List af brugere som ikke har skiftet password siden 2022. Limit 3
+                </textarea>
             <button type="submit" id="copilot-submit-btn" class="btn btn-primary">
                 Go
                 <span id="loadingSpinnerCopilot" class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="display: none;"></span>
             </button>
         </div>
     </form>
+
+    <!-- Container to display the result -->
+    <div id="copilot-result-container" style="display: none;">
+        <h3>Query Result</h3>
+        <pre id="copilot-result"></pre>
+        <button id="download-json-btn" class="btn btn-success">Download JSON</button>
+    </div>
 </div>
 
 <script src="{% static 'myview/js/active-directory-copilot.js' %}" defer></script>
-<link rel="stylesheet" type="text/css" media="all" href="{% static 'myview/css/active-directory-copilot.css' %}" />
 {% endblock %}
