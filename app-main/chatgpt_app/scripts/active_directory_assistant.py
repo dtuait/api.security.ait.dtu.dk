@@ -18,10 +18,15 @@ def run_assistant_query(user_query):
 
     # Include the API summary in the system prompt
     system_prompt = (
-        "You are an assistant that provides Active Directory query parameters based on user requests. "
-        "Here is the API information:\n\n"
-        f"{active_directory_description}\n"
-        "Use this information to help answer the user's requests."
+        "You are an assistant that provides Active Directory query parameters based on user requests.\n\n"
+        f"{active_directory_description}\n\n"
+        "Always provide your response in JSON format with the following fields:\n"
+        "- base_dn\n"
+        "- search_filter\n"
+        "- search_attributes\n"
+        "- limit\n"
+        "- excluded_attributes\n"
+        "Do not include any additional text outside of the JSON format."
     )
 
     messages = [
@@ -35,101 +40,58 @@ def run_assistant_query(user_query):
         }
     ]
 
-    # Define the functions
+    # Define the function
     functions = [
         {
             "name": "get_nt_time_from_date",
-            "description": "Calculate NT time format from a given date.",
+            "description": "Calculate NT time format from a given date. Useful for constructing LDAP queries with date-based filters.",
             "parameters": {
                 "type": "object",
+                "required": ["year"],
                 "properties": {
                     "year": {
                         "type": "integer",
-                        "description": "Year component of the date. Example: 2020"
+                        "description": "The year component of the date. Example: 2005"
                     },
                     "month": {
                         "type": "integer",
-                        "description": "Month component of the date (1-12)."
+                        "default": 1,
+                        "minimum": 1,
+                        "maximum": 12,
+                        "description": "The month component of the date (1-12). Default is 1."
                     },
                     "day": {
                         "type": "integer",
-                        "description": "Day component of the date (1-31)."
+                        "default": 1,
+                        "minimum": 1,
+                        "maximum": 31,
+                        "description": "The day component of the date (1-31). Default is 1."
                     }
-                },
-                "required": ["year", "month", "day"]
-            }
-        },
-        {
-            "name": "get_nt_time_for_days_ago",
-            "description": "Calculate NT time format for the date 'days_ago' days before today.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "days_ago": {
-                        "type": "integer",
-                        "description": "Number of days before today. Example: 150"
-                    }
-                },
-                "required": ["days_ago"]
-            }
-        },
-        {
-            "name": "generate_ad_query_parameters",
-            "description": "Generate Active Directory query parameters based on user input.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "limit": {
-                        "type": "integer",
-                        "description": "Limit for number of results. Example: 1000"
-                    },
-                    "base_dn": {
-                        "type": "string",
-                        "description": "Base DN for search. Example: 'DC=win,DC=dtu,DC=dk'"
-                    },
-                    "search_filter": {
-                        "type": "string",
-                        "description": "LDAP search filter. Example: '(&(objectClass=user)(pwdLastSet<=NT_TIME))'"
-                    },
-                    "search_attributes": {
-                        "type": "string",
-                        "description": "Comma-separated list of attributes to retrieve. Example: 'cn,pwdLastSet,distinguishedName'"
-                    },
-                    "excluded_attributes": {
-                        "type": "string",
-                        "description": "Comma-separated list of attributes to exclude from the results. Default is 'thumbnailPhoto'."
-                    },
-                    "explanation": {
-                        "type": "string",
-                        "description": "A human-readable explanation of the query."
-                    }
-                },
-                "required": [
-                    "base_dn",
-                    "search_filter",
-                    "search_attributes",
-                    "limit",
-                    "excluded_attributes",
-                    "explanation"
-                ]
+                }
             }
         }
     ]
 
-    # Initialize variable to store NT time
-    nt_time = None
-
-    # First API call to process the user's request
+    # Now make the OpenAI API call
     response = openai.ChatCompletion.create(
         model="gpt-4-0613",
         messages=messages,
-        functions=functions
+        functions=functions,
+        function_call="auto",
+        temperature=1,
+        max_tokens=2048,
+        top_p=1,
+        frequency_penalty=0,
+        presence_penalty=0,
     )
 
     assistant_message = response.choices[0].message
 
-    # Process assistant's function calls
-    while assistant_message.get("function_call"):
+    # Initialize nt_time
+    nt_time = None
+
+    # Check for function call
+    if assistant_message.get("function_call"):
         function_name = assistant_message["function_call"]["name"]
         arguments = json.loads(assistant_message["function_call"]["arguments"])
 
@@ -150,51 +112,66 @@ def run_assistant_query(user_query):
             response = openai.ChatCompletion.create(
                 model="gpt-4-0613",
                 messages=messages,
-                functions=functions
+                functions=functions,
+                function_call="auto",
+                temperature=1,
+                max_tokens=2048,
+                top_p=1,
+                frequency_penalty=0,
+                presence_penalty=0,
             )
             assistant_message = response.choices[0].message
-
-        elif function_name == "generate_ad_query_parameters":
-            # Since we have the structured data, process it
-            arguments["explanation"] = arguments.get("explanation", "")
-
-            # Replace placeholder with actual NT time
-            search_filter = arguments["search_filter"]
-            if nt_time is not None:
-                search_filter = search_filter.replace("{NT_TIME}", str(nt_time))
-            arguments["search_filter"] = search_filter
-
-            # Now execute the Active Directory query
-            query_result = execute_active_directory_query(
-                base_dn=arguments["base_dn"],
-                search_filter=arguments["search_filter"],
-                search_attributes=[attr.strip() for attr in arguments["search_attributes"].split(",")],
-                limit=arguments.get("limit"),
-                excluded_attributes=[attr.strip() for attr in arguments["excluded_attributes"].split(",")]
-            )
-
-            # Convert datetime objects to strings in the query_result
-            def convert_datetimes(obj):
-                if isinstance(obj, dict):
-                    return {k: convert_datetimes(v) for k, v in obj.items()}
-                elif isinstance(obj, list):
-                    return [convert_datetimes(item) for item in obj]
-                elif isinstance(obj, (datetime, date)):
-                    return obj.isoformat()
-                else:
-                    return obj
-
-            arguments["active_directory_query_result"] = convert_datetimes(query_result)
-
-            # Return the arguments dictionary
-            return arguments
         else:
             raise Exception(f"Function '{function_name}' is not recognized.")
 
-    # If no function call, output the assistant's message
-    raise Exception("No function call was made by the assistant.")
+    # Now, get the assistant's content and parse it as per the response format
+    content = assistant_message.get("content", "")
 
-# You need to define get_nt_time_from_date function if not already defined
+    # Try to parse the content as JSON
+    try:
+        arguments = json.loads(content)
+    except json.JSONDecodeError:
+        raise Exception("The assistant's response is not valid JSON.")
+
+    # Ensure all required fields are present
+    required_fields = ["base_dn", "search_filter", "search_attributes", "limit", "excluded_attributes"]
+    for field in required_fields:
+        if field not in arguments:
+            raise Exception(f"Field '{field}' is missing from the assistant's response.")
+
+    # If nt_time is available, replace any placeholders in search_filter
+    search_filter = arguments["search_filter"]
+    if "{NT_TIME}" in search_filter and nt_time is not None:
+        # Replace any {NT_TIME} placeholders with the actual nt_time value
+        search_filter = search_filter.replace("{NT_TIME}", str(nt_time))
+        arguments["search_filter"] = search_filter
+
+    # Now execute the Active Directory query
+    query_result = execute_active_directory_query(
+        base_dn=arguments["base_dn"],
+        search_filter=arguments["search_filter"],
+        search_attributes=[attr.strip() for attr in arguments["search_attributes"].split(",")],
+        limit=arguments.get("limit"),
+        excluded_attributes=[attr.strip() for attr in arguments["excluded_attributes"].split(",")]
+    )
+
+    # Convert datetime objects to strings in the query_result
+    def convert_datetimes(obj):
+        if isinstance(obj, dict):
+            return {k: convert_datetimes(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [convert_datetimes(item) for item in obj]
+        elif isinstance(obj, (datetime, date)):
+            return obj.isoformat()
+        else:
+            return obj
+
+    arguments["active_directory_query_result"] = convert_datetimes(query_result)
+
+    # Return the arguments dictionary
+    return arguments
+
+# Define get_nt_time_from_date function
 def get_nt_time_from_date(year, month=1, day=1):
     """
     Calculate the NT time format from a given date.
