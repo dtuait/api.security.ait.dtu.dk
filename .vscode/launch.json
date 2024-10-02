@@ -136,13 +136,13 @@
         // }
 
         ,{
-            "name": "chatgpt_app.scripts.openai_basic",
+            "name": "chatgpt_app.scripts.active_directory_assistant",
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/app-main/manage.py",
             "args": [
                 "runscript",
-                "chatgpt_app.scripts.openai_basic"
+                "chatgpt_app.scripts.active_directory_assistant"
             ],
             "django": true,
             "justMyCode": true
