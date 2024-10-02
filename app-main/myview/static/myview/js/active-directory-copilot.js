@@ -51,7 +51,7 @@ class CopilotApp {
         let response;
 
         try {
-            response = await this.baseAppUtils.restAjax('POST', '/myview/ajax/', formData);
+            response = await this.baseAppUtils.restAjax('POST', '/myview/ajax/', { data: formData });
 
             if (response.active_directory_query_result) {
                 console.log(response);
