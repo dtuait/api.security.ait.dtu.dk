@@ -2,8 +2,6 @@ import os
 import openai
 import json
 import requests  # To fetch the Swagger JSON
-from active_directory.services import execute_active_directory_query
-from datetime import datetime, date
 
 def get_nt_time_from_date(year, month=1, day=1):
     """
@@ -26,14 +24,6 @@ def get_nt_time_for_days_ago(days_ago):
     delta = target_date - nt_epoch
     nt_time = int(delta.total_seconds() * 10000000)
     return nt_time
-
-def datetime_to_str(o):
-    """
-    Helper function to convert datetime objects to strings for JSON serialization.
-    """
-    if isinstance(o, (datetime, date)):
-        return o.isoformat()
-    raise TypeError(f'Object of type {o.__class__.__name__} is not JSON serializable')
 
 def run():
     openai.api_key = os.getenv("OPENAI_API_KEY")
@@ -61,7 +51,7 @@ def run():
         },
         {
             "role": "user",
-            "content": "Giv mig en liste med alle de brugere som ikke har skiftet password siden 2022. Under DTUBASEUSERS  Vis kun brugere der ikke er disabled. Se bort fra brugere som har Hvis max 3 (limit 3), sAMAccountName,pwdLastSet"
+            "content": "Giv mig en liste med alle de brugere som ikke har skiftet password siden 2020. som starter med adm-* Vis kun brugere der ikke er disabled. Tilføj feltet ou path. Se bort fra brugere som har pwdLastSet 1601-01-01T00:00:00+00:00"
         }
     ]
 
@@ -185,39 +175,15 @@ def run():
             assistant_message = response.choices[0].message
 
         elif function_name == "generate_ad_query_parameters":
-            # Since we have the structured data, process it
+            # Since we have the structured data, print it
             arguments["explanation"] = arguments.get("explanation", "")
 
             # Replace placeholder with actual NT time
             search_filter = arguments["search_filter"]
-            if nt_time_2020 is not None:
-                search_filter = search_filter.replace("{NT_TIME}", str(nt_time_2020))
+            search_filter = search_filter.replace("{NT_TIME_2020}", str(nt_time_2020))
             arguments["search_filter"] = search_filter
 
-            # Now execute the Active Directory query
-            query_result = execute_active_directory_query(
-                base_dn=arguments["base_dn"],
-                search_filter=arguments["search_filter"],
-                search_attributes=[attr.strip() for attr in arguments["search_attributes"].split(",")],
-                limit=arguments.get("limit"),
-                excluded_attributes=[attr.strip() for attr in arguments["excluded_attributes"].split(",")]
-            )
-
-            # Convert datetime objects to strings in the query_result
-            def convert_datetimes(obj):
-                if isinstance(obj, dict):
-                    return {k: convert_datetimes(v) for k, v in obj.items()}
-                elif isinstance(obj, list):
-                    return [convert_datetimes(item) for item in obj]
-                elif isinstance(obj, (datetime, date)):
-                    return obj.isoformat()
-                else:
-                    return obj
-
-            arguments["active_directory_query_result"] = convert_datetimes(query_result)
-
-            # Output the final result
-            print(json.dumps(arguments, indent=2, ensure_ascii=False))
+            print(json.dumps(arguments, indent=2))
             return
         else:
             print(f"Function '{function_name}' is not recognized.")
