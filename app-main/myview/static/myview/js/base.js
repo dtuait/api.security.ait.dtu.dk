@@ -99,15 +99,9 @@ class BaseAppUtils {
   constructor() {
     if (!BaseAppUtils.instance) {
       BaseAppUtils.instance = this;
-
     }
-
     return BaseAppUtils.instance;
-
   }
-
-
-
 
   /**
    * Perform a REST AJAX request.
@@ -117,33 +111,34 @@ class BaseAppUtils {
    * @param {Object} headers - Optional. Additional headers to send.
    * @returns {Promise<Object>} The response data or an error object.
    */
-  async restAjax(method, url, options = { headers: {}, data: {} }) {
-    let data = options.data || {};
-    let headers = options.headers || {};
-
-    // Check if data is FormData or a plain object and handle accordingly
-    if (data instanceof FormData) {
-      console.log('Data is FormData');
-    } else if (typeof data === 'object' && data !== null && !(data instanceof Array)) {
-      console.log('Data is a plain object');
-      headers['Content-Type'] = 'application/json'; // Set header for JSON
-      data = JSON.stringify(data); // Stringify data for JSON
-    } else {
-      throw new Error('Invalid data type: data must be either an Object or FormData');
-    }
-
+  async restAjax(method, url, data = null, headers = {}) {
     // Add CSRF token for Django compatibility
-    const csrfToken = document.cookie.match(/csrftoken=([\w-]+)/)?.[1];
+    const csrfToken = this.getCookie('csrftoken');
     if (csrfToken) {
       headers['X-CSRFToken'] = csrfToken;
+    }
+
+    let body = null;
+
+    if (data) {
+      if (data instanceof FormData) {
+        // If data is FormData, do not set Content-Type header
+        body = data;
+      } else if (typeof data === 'object') {
+        // If data is a plain object, send it as JSON
+        headers['Content-Type'] = 'application/json';
+        body = JSON.stringify(data);
+      } else {
+        throw new Error('Invalid data type: data must be either an Object or FormData');
+      }
     }
 
     // Perform the request using fetch
     try {
       const response = await fetch(url, {
         method: method,
-        headers: new Headers(headers),
-        body: (method !== 'GET' && method !== 'HEAD') ? data : undefined,
+        headers: headers,
+        body: (method !== 'GET' && method !== 'HEAD') ? body : undefined,
         credentials: 'include' // Ensure credentials are sent with requests (e.g., cookies)
       });
 
@@ -163,46 +158,13 @@ class BaseAppUtils {
     }
   }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
   getCookie(name) {
     let cookieValue = null;
     if (document.cookie && document.cookie !== '') {
       const cookies = document.cookie.split(';');
       for (let i = 0; i < cookies.length; i++) {
         const cookie = cookies[i].trim();
+        // Does this cookie string begin with the name we want?
         if (cookie.substring(0, name.length + 1) === (name + '=')) {
           cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
           break;
@@ -212,43 +174,11 @@ class BaseAppUtils {
     return cookieValue;
   }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
   printCurlCommand(url, csrfToken, formData) {
     let dataString = new URLSearchParams(formData).toString();
     let command = `curl -X POST '${url}' -H 'Content-Type: application/x-www-form-urlencoded' -H 'X-CSRFToken: ${csrfToken}' -d '${dataString}' -b cookies.txt`;
     console.log(command);
   }
-
-
-
-
 
   updateSessionStorage(data, prefix) {
     // example updateSessionStorage({userPrincipalObj: data}, 'myApp');
@@ -265,11 +195,6 @@ class BaseAppUtils {
     }
   }
 
-
-
-
-
-
   static initializeTooltips() {
     try {
       // Initialize tooltips with HTML content
@@ -284,11 +209,6 @@ class BaseAppUtils {
       throw new Error('Failed to load tooltips styling');
     }
   }
-
-
-
-
-
 
   /**
    * Dynamically creates and attaches a modal to a trigger element.
@@ -318,11 +238,8 @@ class BaseAppUtils {
    * @returns {Object} - The modal instance.
    * 
    */
-
-
   setModal(triggerSelector, modalId, options = {}) {
-    // this function assumes that each that a mudal is uniqie to a trigger
-
+    // this function assumes that each modal is unique to a trigger
 
     // Check if an element with the ID stored in modalId exists in the document
     if ($('#' + modalId).length) {
@@ -330,10 +247,8 @@ class BaseAppUtils {
       $('#' + modalId).remove();
     }
 
-
-    // if options are provided, use them to update the modal
-
-    const modalType = options.modalType || 'modal-dialog'
+    // If options are provided, use them to update the modal
+    const modalType = options.modalType || 'modal-dialog';
     const modalContent = options.modalContent || 'modal-content';
     const modalTitle = options.title || 'Default Modal Title';
     const modalBody = options.body || 'Default Modal Body';
@@ -358,7 +273,7 @@ class BaseAppUtils {
               </div>
           </div>
       </div>
-  `;
+    `;
 
     // Append the modal to the body
     $('body').append(modalHtml);
@@ -366,9 +281,8 @@ class BaseAppUtils {
 
     // Attach event listeners specified in options
     eventListeners.forEach(({ selector, event, handler }) => {
-      // remove existing event listeners to prevent multiple bindings
+      // Remove existing event listeners to prevent multiple bindings
       $(document).off(event, `#${modalId} ${selector}`).on(event, `#${modalId} ${selector}`, handler);
-      // $(document).on(event, `#${modalId} ${selector}`, handler);
     });
 
     // Detach existing click events to prevent multiple bindings
@@ -377,25 +291,9 @@ class BaseAppUtils {
     });
 
     return modalInstance;
-
   }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
   updateModalContent(modalID, content = { modalTitle: '', modalBody: '', modalFooter: '', eventListeners: [] }) {
-
     // Get the modal
     const modal = $('#' + modalID);
 
@@ -417,27 +315,10 @@ class BaseAppUtils {
     // Attach event listeners specified in options
     const eventListeners = content.eventListeners || [];
     eventListeners.forEach(({ selector, event, handler }) => {
-      // remove existing event listeners to prevent multiple bindings
+      // Remove existing event listeners to prevent multiple bindings
       $(document).off(event, `#${modalID} ${selector}`).on(event, `#${modalID} ${selector}`, handler);
-      // $(document).on(event, `#${modalId} ${selector}`, handler);
     });
-
-
   }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
   static getInstance() {
     if (!BaseAppUtils.instance) {
@@ -446,6 +327,7 @@ class BaseAppUtils {
     return BaseAppUtils.instance;
   }
 }
+
 
 
 
