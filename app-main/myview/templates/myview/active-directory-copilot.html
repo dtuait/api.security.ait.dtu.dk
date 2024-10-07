@@ -13,43 +13,36 @@
 {% block headline %}Active Directory Copilot{% endblock %}
 
 {% block main-content %}
+<div class="container my-4">
+    <h2>Active Directory Copilot</h2>
 
-{% if request.user.username == "vicre" or request.user.username == "dast" or request.user.username == "michro" or request.user.username == "admin" %}
-    <!-- Content to display for authorized users -->
-    <div class="container my-4">
-        <h2>Active Directory Copilot</h2>
-
-        <form method="post" id="copilot-form">
-            {% csrf_token %}
-            <div class="mb-3 position-relative">
-                <label for="copilot-submit-textarea-field" class="form-label">Copilot
-                    <i class="bi bi-question-circle-fill" data-bs-toggle="tooltip" data-bs-placement="right" title="Enter your query for Active Directory" data-bs-html="true"></i>
-                </label>
-                <textarea id="copilot-submit-textarea-field" name="text" cols="60" rows="1" required="" class="form-control" style="padding-right: 80px;">Give me a query with users from 'win.dtu.dk/AIT/CIS/SOC', and include the 'pwdLastSet' attribute for each user.</textarea>
-                <div class="d-flex align-items-center mt-2">
-                    <button type="submit" id="copilot-submit-btn" class="btn btn-primary me-2">
-                        Go
-                    </button>
-                    <div id="loadingSpinnerCopilot" class="spinner-border text-primary" role="status" style="display: none;">
-                        <span class="visually-hidden">Loading...</span>
-                    </div>
+    <form method="post" id="copilot-form">
+        {% csrf_token %}
+        <div class="mb-3 position-relative">
+            <label for="copilot-submit-textarea-field" class="form-label">Copilot
+                <i class="bi bi-question-circle-fill" data-bs-toggle="tooltip" data-bs-placement="right" title="Enter your query for Active Directory" data-bs-html="true"></i>
+            </label>
+            <textarea id="copilot-submit-textarea-field" name="text" cols="60" rows="1" required="" class="form-control" style="padding-right: 80px;">Give me a query with users from 'win.dtu.dk/AIT/CIS/SOC', and include the 'pwdLastSet' attribute for each user.</textarea>
+            <div class="d-flex align-items-center mt-2">
+                <button type="submit" id="copilot-submit-btn" class="btn btn-primary me-2">
+                    Go
+                </button>
+                <div id="loadingSpinnerCopilot" class="spinner-border text-primary" role="status" style="display: none;">
+                    <span class="visually-hidden">Loading...</span>
                 </div>
             </div>
-        </form>
-
-        <!-- Container to display the result -->
-        <div id="copilot-result-container" style="display: none;">
-            <h3>Query Result</h3>
-            <pre id="copilot-result"></pre>
-            <button id="download-json-btn" class="btn btn-success">Download JSON</button>
         </div>
-    </div>
-{% else %}
-    <!-- Message for unauthorized users -->
-    <div class="container my-4">
-        <h2>Access Denied</h2>
-        <p>You do not have access to this page.</p>
-    </div>
-{% endif %}
+    </form>
 
+    <!-- Container to display the result -->
+    <div id="copilot-result-container" style="display: none;">
+        <h3>Query Result</h3>
+        <pre id="copilot-result"></pre>
+        <button id="download-json-btn" class="btn btn-success">Download JSON</button>
+    </div>
+</div>
+
+<!-- Include necessary scripts -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="{% static 'myview/js/active-directory-copilot.js' %}" defer></script>
 {% endblock %}
