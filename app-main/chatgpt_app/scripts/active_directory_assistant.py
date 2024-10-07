@@ -28,7 +28,6 @@ def run_assistant_query(user_query):
 
     if response.status_code == 200:
         swagger_data = response.json()
-        print(swagger_data)
     else:
         print("Failed to retrieve Swagger data. Status code:", response.status_code)
 
