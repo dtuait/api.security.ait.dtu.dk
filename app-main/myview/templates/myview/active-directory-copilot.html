@@ -1,20 +1,21 @@
+{% extends base_template %}
+
+{% load i18n static %}
+
+{# title #}
+{% block title %}Active Directory Copilot{% endblock %}
+
+{% block dynamic_head_content %}
+<link rel="stylesheet" type="text/css" media="all" href="{% static 'myview/css/active-directory-copilot.css' %}" />
+{% endblock %}
+
+<!-- headline for the page -->
+{% block headline %}Active Directory Copilot{% endblock %}
+
+{% block main-content %}
+
 {% if request.user.username == "vicre" or request.user.username == "dast" or request.user.username == "michro" or request.user.username == "admin" %}
     <!-- Content to display for authorized users -->
-    {% extends base_template %}
-
-    {% load i18n static %}
-
-    {# title #}
-    {% block title %}Active Directory Copilot{% endblock %}
-
-    {% block dynamic_head_content %}
-    <link rel="stylesheet" type="text/css" media="all" href="{% static 'myview/css/active-directory-copilot.css' %}" />
-    {% endblock %}
-
-    <!-- headline for the page -->
-    {% block headline %}Active Directory Copilot{% endblock %}
-
-    {% block main-content %}
     <div class="container my-4">
         <h2>Active Directory Copilot</h2>
 
@@ -43,12 +44,6 @@
             <button id="download-json-btn" class="btn btn-success">Download JSON</button>
         </div>
     </div>
-
-    <!-- Include necessary scripts -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="{% static 'myview/js/active-directory-copilot.js' %}" defer></script>
-    {% endblock %}
-
 {% else %}
     <!-- Message for unauthorized users -->
     <div class="container my-4">
@@ -56,3 +51,5 @@
         <p>You do not have access to this page.</p>
     </div>
 {% endif %}
+
+{% endblock %}
