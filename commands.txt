@@ -1,1 +1,2 @@
 source app-main/venv/bin/activate
+cd /usr/src/project/app-main && python manage.py collectstatic

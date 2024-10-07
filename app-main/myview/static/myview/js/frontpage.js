@@ -119,14 +119,14 @@ class App {
         spinner.show();
         button.prop('disabled', true);
 
-        // set a modal to display the token
+        // set a modal to display the token a
         let formData = new FormData();
         formData.append('action', 'create_custom_token');
 
         let response;
         let errorOccurred = false;
         try {
-            response = await app.baseAppUtils.restAjax('POST', '/myview/ajax/', { data: formData });
+            response = await app.baseAppUtils.restAjax('POST', '/myview/ajax/', formData);
         } catch (error) {
             console.log('Error:', error);
             app.baseUIBinder.displayNotification(error, 'alert-danger')
@@ -171,40 +171,6 @@ class App {
         }
 
 
-        // const button = $(this);
-        // const spinner = $('#loadingSpinnerDeleteADGroupCacheBtn');
-        // // Show the spinner and disable the button
-        // spinner.show();
-        // button.prop('disabled', true);
-
-        // let formData = new FormData();
-        // formData.append('action', 'clear_my_ad_group_cached_data');
-        // let response;
-        // try {
-        //     response = await restAjax('POST', '/myview/ajax/', formData);
-        // } catch (error) {
-        //     console.log('Error:', error);
-        // } finally {
-        //     if (response.status === 200) {
-        //         displayNotification('Cache deleted successfully!, reloading page in 2 seconds', 'success');
-
-        //         // Wait for 2 seconds
-        //         setTimeout(function () {
-        //             // reload the page
-        //             location.reload();
-        //         }, 2000);
-
-
-
-
-
-
-        //     } else if (response.error) {
-        //         displayNotification(response.error, 'warning');
-        //     } else {
-        //         displayNotification('An unknown error occurred.', 'warning');
-        //     }
-        // }
     }
     static getInstance(uiBinder = UIBinder.getInstance(), baseUIBinder = BaseUIBinder.getInstance(), appUtils = AppUtils.getInstance(), baseAppUtils = BaseAppUtils.getInstance()) {
         if (!App.instance) {

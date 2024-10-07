@@ -96,16 +96,6 @@ INSTALLED_APPS = [
     'defender',
 ]
 
-# MIDDLEWARE = [
-#     'django.middleware.security.SecurityMiddleware',
-#     'django.contrib.sessions.middleware.SessionMiddleware',
-#     'django.middleware.common.CommonMiddleware',
-#     'django.middleware.csrf.CsrfViewMiddleware',
-#     'django.contrib.auth.middleware.AuthenticationMiddleware',
-#     'django.contrib.messages.middleware.MessageMiddleware',
-#     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-#     'myview.middleware.AccessControlMiddleware',
-# ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -117,15 +107,6 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'myview.middleware.AccessControlMiddleware',
 ]
-
-# try: 
-#     from myview.models import Endpoint
-
-#     MIDDLEWARE += ['myview.middleware.EndpointAccessMiddleware']
-
-# except ImportError:
-#     print("Endpoint model is not available for registration in the settings.py file.")
-#     pass
 
 
 ROOT_URLCONF = 'app.urls'
@@ -149,15 +130,6 @@ TEMPLATES = [
 WSGI_APPLICATION = 'app.wsgi.application'
 
 
-# Database
-# https://docs.djangoproject.com/en/4.2/ref/settings/#databases
-
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.sqlite3',
-#         'NAME': BASE_DIR / 'db.sqlite3',
-#     }
-# }
 
 DATABASES = {
     'default': {

@@ -117,17 +117,17 @@ class BaseAppUtils {
     if (csrfToken) {
       headers['X-CSRFToken'] = csrfToken;
     }
-
+    
     let body = null;
 
     if (data) {
       if (data instanceof FormData) {
-        // If data is FormData, do not set Content-Type header
+        // If data is FormData, do not set Content-Type header s
         body = data;
       } else if (typeof data === 'object') {
         // If data is a plain object, send it as JSON
         headers['Content-Type'] = 'application/json';
-        body = JSON.stringify(data);
+        body = JSON.stringify(data.data);
       } else {
         throw new Error('Invalid data type: data must be either an Object or FormData');
       }

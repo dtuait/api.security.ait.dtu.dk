@@ -6,18 +6,32 @@ from django.contrib.auth.models import User
 from active_directory.scripts.active_directory_query import active_directory_query
 from ldap3 import ALL_ATTRIBUTES
 import json
+import logging
+
+
+# Get the logger for your app
+logger = logging.getLogger(__name__)
 
 
 class AjaxView(BaseView):
 
     def post(self, request, *args, **kwargs):
-        # Extract an 'action' parameter from the POST request to determine which method to call
+        # Log incoming POST request details
+        # logger.info("Received POST request at /myview/ajax/")
+        # logger.info("Request method: %s", request.method)
+        # logger.info("Request headers: %s", request.headers)
+        # logger.info("Request Content-Type: %s", request.META.get('CONTENT_TYPE'))
+        # logger.info("Raw Request Body: %s", request.body.decode('utf-8'))
+        # logger.info("Request POST data: %s", request.POST)
+        # logger.info("Request user: %s", request.user if request.user.is_authenticated else "Anonymous")
+        # logger.info("CSRF Token in META: %s", request.META.get('CSRF_COOKIE'))
+        # logger.info("CSRF Token in POST: %s", request.POST.get('csrfmiddlewaretoken'))
+
         action = request.POST.get('action')
 
-
-
-
-
+        if action is None:
+            logger.error("No action specified in the POST data.")
+            return JsonResponse({'error': 'No action provided'}, status=400)
 
 
 
