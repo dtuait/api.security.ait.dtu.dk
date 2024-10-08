@@ -29,7 +29,8 @@ class AccessControlMiddleware(MiddlewareMixin):
             '/logout/',
             '/auth/callback/',
             '/admin/baAT5gt52eCRX7bu58msxF5XQtbY4bye/',
-            '/myview/'
+            '/myview/',
+            '/media/',
         ]
         super().__init__(get_response)
 

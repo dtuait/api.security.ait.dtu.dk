@@ -1,6 +1,8 @@
 from .settings import *
 from termcolor import colored
 import getpass
+from django.conf import settings
+from django.conf.urls.static import static
 
 DEBUG = True
 

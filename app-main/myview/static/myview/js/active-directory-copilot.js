@@ -22,7 +22,7 @@ class CopilotApp {
                 event.preventDefault();
                 this.handleCopilotRequest(event);
             }
-        }).on('input', function() {
+        }).on('input', function () {
             var text = $(this).val();
             var cols = $(this).attr('cols');
             var lineCount = (text.match(/\n/g) || []).length + 1;
@@ -63,6 +63,15 @@ class CopilotApp {
                 // Store the result for download
                 this.appUtils.queryResult = response;
 
+                // Handle XLSX file download
+                if (response.xlsx_file_url) {
+                    this.uiBinder.downloadXlsxBtn.attr('href', response.xlsx_file_url);
+                    this.uiBinder.downloadXlsxBtn.attr('download', response.xlsx_file_name);
+                    this.uiBinder.downloadXlsxBtn.show();
+                } else {
+                    this.uiBinder.downloadXlsxBtn.hide();
+                }
+
             } else if (response.error) {
                 this.baseUIBinder.displayNotification(response.error, 'alert-warning');
             } else {
@@ -75,6 +84,7 @@ class CopilotApp {
             this.uiBinder.loadingSpinnerCopilot.hide();
             this.uiBinder.copilotSubmitBtn.prop('disabled', false);
         }
+
     }
 
     static getInstance(uiBinder = CopilotUIBinder.getInstance(), baseUIBinder = BaseUIBinder.getInstance(), appUtils = CopilotAppUtils.getInstance(), baseAppUtils = BaseAppUtils.getInstance()) {
@@ -118,6 +128,7 @@ class CopilotUIBinder {
     constructor() {
         if (!CopilotUIBinder.instance) {
             this.copilotForm = $('#copilot-form');
+            this.downloadXlsxBtn = $('#download-xlsx-btn');
             this.copilotSubmitBtn = $('#copilot-submit-btn');
             this.copilotTextareaField = $('#copilot-submit-textarea-field');
             this.loadingSpinnerCopilot = $('#loadingSpinnerCopilot');

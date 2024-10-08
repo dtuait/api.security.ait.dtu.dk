@@ -67,3 +67,5 @@ urllib3==2.2.2
 wrapt==1.16.0
 yarl==1.9.4
 zipp==3.19.1
+pandas
+openpyxl

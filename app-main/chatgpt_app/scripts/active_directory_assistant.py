@@ -196,6 +196,12 @@ def run_assistant_query(user_query):
             return obj
 
     arguments["active_directory_query_result"] = convert_datetimes(query_result)
+    # objects retuned  arguments["number_of_returned_objects"] = len(arguments["active_directory_query_result"])
+
+    # Generate the XLSX file and include its URL
+    output_file_name = generate_generic_xlsx_document(query_result)
+    arguments["xlsx_file_name"] = output_file_name
+    arguments["xlsx_file_url"] = settings.MEDIA_URL + output_file_name
 
     # Return the arguments dictionary
     return arguments
@@ -211,3 +217,42 @@ def get_nt_time_from_date(year, month=1, day=1):
     delta = target_date - nt_epoch
     nt_time = int(delta.total_seconds() * 10000000)
     return nt_time
+
+
+
+
+def generate_generic_xlsx_document(data):
+    import pandas as pd
+    import os
+    from django.conf import settings
+    from datetime import datetime
+
+    # Extract unique keys
+    unique_keys = set()
+    for item in data:
+        unique_keys.update(item.keys())
+
+    # Extract data
+    extracted_data = []
+    for item in data:
+        row = {}
+        for key in unique_keys:
+            value = item.get(key, "")
+            if isinstance(value, list):
+                row[key] = ', '.join(map(str, value))
+            else:
+                row[key] = value
+        extracted_data.append(row)
+
+    # Convert to DataFrame
+    df = pd.DataFrame(extracted_data)
+
+    # Generate unique file name
+    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+    output_file_name = f'active_directory_query_{timestamp}.xlsx'
+    output_file_path = os.path.join(settings.MEDIA_ROOT, output_file_name)
+
+    # Save to XLSX
+    df.to_excel(output_file_path, index=False)
+
+    return output_file_name

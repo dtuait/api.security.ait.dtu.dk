@@ -152,8 +152,6 @@ class AjaxView(BaseView):
                 try:
                     query_result = run_assistant_query(user_query)
 
-                    # generate the xlsx document
-
                     # Return the result
                     return JsonResponse(query_result, safe=False)
                 except Exception as e:
