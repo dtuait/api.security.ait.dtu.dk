@@ -14,13 +14,19 @@ def run_assistant_query(user_query):
     openai.api_key = os.getenv("OPENAI_API_KEY")
     admin_api_key = os.getenv("DJANGO_SUPERUSER_APIKEY")
 
-    # URL where Swagger documentation is served
-    swagger_url = 'https://api.security.ait.dtu.dk/myview/swagger/?format=openapi'
 
-    # Set up the headers with the authorization token
-    headers = {
-        'Authorization': f'{admin_api_key}'
-    }
+    if settings.DEBUG:
+        swagger_url = 'http://localhost:6081/myview/swagger/?format=openapi'  # Replace with your actual URL
+        # URL where Swagger documentation is served
+        headers = {}
+    else:
+        swagger_url = 'https://api.security.ait.dtu.dk/myview/swagger/?format=openapi'
+        # Set up the headers with the authorization token
+        headers = {
+            'Authorization': f'{admin_api_key}'
+        }
+
+
 
     # Fetch the Swagger JSON from the endpoint with authorization
     response = requests.get(swagger_url, headers=headers)
