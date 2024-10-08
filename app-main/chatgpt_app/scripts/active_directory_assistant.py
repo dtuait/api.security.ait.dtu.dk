@@ -202,6 +202,7 @@ def run_assistant_query(user_query):
     output_file_name = generate_generic_xlsx_document(query_result)
     arguments["xlsx_file_name"] = output_file_name
     arguments["xlsx_file_url"] = settings.MEDIA_URL + output_file_name
+    arguments["number_of_returned_objects"] = len(arguments["active_directory_query_result"])
 
     # Return the arguments dictionary
     return arguments
