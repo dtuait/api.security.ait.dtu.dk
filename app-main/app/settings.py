@@ -166,7 +166,9 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+# settings.py
+TIME_ZONE = 'Europe/Copenhagen'
+USE_TZ = True  # Enable timezone support
 
 USE_I18N = True
 
@@ -223,26 +225,35 @@ LOGGING = {
     'disable_existing_loggers': False,
     'formatters': {
         'verbose': {
-            'format': '{levelname} {asctime} {module} {message}',
+            'format': '{levelname} {asctime} {filename} {message}',
             'style': '{',
         },
     },
     'handlers': {
         'console': {
-            'level': 'INFO',
+            'level': 'DEBUG',  # Set to DEBUG to capture everything in development
             'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
         },
         'file': {
-            'level': 'INFO',
+            'level': 'DEBUG',  # Set to DEBUG to capture everything in the log file
             'class': 'logging.FileHandler',
             'filename': '/usr/src/project/app-main/django.log',
+            'formatter': 'verbose',
         },
     },
     'loggers': {
-        'django': {
+        # This is the logger for your custom modules/applications
+        'myview': {  # Replace 'myview' with your actual app/module name
             'handlers': ['console', 'file'],
-            'level': 'INFO',
-            'propagate': True,
+            'level': 'DEBUG',
+            'propagate': False,  # Avoid duplicating logs
+        },
+        # Add additional loggers for other apps you want to log
+        'app_mod': {  # Example for another app you may have
+            'handlers': ['console', 'file'],
+            'level': 'DEBUG',
+            'propagate': False,
         },
     },
 }

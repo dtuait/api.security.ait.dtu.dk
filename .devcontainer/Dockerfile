@@ -43,6 +43,13 @@ ENV LANG=en_US.UTF-8
 ENV LANGUAGE=en_US.UTF-8
 ###### fix locales ######
 
+# Install systemd to get timedatectl and tzdata for timezone data
+RUN apt-get update && apt-get install -y systemd tzdata
+
+# Set the timezone to Europe/Copenhagen
+RUN ln -sf /usr/share/zoneinfo/Europe/Copenhagen /etc/localtime && echo "Europe/Copenhagen" | tee /etc/timezone
+
+
 ##### microsoft this is to make SCCM endpoint work ####
 RUN echo "deb [arch=amd64] https://packages.microsoft.com/debian/10/prod buster main" > /etc/apt/sources.list.d/microsoft-prod.list
 RUN wget -qO- https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > microsoft.gpg

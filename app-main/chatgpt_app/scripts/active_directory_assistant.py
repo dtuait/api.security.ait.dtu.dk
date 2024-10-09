@@ -31,7 +31,7 @@ def run_assistant_query(user_query):
     # Fetch the Swagger JSON from the endpoint with authorization
     response = requests.get(swagger_url, headers=headers)
 
-
+    
     if response.status_code == 200:
         swagger_data = response.json()
     else:
