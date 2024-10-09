@@ -21,3 +21,17 @@
     border: 1px solid #dee2e6;
     overflow-x: auto;
 }
+
+
+.scrollable-div-80vh {
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+#copilot-submit-textarea-field {
+    resize: none;
+}
+
+#copilot-result-container {
+    margin-top: 20px;
+}

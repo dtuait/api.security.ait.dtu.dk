@@ -1,5 +1,3 @@
-console.log('Active Directory Copilot JS loaded');
-
 class CopilotApp {
     constructor(uiBinder = CopilotUIBinder.getInstance(), baseUIBinder = BaseUIBinder.getInstance(), appUtils = CopilotAppUtils.getInstance(), baseAppUtils = BaseAppUtils.getInstance()) {
         if (!CopilotApp.instance) {
@@ -16,34 +14,41 @@ class CopilotApp {
 
     _setBindings() {
         this.uiBinder.copilotSubmitBtn.on('click', this.handleCopilotRequest.bind(this));
+        this.uiBinder.canonicalNameSwitch.on('change', this.toggleCanonicalNameNotation.bind(this));
 
         this.uiBinder.copilotTextareaField.on('keydown', (event) => {
             if (event.key === 'Enter' && !event.shiftKey) {
                 event.preventDefault();
                 this.handleCopilotRequest(event);
             }
-        }).on('input', function () {
-            var text = $(this).val();
-            var cols = $(this).attr('cols');
-            var lineCount = (text.match(/\n/g) || []).length + 1;
-            var wrappedLineCount = Math.ceil(text.length / cols);
-            var totalLineCount = Math.max(lineCount, wrappedLineCount);
-            $(this).attr('rows', totalLineCount);
         });
 
         this.uiBinder.downloadJsonBtn.on('click', this.appUtils.downloadJsonFile.bind(this.appUtils));
+    }
+
+    toggleCanonicalNameNotation() {
+        const baseDnField = this.uiBinder.baseDnField;
+        const isCanonical = this.uiBinder.canonicalNameSwitch.is(':checked');
+
+        let value = baseDnField.val();
+        if (isCanonical) {
+            // Convert Base DN to Canonical Name Notation
+            const canonicalName = this.appUtils.convertToCanonicalName(value);
+            baseDnField.val(canonicalName);
+        } else {
+            // Convert Canonical Name Notation to Base DN
+            const baseDn = this.appUtils.convertToBaseDn(value);
+            baseDnField.val(baseDn);
+        }
     }
 
     async handleCopilotRequest(event) {
         event.preventDefault();
         console.log("Handling copilot request");
 
-        var textareaValue = this.uiBinder.copilotTextareaField.val();
-        console.log(textareaValue);
-
         let formData = new FormData();
         formData.append('action', 'copilot-active-directory-query');
-        formData.append('content', JSON.stringify({ user: textareaValue }));
+        formData.append('content', JSON.stringify({ user: this.uiBinder.copilotTextareaField.val() }));
 
         this.uiBinder.loadingSpinnerCopilot.show();
         this.uiBinder.copilotSubmitBtn.prop('disabled', true);
@@ -54,16 +59,19 @@ class CopilotApp {
             response = await this.baseAppUtils.restAjax('POST', '/myview/ajax/', formData);
 
             if (response.active_directory_query_result) {
-                console.log(response);
-
-                // Display the result
                 this.uiBinder.copilotResultContainer.show();
                 this.uiBinder.copilotResult.text(JSON.stringify(response, null, 2));
+
+                // Update the number of returned objects
+                const numberOfReturnedObjects = response.active_directory_query_result.length;
+                this.uiBinder.returnedObjectsCount.text(numberOfReturnedObjects);
+
+                // Populate the Excel table
+                this.populateExcelTable(response.active_directory_query_result);
 
                 // Store the result for download
                 this.appUtils.queryResult = response;
 
-                // Handle XLSX file download
                 if (response.xlsx_file_url) {
                     this.uiBinder.downloadXlsxBtn.attr('href', response.xlsx_file_url);
                     this.uiBinder.downloadXlsxBtn.attr('download', response.xlsx_file_name);
@@ -84,7 +92,6 @@ class CopilotApp {
             this.uiBinder.loadingSpinnerCopilot.hide();
             this.uiBinder.copilotSubmitBtn.prop('disabled', false);
         }
-
     }
 
     static getInstance(uiBinder = CopilotUIBinder.getInstance(), baseUIBinder = BaseUIBinder.getInstance(), appUtils = CopilotAppUtils.getInstance(), baseAppUtils = BaseAppUtils.getInstance()) {
@@ -116,6 +123,24 @@ class CopilotAppUtils {
         }
     }
 
+    // Utility function to convert Base DN to Canonical Name Notation
+    convertToCanonicalName(baseDn) {
+        return baseDn
+            .replace(/DC=/g, '')
+            .replace(/OU=/g, '')
+            .replace(/,/g, '/');
+    }
+
+    // Utility function to convert Canonical Name Notation to Base DN
+    convertToBaseDn(canonicalName) {
+        const parts = canonicalName.split('/');
+        let baseDn = [];
+        for (let i = parts.length - 1; i >= 0; i--) {
+            baseDn.push(i === 0 ? `OU=${parts[i]}` : `DC=${parts[i]}`);
+        }
+        return baseDn.join(',');
+    }
+
     static getInstance() {
         if (!CopilotAppUtils.instance) {
             CopilotAppUtils.instance = new CopilotAppUtils();
@@ -131,10 +156,17 @@ class CopilotUIBinder {
             this.downloadXlsxBtn = $('#download-xlsx-btn');
             this.copilotSubmitBtn = $('#copilot-submit-btn');
             this.copilotTextareaField = $('#copilot-submit-textarea-field');
+            this.toggleViewBtn = $('#toggle-view');
+            this.jsonView = $('#json-view');
+            this.excelView = $('#excel-view');
+            this.excelTable = $('#excel-table');
+            this.returnedObjectsCount = $('#returned_objects_count');
             this.loadingSpinnerCopilot = $('#loadingSpinnerCopilot');
             this.copilotResultContainer = $('#copilot-result-container');
             this.copilotResult = $('#copilot-result');
             this.downloadJsonBtn = $('#download-json-btn');
+            this.baseDnField = $('#base_dn');
+            this.canonicalNameSwitch = $('#canonical_name_switch');
             CopilotUIBinder.instance = this;
         }
 
