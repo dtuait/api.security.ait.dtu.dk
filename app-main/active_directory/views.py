@@ -303,7 +303,18 @@ userAccountControl Flags:
 | USE_DES_KEY_ONLY      | 0x200000     | 2097152  | Use only DES encryption types for this account.|
 
 # POLICIES
-Computer objects in Active Directory are automatically disabled after six months of inactivity. This means if a computer account hasn't logged onto the domain within that period, it will be deactivated. This policy helps maintain security and efficiency by removing outdated or unused computer accounts from the system. Both experts and non-experts should note that regular activity is required to keep computer accounts active, ensuring that only current devices have access to network resources.
+This policy ensures that inactive computer objects in the Active Directory are automatically disabled after 90 days (3 months) of inactivity. A computer account is considered inactive if it hasn't logged onto the domain within this period. This helps improve security by preventing unauthorized access from outdated devices and maintains efficiency by cleaning up unused accounts.
+
+Key points:
+
+Inactivity Period: Computer accounts inactive for 90 days will be disabled.
+Account Removal: Disabled accounts may be permanently removed after 180 days.
+Security: This process ensures that only active, current devices can access network resources.
+Regular Activity: Both technical and non-technical users should ensure devices stay active to avoid automatic deactivation.
+For technical implementation:
+
+The $ageDisable variable sets the inactivity threshold to 90 days, while $ageRemove controls permanent removal after 180 days.
+The policy excludes servers and focuses on computers in designated organizational units (OUs) like Institutter, BBAR, and AIT-FIT.
 
 """,
         manual_parameters=[
