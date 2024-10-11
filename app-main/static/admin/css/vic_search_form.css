@@ -39,3 +39,6 @@
     opacity: 1;
 }
 
+#search-spinner {
+  vertical-align: middle;
+}

@@ -22,6 +22,16 @@
             "url": "http://localhost:6081/admin/baAT5gt52eCRX7bu58msxF5XQtbY4bye/",
             "webRoot": "${workspaceFolder}/app-main",
             "disableNetworkCache": true,
+        },
+
+        {
+            "name": "Browser: admin production_settings",
+            "runtimeExecutable": "C:\\Program Files\\chromium\\chrome-win\\chrome.exe",
+            "request": "launch",
+            "type": "msedge",
+            "url": "https://api.security.ait.dtu.dk/admin/baAT5gt52eCRX7bu58msxF5XQtbY4bye/",
+            "webRoot": "${workspaceFolder}/app-main/myview",
+            "disableNetworkCache": true
         }
         ,{
             "name": "ServerLive: localhost_debug_false_settings",
