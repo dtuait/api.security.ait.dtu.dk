@@ -107,7 +107,7 @@ class BaseAppUtils {
    * Perform a REST AJAX request.
    * @param {string} method - The HTTP method ('GET', 'POST', 'DELETE', etc.)
    * @param {string} url - The URL endpoint.
-   * @param {Object|FormData|string} data - The data to be sent. Pass an object for form data, FormData for multipart form data, or a JSON string for JSON data.
+   * @param {Object|FormData} data - The data to be sent. Pass an object for JSON, FormData for form data.
    * @param {Object} headers - Optional. Additional headers to send.
    * @returns {Promise<Object>} The response data or an error object.
    */
@@ -117,23 +117,19 @@ class BaseAppUtils {
     if (csrfToken) {
       headers['X-CSRFToken'] = csrfToken;
     }
-
+    
     let body = null;
 
     if (data) {
       if (data instanceof FormData) {
-        // If data is FormData, do not set Content-Type header
+        // If data is FormData, do not set Content-Type header s
         body = data;
       } else if (typeof data === 'object') {
-        // If data is a plain object, send it as application/x-www-form-urlencoded
-        headers['Content-Type'] = 'application/x-www-form-urlencoded; charset=UTF-8';
-        body = new URLSearchParams(data).toString();
-      } else if (typeof data === 'string') {
-        // If data is a string, assume it's JSON
+        // If data is a plain object, send it as JSON
         headers['Content-Type'] = 'application/json';
-        body = data;
+        body = JSON.stringify(data);
       } else {
-        throw new Error('Invalid data type: data must be an Object, FormData, or JSON string');
+        throw new Error('Invalid data type: data must be either an Object or FormData');
       }
     }
 

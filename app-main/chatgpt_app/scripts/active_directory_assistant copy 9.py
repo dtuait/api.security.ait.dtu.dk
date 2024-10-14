@@ -6,6 +6,7 @@ def run_assistant_query(user_query):
     from active_directory.services import execute_active_directory_query
     from datetime import datetime, date
     from django.conf import settings
+    # load the .env file
     from dotenv import load_dotenv
     dotenv_path = '/usr/src/project/.devcontainer/.env'
     load_dotenv(dotenv_path=dotenv_path)
@@ -13,25 +14,38 @@ def run_assistant_query(user_query):
     openai.api_key = os.getenv("OPENAI_API_KEY")
     admin_api_key = os.getenv("DJANGO_SUPERUSER_APIKEY")
 
+
     if settings.DEBUG:
-        swagger_url = 'http://localhost:6081/myview/swagger/?format=openapi'
+        swagger_url = 'http://localhost:6081/myview/swagger/?format=openapi'  # Replace with your actual URL
+        # URL where Swagger documentation is served
         headers = {}
     else:
         swagger_url = 'https://api.security.ait.dtu.dk/myview/swagger/?format=openapi'
+        # Set up the headers with the authorization token
         headers = {
             'Authorization': f'{admin_api_key}'
         }
 
+
+
+    # Fetch the Swagger JSON from the endpoint with authorization
     response = requests.get(swagger_url, headers=headers)
+
 
     if response.status_code == 200:
         swagger_data = response.json()
     else:
         print("Failed to retrieve Swagger data. Status code:", response.status_code)
 
+
+        
+
+
+
+    # The documentation is in this value
     active_directory_description = swagger_data['paths']['/active-directory/v1.0/query']['get']['description']
 
-    # Include the API summary in the system prompt and add 'explanation' field
+    # Include the API summary in the system prompt
     system_prompt = (
         "You are an assistant that provides Active Directory query parameters based on user requests.\n\n"
         f"{active_directory_description}\n\n"
@@ -45,6 +59,7 @@ def run_assistant_query(user_query):
         "The 'explanation' field should contain a brief explanation of the query parameters you have generated.\n"
         "Do not include any additional text outside of the JSON format."
     )
+
 
     messages = [
         {
@@ -150,7 +165,7 @@ def run_assistant_query(user_query):
     except json.JSONDecodeError:
         raise Exception("The assistant's response is not valid JSON.")
 
-    # Ensure all required fields are present, including 'explanation'
+    # Ensure all required fields are present
     required_fields = ["base_dn", "search_filter", "search_attributes", "limit", "excluded_attributes", "explanation"]
     for field in required_fields:
         if field not in arguments:
@@ -184,19 +199,16 @@ def run_assistant_query(user_query):
             return obj
 
     arguments["active_directory_query_result"] = convert_datetimes(query_result)
-    arguments["number_of_returned_objects"] = len(arguments["active_directory_query_result"])
+    # objects retuned  arguments["number_of_returned_objects"] = len(arguments["active_directory_query_result"])
 
     # Generate the XLSX file and include its URL
     output_file_name = generate_generic_xlsx_document(query_result)
     arguments["xlsx_file_name"] = output_file_name
     arguments["xlsx_file_url"] = settings.MEDIA_URL + output_file_name
+    arguments["number_of_returned_objects"] = len(arguments["active_directory_query_result"])
 
     # Return the arguments dictionary
     return arguments
-
-
-
-
 
 # Define get_nt_time_from_date function
 def get_nt_time_from_date(year, month=1, day=1):

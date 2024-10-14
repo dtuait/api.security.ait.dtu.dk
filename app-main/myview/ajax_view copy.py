@@ -146,7 +146,9 @@ class AjaxView(BaseView):
                 user_query = user_input.get('user')
 
                 from chatgpt_app.scripts.active_directory_assistant import run_assistant_query
+                # from chatgpt_app.scripts.generate_xlsx_assistant_document import generate_xlsx_assistant_document   
 
+                # Run the assistant to get the query parameters and result
                 try:
                     query_result = run_assistant_query(user_query)
 
@@ -156,7 +158,6 @@ class AjaxView(BaseView):
                     return JsonResponse({'error': str(e)}, status=500)
             else:
                 return JsonResponse({'error': 'User not authenticated'}, status=401)
-
 
 
 

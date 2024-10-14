@@ -1,11 +1,10 @@
 console.log('Active Directory Copilot JS loaded');
 
 class App {
-    constructor(uiBinder = UIBinder.getInstance(), baseAppUtils = BaseAppUtils.getInstance(), baseUIBinder = BaseUIBinder.getInstance()) {
+    constructor(uiBinder = UIBinder.getInstance(), appUtils = AppUtils.getInstance()) {
         if (!App.instance) {
             this.uiBinder = uiBinder;
-            this.baseAppUtils = baseAppUtils;
-            this.baseUIBinder = baseUIBinder;
+            this.appUtils = appUtils;
             this._setBindings();
             App.instance = this;
         }
@@ -14,14 +13,14 @@ class App {
 
     _setBindings() {
         // Send button click
-        this.uiBinder.sendBtn.addEventListener('click', (event) => {
+        this.uiBinder.sendBtn.on('click', (event) => {
             event.preventDefault();
             this.handleUserInput();
         });
 
         // Enter key in textarea
-        this.uiBinder.userInput.addEventListener('keypress', (event) => {
-            if (event.key === 'Enter' && !event.shiftKey) {
+        this.uiBinder.userInput.on('keypress', (event) => {
+            if (event.which === 13 && !event.shiftKey) {
                 event.preventDefault();
                 this.handleUserInput();
             }
@@ -29,19 +28,19 @@ class App {
     }
 
     async handleUserInput() {
-        const userInput = this.uiBinder.userInput.value.trim();
+        const userInput = this.uiBinder.userInput.val().trim();
         if (userInput === '') {
             return;
         }
 
         // Append user's message to chat
-        this.uiBinder.appendUserMessage(userInput);
+        // this.uiBinder.appendUserMessage(userInput);
 
         // Clear input
-        this.uiBinder.userInput.value = '';
+        this.uiBinder.userInput.val('');
 
         // Show loading indicator
-        this.uiBinder.showLoading();
+        // this.uiBinder.showLoading();
 
         // Prepare data to send to server
         let data = {
@@ -52,7 +51,7 @@ class App {
         let response;
         let errorOccurred = false;
         try {
-            response = await this.baseAppUtils.restAjax('POST', '/myview/ajax/', data);
+            response = await this.appUtils.restAjax('POST', '/myview/ajax/', data);
         } catch (error) {
             console.log('Error:', error);
             this.uiBinder.appendAssistantMessage(`An error occurred: ${error}`);
@@ -89,9 +88,9 @@ class App {
         }
     }
 
-    static getInstance(uiBinder = UIBinder.getInstance(), baseAppUtils = BaseAppUtils.getInstance(), baseUIBinder = BaseUIBinder.getInstance()) {
+    static getInstance(uiBinder = UIBinder.getInstance(), appUtils = AppUtils.getInstance()) {
         if (!App.instance) {
-            App.instance = new App(uiBinder, baseAppUtils, baseUIBinder);
+            App.instance = new App(uiBinder, appUtils);
         }
         return App.instance;
     }
@@ -100,67 +99,50 @@ class App {
 class UIBinder {
     constructor() {
         if (!UIBinder.instance) {
-            this.sendBtn = document.getElementById('send-btn');
-            this.userInput = document.getElementById('user-input');
-            this.chatMessages = document.getElementById('chat-messages');
-            this.loadingIndicator = this.createLoadingIndicator();
+            this.sendBtn = $('#send-btn');
+            this.userInput = $('#user-input');
+            this.chatMessages = $('#chat-messages');
+            this.loadingIndicator = $('<div class="loading-indicator">Assistant is typing...</div>');
             UIBinder.instance = this;
         }
         return UIBinder.instance;
     }
 
-    createLoadingIndicator() {
-        const loadingDiv = document.createElement('div');
-        loadingDiv.className = 'loading-indicator';
-        loadingDiv.textContent = 'Assistant is typing...';
-        return loadingDiv;
-    }
-
     appendUserMessage(message) {
-        const messageElement = document.createElement('div');
-        messageElement.classList.add('message', 'user-message');
-
-        const messageContent = document.createElement('div');
-        messageContent.classList.add('message-content');
-        messageContent.innerHTML = this.escapeHtml(message);
-
-        messageElement.appendChild(messageContent);
-        this.chatMessages.appendChild(messageElement);
+        const messageElement = `
+            <div class="message user-message">
+                <div class="message-content">${this.escapeHtml(message)}</div>
+            </div>
+        `;
+        this.chatMessages.append(messageElement);
         this.scrollToBottom();
     }
 
     appendAssistantMessage(message) {
-        const messageElement = document.createElement('div');
-        messageElement.classList.add('message', 'assistant-message');
-
-        const messageContent = document.createElement('div');
-        messageContent.classList.add('message-content');
-        messageContent.innerHTML = message; // Ensure server sanitizes HTML to prevent XSS
-
-        messageElement.appendChild(messageContent);
-        this.chatMessages.appendChild(messageElement);
+        const messageElement = `
+            <div class="message assistant-message">
+                <div class="message-content">${message}</div>
+            </div>
+        `;
+        this.chatMessages.append(messageElement);
         this.scrollToBottom();
     }
 
     showLoading() {
-        this.chatMessages.appendChild(this.loadingIndicator);
+        this.chatMessages.append(this.loadingIndicator);
         this.scrollToBottom();
     }
 
     hideLoading() {
-        if (this.chatMessages.contains(this.loadingIndicator)) {
-            this.chatMessages.removeChild(this.loadingIndicator);
-        }
+        this.loadingIndicator.remove();
     }
 
     scrollToBottom() {
-        this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
+        this.chatMessages.scrollTop(this.chatMessages[0].scrollHeight);
     }
 
     escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
+        return $('<div>').text(text).html();
     }
 
     static getInstance() {
@@ -171,6 +153,41 @@ class UIBinder {
     }
 }
 
-document.addEventListener('DOMContentLoaded', function () {
+class AppUtils {
+    constructor() {
+        if (!AppUtils.instance) {
+            AppUtils.instance = this;
+        }
+        return AppUtils.instance;
+    }
+
+    restAjax(method, url, data) {
+        return new Promise(function (resolve, reject) {
+            $.ajax({
+                type: method,
+                url: url,
+                data: data,
+                dataType: 'json',
+                contentType: 'application/x-www-form-urlencoded; charset=UTF-8',
+                success: function (response) {
+                    resolve(response);
+                },
+                error: function (xhr, status, error) {
+                    let errorMsg = xhr.responseJSON ? xhr.responseJSON.error : error;
+                    reject(errorMsg);
+                }
+            });
+        });
+    }
+
+    static getInstance() {
+        if (!AppUtils.instance) {
+            AppUtils.instance = new AppUtils();
+        }
+        return AppUtils.instance;
+    }
+}
+
+$(document).ready(function () {
     const app = App.getInstance();
 });
