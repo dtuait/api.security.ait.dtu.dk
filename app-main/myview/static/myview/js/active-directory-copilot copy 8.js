@@ -240,25 +240,21 @@ class UIBinder {
     appendAssistantMessage(message, timestamp = null) {
         const messageElement = document.createElement('div');
         messageElement.classList.add('message', 'assistant-message');
-    
+
         const messageContent = document.createElement('div');
         messageContent.classList.add('message-content');
-    
-        // Directly set the content (assuming it's safe)
-        messageContent.innerHTML = this.formatMessageContent(message);
-    
+
+        try {
+            const data = JSON.parse(message);
+            messageContent.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+        } catch (e) {
+            messageContent.innerHTML = message;
+        }
+
         messageElement.appendChild(messageContent);
         this.chatMessages.appendChild(messageElement);
         this.scrollToBottom();
     }
-    
-    // Utility method to format the message content
-    formatMessageContent(content) {
-        // Convert any markdown or special formatting if needed
-        // For simplicity, we'll assume the content is safe HTML
-        return content;
-    }
-    
 
     showLoading() {
         this.chatMessages.appendChild(this.loadingIndicator);

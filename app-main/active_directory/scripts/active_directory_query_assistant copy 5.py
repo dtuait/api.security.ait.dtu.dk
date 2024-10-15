@@ -3,6 +3,7 @@ def active_directory_query_assistant(*, user_prompt, context=None, create_title=
     import openai
     import json
     import requests
+    from active_directory.services import execute_active_directory_query
     from datetime import datetime, date
     from django.conf import settings
     from dotenv import load_dotenv
@@ -34,20 +35,21 @@ def active_directory_query_assistant(*, user_prompt, context=None, create_title=
     system_prompt = (
         "You are an assistant that provides Active Directory query parameters based on user requests.\n\n"
         f"{active_directory_description}\n\n"
-        "Always provide your response in the following format:\n"
-        "Explanation text here.\n"
-        "* base_dn: ...\n"
-        "* search_filter: ...\n"
-        "* search_attributes: ...\n"
-        "* limit: ...\n"
-        "* excluded_attributes: ...\n"
-        "Do not include any additional text outside of this format."
+        "Always provide your response in JSON format with the following fields:\n"
+        "- base_dn\n"
+        "- search_filter\n"
+        "- search_attributes\n"
+        "- limit\n"
+        "- excluded_attributes\n"
+        "- explanation\n"
+        "The 'explanation' field should contain a brief explanation of the query parameters you have generated.\n"
+        "Do not include any additional text outside of the JSON format."
     )
 
     # Modify the system prompt if create_title is provided
     if create_title is not None:
         system_prompt += (
-            "\nEnsure to include a 'title' field in your response. "
+            "\nAdditionally, include a 'title' field in the JSON response. "
             "The 'title' should be a concise summary of the user's request."
         )
 
@@ -159,24 +161,70 @@ def active_directory_query_assistant(*, user_prompt, context=None, create_title=
         else:
             raise Exception(f"Function '{function_name}' is not recognized.")
 
-    # Now, get the assistant's content
+    # Now, get the assistant's content and parse it as per the response format
     content = assistant_message.get("content", "")
 
-    # Since the assistant's response is in the specified format, we can directly use it
-    # Replace any {NT_TIME} placeholders with the actual nt_time value if present
-    if nt_time is not None:
-        content = content.replace("{NT_TIME}", str(nt_time))
+    # Try to parse the content as JSON
+    try:
+        arguments = json.loads(content)
+    except json.JSONDecodeError:
+        raise Exception("The assistant's response is not valid JSON.")
 
-    # Append the assistant's reply to messages and context
+    # Ensure all required fields are present, including 'explanation'
+    required_fields = ["base_dn", "search_filter", "search_attributes", "limit", "excluded_attributes", "explanation"]
+    if create_title is not None:
+        required_fields.append("title")
+    for field in required_fields:
+        if field not in arguments:
+            raise Exception(f"Field '{field}' is missing from the assistant's response.")
+
+    # If nt_time is available, replace any placeholders in search_filter
+    search_filter = arguments["search_filter"]
+    if "{NT_TIME}" in search_filter and nt_time is not None:
+        # Replace any {NT_TIME} placeholders with the actual nt_time value
+        search_filter = search_filter.replace("{NT_TIME}", str(nt_time))
+        arguments["search_filter"] = search_filter
+
+    # Now execute the Active Directory query
+    query_result = execute_active_directory_query(
+        base_dn=arguments["base_dn"],
+        search_filter=arguments["search_filter"],
+        search_attributes=[attr.strip() for attr in arguments["search_attributes"].split(",")],
+        limit=arguments.get("limit"),
+        excluded_attributes=[attr.strip() for attr in arguments["excluded_attributes"].split(",")]
+    )
+
+    # Convert datetime objects to strings in the query_result
+    def convert_datetimes(obj):
+        if isinstance(obj, dict):
+            return {k: convert_datetimes(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [convert_datetimes(item) for item in obj]
+        elif isinstance(obj, (datetime, date)):
+            return obj.isoformat()
+        else:
+            return obj
+
+    arguments["active_directory_query_result"] = convert_datetimes(query_result)
+    arguments["number_of_returned_objects"] = len(arguments["active_directory_query_result"])
+
+    # Generate the XLSX file and include its URL
+    output_file_name = generate_generic_xlsx_document(query_result)
+    arguments["xlsx_file_name"] = output_file_name
+    arguments["xlsx_file_url"] = settings.MEDIA_URL + output_file_name
+
+    # Create the assistant's reply message with the data under 'content'
     assistant_reply = {
         "role": "assistant",
-        "content": content
+        "content": json.dumps(arguments)
     }
+
+    # Append the assistant's reply to messages and context
     messages.append(assistant_reply)
     context.append(assistant_reply)
 
-    # Return the assistant's content and updated context
-    return content, context
+    # Return the arguments dictionary and updated context
+    return arguments, context
 
 
 

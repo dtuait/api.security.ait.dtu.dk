@@ -78,7 +78,7 @@ class AjaxView(BaseView):
 
         try:
             # Call the assistant function with context
-            assistant_content, updated_context = active_directory_query_assistant(
+            response_data, updated_context = active_directory_query_assistant(
                 user_prompt=message_content,
                 context=context[:-1],  # Exclude the latest user message (it's already included in user_prompt)
                 create_title=create_title
@@ -90,19 +90,15 @@ class AjaxView(BaseView):
         assistant_message = ChatMessage.objects.create(
             thread=thread,
             role='assistant',
-            content=assistant_content
+            content=json.dumps(response_data)  # Store JSON as string
         )
 
         # Save the title if it's provided and the thread doesn't have one yet
-        if create_title:
-            # Extract the title from the assistant's response
-            import re
-            title_match = re.search(r'"title":\s*"([^"]+)"', assistant_content)
-            if title_match:
-                thread.title = title_match.group(1)
-                thread.save()
+        if create_title and 'title' in response_data:
+            thread.title = response_data['title']
+            thread.save()
 
-        return JsonResponse({'assistant_response': assistant_content})
+        return JsonResponse({'assistant_response': response_data})
 
     def get_chat_messages(self, request):
         user = request.user
