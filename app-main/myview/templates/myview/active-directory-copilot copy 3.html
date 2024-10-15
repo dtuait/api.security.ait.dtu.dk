@@ -16,10 +16,7 @@
             <h2>Active Directory Copilot</h2>
             <button id="new-chat-btn">+ New Chat</button>
         </div>
-        <!-- Chat Threads -->
-        <div class="chat-list" id="chat-list">
-            <!-- Chat threads will be populated here -->
-        </div>
+        <!-- Chat history can be implemented here -->
     </div>
 
     <!-- Main Chat Window -->
@@ -30,10 +27,11 @@
 
         <!-- Input Area -->
         <div class="chat-input">
-            <textarea id="user-input" placeholder="Type your query here..." rows="2"></textarea>
+            <textarea id="user-input" placeholder="Type your query here..." rows="2">Giv mig en liste med alle de brugere som ikke har skiftet password siden 2020. som starter med adm-* Vis kun brugere der ikke er disabled. Tilføj feltet ou path. Se bort fra brugere som har pwdLastSet 1601-01-01T00:00:00+00:00</textarea>
             <button id="send-btn">Send</button>
         </div>
     </div>
 </div>
 <script src="{% static 'myview/js/active-directory-copilot.js' %}" defer></script>
+<!-- <script src="{% static 'myview/js/active_directory_copilot.js' %}"></script> -->
 {% endblock %}

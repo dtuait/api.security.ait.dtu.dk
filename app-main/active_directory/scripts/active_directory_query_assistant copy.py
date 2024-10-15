@@ -1,4 +1,4 @@
-def active_directory_query_assistant(*, user_prompt, context=None):
+def active_directory_query_assistant(*, user_prompt):
     import os
     import openai
     import json
@@ -46,25 +46,16 @@ def active_directory_query_assistant(*, user_prompt, context=None):
         "Do not include any additional text outside of the JSON format."
     )
 
-    # Initialize context if it's None
-    if context is None:
-        context = []
-
-    # Start constructing messages
     messages = [
         {
             "role": "system",
             "content": system_prompt
+        },
+        {
+            "role": "user",
+            "content": user_prompt
         }
-    ] + context  # Append existing context
-
-    # Append the current user prompt to messages and context
-    user_message = {
-        "role": "user",
-        "content": user_prompt
-    }
-    messages.append(user_message)
-    context.append(user_message)
+    ]
 
     # Define the function
     functions = [
@@ -126,17 +117,13 @@ def active_directory_query_assistant(*, user_prompt, context=None):
             nt_time_result = get_nt_time_from_date(**arguments)
             nt_time = nt_time_result
 
-            # Append the assistant's message and function response to messages and context
+            # Append the assistant's message and function response to messages
             messages.append(assistant_message)
-            context.append(assistant_message)
-
-            function_response_message = {
+            messages.append({
                 "role": "function",
                 "name": function_name,
                 "content": json.dumps({"nt_time": nt_time_result})
-            }
-            messages.append(function_response_message)
-            context.append(function_response_message)
+            })
 
             # Make another API call after providing the function result
             response = openai.ChatCompletion.create(
@@ -204,18 +191,10 @@ def active_directory_query_assistant(*, user_prompt, context=None):
     arguments["xlsx_file_name"] = output_file_name
     arguments["xlsx_file_url"] = settings.MEDIA_URL + output_file_name
 
-    # Create the assistant's reply message with the data under 'content'
-    assistant_reply = {
-        "role": "assistant",
-        "content": json.dumps(arguments)
-    }
+    # Return the arguments dictionary
+    return arguments
 
-    # Append the assistant's reply to messages and context
-    messages.append(assistant_reply)
-    context.append(assistant_reply)
 
-    # Return the arguments dictionary and updated context
-    return arguments, context
 
 
 
@@ -275,19 +254,7 @@ def generate_generic_xlsx_document(data):
 
 def run():
     user_prompt = "Giv mig en liste med alle de brugere som ikke har skiftet password siden 2020. som starter med adm-* Vis kun brugere der ikke er disabled. Tilføj feltet ou path. Se bort fra brugere som har pwdLastSet 1601-01-01T00:00:00+00:00"
-
-    context = [
-        {
-            "role": "user",
-            "content": "Find all users who haven't changed their password since 2010."
-        },
-        {
-            "role": "assistant",
-            "content": "Here is the list of users who haven't changed their password since 2010."
-        }
-    ]
-
-    result = active_directory_query_assistant(user_prompt=user_prompt, context=context)
+    result = active_directory_query_assistant(user_prompt=user_prompt)
     print(result)
 
 if __name__ == "__main__":

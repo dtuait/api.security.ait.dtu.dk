@@ -1,12 +1,13 @@
 console.log('Active Directory Copilot JS loaded');
 
 class App {
-    constructor(uiBinder = UIBinder.getInstance(), baseAppUtils = BaseAppUtils.getInstance(), baseUIBinder = BaseUIBinder.getInstance()) {
+    constructor(uiBinder = UIBinder.getInstance(), baseAppUtils = BaseAppUtils.getInstance()) {
         if (!App.instance) {
             this.uiBinder = uiBinder;
             this.baseAppUtils = baseAppUtils;
-            this.baseUIBinder = baseUIBinder;
+            this.currentThreadId = null;
             this._setBindings();
+            this.loadChatThreads();
             App.instance = this;
         }
         return App.instance;
@@ -26,12 +27,78 @@ class App {
                 this.handleUserInput();
             }
         });
+
+        // New Chat button
+        this.uiBinder.newChatBtn.addEventListener('click', (event) => {
+            event.preventDefault();
+            this.createNewChat();
+        });
+
+        // Chat thread click
+        this.uiBinder.chatList.addEventListener('click', (event) => {
+            const threadItem = event.target.closest('.chat-thread-item');
+            if (threadItem) {
+                const threadId = threadItem.dataset.threadId;
+                this.loadChatMessages(threadId);
+            }
+        });
+    }
+
+    async createNewChat() {
+        try {
+            const response = await this.baseAppUtils.restAjax('POST', '/myview/ajax/', {
+                'action': 'create_chat_thread'
+            });
+            this.currentThreadId = response.thread_id;
+            this.uiBinder.clearChatMessages();
+            this.loadChatThreads();
+        } catch (error) {
+            console.error('Error creating new chat:', error);
+        }
+    }
+
+    async loadChatThreads() {
+        try {
+            const response = await this.baseAppUtils.restAjax('POST', '/myview/ajax/', {
+                'action': 'get_chat_threads'
+            });
+            this.uiBinder.populateChatThreads(response.threads);
+            if (response.threads.length > 0 && !this.currentThreadId) {
+                this.loadChatMessages(response.threads[0].id);
+            }
+        } catch (error) {
+            console.error('Error loading chat threads:', error);
+        }
+    }
+
+    async loadChatMessages(threadId) {
+        this.currentThreadId = threadId;
+        try {
+            const response = await this.baseAppUtils.restAjax('POST', '/myview/ajax/', {
+                'action': 'get_chat_messages',
+                'thread_id': threadId
+            });
+            this.uiBinder.clearChatMessages();
+            response.messages.forEach(message => {
+                if (message.role === 'user') {
+                    this.uiBinder.appendUserMessage(message.content, message.timestamp);
+                } else if (message.role === 'assistant') {
+                    this.uiBinder.appendAssistantMessage(message.content, message.timestamp);
+                }
+            });
+        } catch (error) {
+            console.error('Error loading chat messages:', error);
+        }
     }
 
     async handleUserInput() {
         const userInput = this.uiBinder.userInput.value.trim();
         if (userInput === '') {
             return;
+        }
+
+        if (!this.currentThreadId) {
+            await this.createNewChat();
         }
 
         // Append user's message to chat
@@ -43,55 +110,30 @@ class App {
         // Show loading indicator
         this.uiBinder.showLoading();
 
-        // Prepare data to send to server
-        let data = {
-            'action': 'copilot-active-directory-query',
-            'content': JSON.stringify({ 'user': userInput })
-        };
-
-        let response;
-        let errorOccurred = false;
         try {
-            response = await this.baseAppUtils.restAjax('POST', '/myview/ajax/', data);
-        } catch (error) {
-            console.log('Error:', error);
-            this.uiBinder.appendAssistantMessage(`An error occurred: ${error}`);
-            errorOccurred = true;
-        } finally {
+            const response = await this.baseAppUtils.restAjax('POST', '/myview/ajax/', {
+                'action': 'send_message',
+                'thread_id': this.currentThreadId,
+                'message': userInput
+            });
+
             // Hide loading indicator
             this.uiBinder.hideLoading();
-        }
 
-        if (!errorOccurred) {
-            // Check if response contains error
-            if (response.error) {
-                this.uiBinder.appendAssistantMessage(`Error: ${response.error}`);
-                return;
-            }
+            // Display assistant's response
+            const assistantResponse = response.assistant_response;
+            this.uiBinder.appendAssistantMessage(JSON.stringify(assistantResponse, null, 2));
 
-            // Extract explanation and other data
-            const explanation = response.explanation;
-            if (explanation) {
-                this.uiBinder.appendAssistantMessage(explanation);
-            }
-
-            // Display the number of returned objects
-            const numObjects = response.number_of_returned_objects;
-            if (numObjects !== undefined) {
-                this.uiBinder.appendAssistantMessage(`Number of returned objects: ${numObjects}`);
-            }
-
-            // Provide link to download XLSX file
-            const xlsxUrl = response.xlsx_file_url;
-            if (xlsxUrl) {
-                this.uiBinder.appendAssistantMessage(`You can download the results <a href="${xlsxUrl}" target="_blank">here</a>.`);
-            }
+        } catch (error) {
+            console.error('Error sending message:', error);
+            this.uiBinder.hideLoading();
+            this.uiBinder.appendAssistantMessage(`An error occurred: ${error}`);
         }
     }
 
-    static getInstance(uiBinder = UIBinder.getInstance(), baseAppUtils = BaseAppUtils.getInstance(), baseUIBinder = BaseUIBinder.getInstance()) {
+    static getInstance(uiBinder = UIBinder.getInstance(), baseAppUtils = BaseAppUtils.getInstance()) {
         if (!App.instance) {
-            App.instance = new App(uiBinder, baseAppUtils, baseUIBinder);
+            App.instance = new App(uiBinder, baseAppUtils);
         }
         return App.instance;
     }
@@ -103,6 +145,8 @@ class UIBinder {
             this.sendBtn = document.getElementById('send-btn');
             this.userInput = document.getElementById('user-input');
             this.chatMessages = document.getElementById('chat-messages');
+            this.chatList = document.getElementById('chat-list');
+            this.newChatBtn = document.getElementById('new-chat-btn');
             this.loadingIndicator = this.createLoadingIndicator();
             UIBinder.instance = this;
         }
@@ -116,7 +160,7 @@ class UIBinder {
         return loadingDiv;
     }
 
-    appendUserMessage(message) {
+    appendUserMessage(message, timestamp = null) {
         const messageElement = document.createElement('div');
         messageElement.classList.add('message', 'user-message');
 
@@ -129,13 +173,19 @@ class UIBinder {
         this.scrollToBottom();
     }
 
-    appendAssistantMessage(message) {
+    appendAssistantMessage(message, timestamp = null) {
         const messageElement = document.createElement('div');
         messageElement.classList.add('message', 'assistant-message');
 
         const messageContent = document.createElement('div');
         messageContent.classList.add('message-content');
-        messageContent.innerHTML = message; // Ensure server sanitizes HTML to prevent XSS
+
+        try {
+            const data = JSON.parse(message);
+            messageContent.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+        } catch (e) {
+            messageContent.innerHTML = message;
+        }
 
         messageElement.appendChild(messageContent);
         this.chatMessages.appendChild(messageElement);
@@ -155,6 +205,21 @@ class UIBinder {
 
     scrollToBottom() {
         this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
+    }
+
+    clearChatMessages() {
+        this.chatMessages.innerHTML = '';
+    }
+
+    populateChatThreads(threads) {
+        this.chatList.innerHTML = '';
+        threads.forEach(thread => {
+            const threadItem = document.createElement('div');
+            threadItem.classList.add('chat-thread-item');
+            threadItem.dataset.threadId = thread.id;
+            threadItem.textContent = thread.title;
+            this.chatList.appendChild(threadItem);
+        });
     }
 
     escapeHtml(text) {

@@ -46,25 +46,28 @@ def active_directory_query_assistant(*, user_prompt, context=None):
         "Do not include any additional text outside of the JSON format."
     )
 
-    # Initialize context if it's None
-    if context is None:
-        context = []
-
     # Start constructing messages
     messages = [
         {
             "role": "system",
             "content": system_prompt
         }
-    ] + context  # Append existing context
+    ]
 
-    # Append the current user prompt to messages and context
-    user_message = {
+    # If context is provided, add it to the messages
+    if context:
+        # Ensure context is a list of message dicts with 'role' and 'content'
+        for entry in context:
+            if 'role' in entry and 'content' in entry:
+                messages.append(entry)
+            else:
+                raise ValueError("Each context entry must have 'role' and 'content' keys.")
+
+    # Add the current user prompt
+    messages.append({
         "role": "user",
         "content": user_prompt
-    }
-    messages.append(user_message)
-    context.append(user_message)
+    })
 
     # Define the function
     functions = [
@@ -126,17 +129,13 @@ def active_directory_query_assistant(*, user_prompt, context=None):
             nt_time_result = get_nt_time_from_date(**arguments)
             nt_time = nt_time_result
 
-            # Append the assistant's message and function response to messages and context
+            # Append the assistant's message and function response to messages
             messages.append(assistant_message)
-            context.append(assistant_message)
-
-            function_response_message = {
+            messages.append({
                 "role": "function",
                 "name": function_name,
                 "content": json.dumps({"nt_time": nt_time_result})
-            }
-            messages.append(function_response_message)
-            context.append(function_response_message)
+            })
 
             # Make another API call after providing the function result
             response = openai.ChatCompletion.create(
@@ -204,18 +203,8 @@ def active_directory_query_assistant(*, user_prompt, context=None):
     arguments["xlsx_file_name"] = output_file_name
     arguments["xlsx_file_url"] = settings.MEDIA_URL + output_file_name
 
-    # Create the assistant's reply message with the data under 'content'
-    assistant_reply = {
-        "role": "assistant",
-        "content": json.dumps(arguments)
-    }
-
-    # Append the assistant's reply to messages and context
-    messages.append(assistant_reply)
-    context.append(assistant_reply)
-
-    # Return the arguments dictionary and updated context
-    return arguments, context
+    # Return the arguments dictionary
+    return arguments
 
 
 

@@ -355,6 +355,19 @@
             ],
             "django": true,
             "justMyCode": true
+        },
+        
+        
+        {
+            "name": "Python: makemigrations",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/app-main/manage.py",
+            "args": [
+                "makemigrations"
+            ],
+            "django": true,
+            "justMyCode": true
         }   
         // ,{
         //     "name": "Python: cronjob_active_directory_update_ous",

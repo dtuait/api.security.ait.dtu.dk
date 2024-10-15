@@ -8,108 +8,21 @@ from ldap3 import ALL_ATTRIBUTES
 import json
 import logging
 
+
 # Get the logger for your app
 logger = logging.getLogger(__name__)
 
-from django.views.decorators.csrf import csrf_exempt
-from django.utils.decorators import method_decorator
-from django.contrib.auth.decorators import login_required
 
 class AjaxView(BaseView):
 
-    # Ensure CSRF exemption and login required
-    @method_decorator(csrf_exempt)
-    @method_decorator(login_required)
-    def dispatch(self, request, *args, **kwargs):
-        return super(AjaxView, self).dispatch(request, *args, **kwargs)
+
 
     def create_custom_token(self, request):
         user = User.objects.get(username=request.user.username)
-        # Generate random string of length 255
-        token = user.generate_new_custom_token()
+        # Generate random string of length 255        
+        token = user.generate_new_custom_token()        
         return JsonResponse({'custom_token': token.key})
 
-    # Chat-related methods
-    def create_chat_thread(self, request):
-        user = request.user
-        from .models import ChatThread
-        thread = ChatThread.objects.create(user=user)
-        return JsonResponse({'thread_id': thread.id, 'title': thread.title})
-
-    def get_chat_threads(self, request):
-        user = request.user
-        from .models import ChatThread
-        threads = ChatThread.objects.filter(user=user).order_by('-created_at')
-        thread_list = [{'id': t.id, 'title': t.title} for t in threads]
-        return JsonResponse({'threads': thread_list})
-
-    def send_message(self, request):
-        user = request.user
-        thread_id = request.POST.get('thread_id')
-        message_content = request.POST.get('message')
-
-        if not thread_id or not message_content:
-            return JsonResponse({'error': 'Thread ID and message content are required'}, status=400)
-
-        try:
-            from .models import ChatThread, ChatMessage
-            thread = ChatThread.objects.get(id=thread_id, user=user)
-        except ChatThread.DoesNotExist:
-            return JsonResponse({'error': 'Chat thread not found'}, status=404)
-
-        # Save user's message
-        user_message = ChatMessage.objects.create(
-            thread=thread,
-            role='user',
-            content=message_content
-        )
-
-        # Retrieve previous messages to build context
-        messages = ChatMessage.objects.filter(thread=thread).order_by('timestamp')
-        context = [{'role': msg.role, 'content': msg.content} for msg in messages]
-
-        # Call the assistant function
-        from active_directory.services import active_directory_query_assistant
-
-        try:
-            # Call the assistant function with context
-            response_data, updated_context = active_directory_query_assistant(
-                user_prompt=message_content,
-                context=context[:-1]  # Exclude the latest user message (it's already included in user_prompt)
-            )
-        except Exception as e:
-            return JsonResponse({'error': str(e)}, status=500)
-
-        # Save assistant's response
-        assistant_message = ChatMessage.objects.create(
-            thread=thread,
-            role='assistant',
-            content=json.dumps(response_data)  # Store JSON as string
-        )
-
-        return JsonResponse({'assistant_response': response_data})
-
-    def get_chat_messages(self, request):
-        user = request.user
-        thread_id = request.POST.get('thread_id')
-
-        if not thread_id:
-            return JsonResponse({'error': 'Thread ID is required'}, status=400)
-
-        try:
-            from .models import ChatThread, ChatMessage
-            thread = ChatThread.objects.get(id=thread_id, user=user)
-        except ChatThread.DoesNotExist:
-            return JsonResponse({'error': 'Chat thread not found'}, status=404)
-
-        messages = ChatMessage.objects.filter(thread=thread).order_by('timestamp')
-        message_list = [{
-            'role': msg.role,
-            'content': msg.content,
-            'timestamp': msg.timestamp.isoformat()
-        } for msg in messages]
-
-        return JsonResponse({'messages': message_list})
 
     def post(self, request, *args, **kwargs):
         logger.info("Received POST request at /myview/ajax/")
@@ -136,36 +49,59 @@ class AjaxView(BaseView):
             logger.error("No action specified in the POST data.")
             return JsonResponse({'error': 'No action provided'}, status=400)
 
-        try:
+
+
+
+
+
+
+
+
+
+        try:    
             print("action: ", action)
 
-            if action == 'create_chat_thread':
-                return self.create_chat_thread(request)
-            elif action == 'get_chat_threads':
-                return self.get_chat_threads(request)
-            elif action == 'send_message':
-                return self.send_message(request)
-            elif action == 'get_chat_messages':
-                return self.get_chat_messages(request)
 
-            # Existing actions
-            elif action == 'clear_my_ad_group_cached_data':
+            if action == 'clear_my_ad_group_cached_data':
                 from django.core.cache import cache
                 try:
+                    
                     cache.clear()
                     return JsonResponse({'success': 'Cache cleared'})
                 except Exception as e:
                     return JsonResponse({'error': str(e)})
 
-            elif action == 'create_custom_token':
-                if request.user.is_authenticated:
-                    return self.create_custom_token(request)
-                
 
             elif action == 'create_custom_token':
                 if request.user.is_authenticated:
                     return self.create_custom_token(request)
                 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
             elif action == 'copilot-chatgpt-basic':
                 if request.user.is_authenticated:
@@ -181,6 +117,39 @@ class AjaxView(BaseView):
                     )
 
                     return JsonResponse({'message': message.content})
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
             elif action == 'active_directory_query':
@@ -201,6 +170,45 @@ class AjaxView(BaseView):
                 return JsonResponse(result, safe=False)
             
 
+            
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             elif action == 'ajax_change_form_update_form_ad_groups':
                 # Extract ad_groups = [] from the POST request
                 ad_groups = request.POST.getlist('ad_groups')
@@ -217,6 +225,45 @@ class AjaxView(BaseView):
 
 
                 return JsonResponse({'success': 'Form updated'})
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
             elif action == 'ajax__search_form__add_new_organizational_unit':
                 
@@ -257,6 +304,48 @@ class AjaxView(BaseView):
                         return JsonResponse({'error': str(e)}, status=500)
                     else:
                         return JsonResponse({'error': 'Could not find organizational unit'}, status=500)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
             elif action == 'ajax__search_form__add_new_ad_group_associations':      
@@ -303,6 +392,49 @@ class AjaxView(BaseView):
                         return JsonResponse({'error': 'Could not find group'}, status=500)
 
 
+        
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             elif action == 'ajax_change_form_update_form_ad_ous':
                 # Extract ad_ous from the POST request
                 ad_ous = request.POST.getlist('ad_ous')
@@ -318,6 +450,10 @@ class AjaxView(BaseView):
                 
             else:
                 return JsonResponse({'error': 'Invalid AJAX action'}, status=400)
+
+
+
+
 
 
         except Exception as e:
