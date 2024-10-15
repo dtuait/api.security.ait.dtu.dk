@@ -62,7 +62,7 @@ services:
       ports:
         - "5010:80"
       environment:
-        PMA_HOST: xx-api-security-ait-dtu-dk-mariadb-service # beta-api-security-ait-dtu-dk-mariadb-service
+        PMA_HOST: xx-api-security-ait-dtu-dk-mariadb-service
         MYSQL_ROOT_PASSWORD: ${MYSQL_DATABASE}
         MYSQL_USER: ${MYSQL_USER}
         MYSQL_PASSWORD: ${MYSQL_PASSWORD}

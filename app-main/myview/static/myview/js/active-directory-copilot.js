@@ -244,15 +244,15 @@ class UIBinder {
         const messageContent = document.createElement('div');
         messageContent.classList.add('message-content');
     
-        // Format the message content
-        messageContent.innerHTML = this.formatMessageContent(message);
+        // Format the message content based on the JSON data
+        messageContent.innerHTML = this.formatAssistantMessageContent(message);
     
         // Create the "Run Query" button
         const runQueryBtn = document.createElement('button');
         runQueryBtn.textContent = 'Run Query';
         runQueryBtn.classList.add('run-query-btn');
         runQueryBtn.addEventListener('click', () => {
-            // For now, just console.log the response
+            // For now, just console.log the query parameters
             console.log('Running query with parameters:', message);
         });
     
@@ -264,6 +264,24 @@ class UIBinder {
         this.scrollToBottom();
     }
     
+    formatAssistantMessageContent(data) {
+        // Data is expected to be a JSON object
+        let content = '';
+    
+        if (data.title) {
+            content += `<strong>Title:</strong> ${this.escapeHtml(data.title)}<br><br>`;
+        }
+    
+        content += `${this.escapeHtml(data.explanation)}<br><br>`;
+        content += `<strong>base_dn:</strong> <code>${this.escapeHtml(data.base_dn)}</code><br>`;
+        content += `<strong>search_filter:</strong> <code>${this.escapeHtml(data.search_filter)}</code><br>`;
+        content += `<strong>search_attributes:</strong> <code>${this.escapeHtml(data.search_attributes)}</code><br>`;
+        content += `<strong>limit:</strong> <code>${this.escapeHtml(data.limit)}</code><br>`;
+        content += `<strong>excluded_attributes:</strong> <code>${this.escapeHtml(data.excluded_attributes)}</code><br>`;
+    
+        return content;
+    }
+
     // Utility method to format the message content
     formatMessageContent(content) {
         // Simple replacement for **bold** and `code`

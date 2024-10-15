@@ -34,20 +34,20 @@ def active_directory_query_assistant(*, user_prompt, context=None, create_title=
     system_prompt = (
         "You are an assistant that provides Active Directory query parameters based on user requests.\n\n"
         f"{active_directory_description}\n\n"
-        "Always provide your response in the following format:\n"
-        "Explanation text here.\n"
-        "* base_dn: ...\n"
-        "* search_filter: ...\n"
-        "* search_attributes: ...\n"
-        "* limit: ...\n"
-        "* excluded_attributes: ...\n"
-        "Do not include any additional text outside of this format."
+        "Always provide your response in JSON format with the following fields:\n"
+        "- base_dn\n"
+        "- search_filter\n"
+        "- search_attributes\n"
+        "- limit\n"
+        "- excluded_attributes\n"
+        "- explanation\n"
+        "Do not include any additional text outside of the JSON format."
     )
 
     # Modify the system prompt if create_title is provided
     if create_title is not None:
         system_prompt += (
-            "\nEnsure to include a 'title' field in your response. "
+            "\nEnsure to include a 'title' field in your JSON response. "
             "The 'title' should be a concise summary of the user's request."
         )
 
@@ -159,24 +159,40 @@ def active_directory_query_assistant(*, user_prompt, context=None, create_title=
         else:
             raise Exception(f"Function '{function_name}' is not recognized.")
 
-    # Now, get the assistant's content
+    # Now, get the assistant's content and parse it as per the response format
     content = assistant_message.get("content", "")
 
-    # Since the assistant's response is in the specified format, we can directly use it
-    # Replace any {NT_TIME} placeholders with the actual nt_time value if present
-    if nt_time is not None:
-        content = content.replace("{NT_TIME}", str(nt_time))
+    # Try to parse the content as JSON
+    try:
+        arguments = json.loads(content)
+    except json.JSONDecodeError:
+        raise Exception("The assistant's response is not valid JSON.")
+
+    # Ensure all required fields are present
+    required_fields = ["base_dn", "search_filter", "search_attributes", "limit", "excluded_attributes", "explanation"]
+    if create_title is not None:
+        required_fields.append("title")
+    for field in required_fields:
+        if field not in arguments:
+            raise Exception(f"Field '{field}' is missing from the assistant's response.")
+
+    # If nt_time is available, replace any placeholders in search_filter
+    search_filter = arguments["search_filter"]
+    if "{NT_TIME}" in search_filter and nt_time is not None:
+        # Replace any {NT_TIME} placeholders with the actual nt_time value
+        search_filter = search_filter.replace("{NT_TIME}", str(nt_time))
+        arguments["search_filter"] = search_filter
 
     # Append the assistant's reply to messages and context
     assistant_reply = {
         "role": "assistant",
-        "content": content
+        "content": json.dumps(arguments)
     }
     messages.append(assistant_reply)
     context.append(assistant_reply)
 
-    # Return the assistant's content and updated context
-    return content, context
+    # Return the arguments dictionary and updated context
+    return arguments, context
 
 
 

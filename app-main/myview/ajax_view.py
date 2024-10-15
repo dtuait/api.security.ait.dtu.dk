@@ -103,8 +103,8 @@ class AjaxView(BaseView):
                 thread.save()
 
         return JsonResponse({'assistant_response': assistant_content})
-
-
+    
+    
     def get_chat_messages(self, request):
         user = request.user
         thread_id = request.POST.get('thread_id')
