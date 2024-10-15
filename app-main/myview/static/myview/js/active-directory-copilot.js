@@ -124,21 +124,21 @@ class App {
                 'thread_id': this.currentThreadId,
                 'message': userInput
             });
-
+    
             // Hide loading indicator
             this.uiBinder.hideLoading();
-
+    
             // Display assistant's response
             const assistantResponse = response.assistant_response;
-            this.uiBinder.appendAssistantMessage(JSON.stringify(assistantResponse, null, 2));
-
+            this.uiBinder.appendAssistantMessage(assistantResponse);
+    
             // Reload chat threads to update titles
             this.loadChatThreads();
-
+    
         } catch (error) {
             console.error('Error sending message:', error);
             this.uiBinder.hideLoading();
-            this.uiBinder.appendAssistantMessage(`An error occurred: ${error}`);
+            this.uiBinder.appendAssistantMessage({ error: error.message });
         }
     }
 

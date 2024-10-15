@@ -84,27 +84,24 @@ class AjaxView(BaseView):
                 create_title=create_title
             )
         except Exception as e:
+            logger.error(f"Exception in send_message: {e}", exc_info=True)
             return JsonResponse({'error': str(e)}, status=500)
 
-        # Save assistant's response
+        # Save assistant's response as JSON string
         assistant_message = ChatMessage.objects.create(
             thread=thread,
             role='assistant',
-            content=assistant_content
+            content=json.dumps(assistant_content)  # Store JSON as string
         )
 
         # Save the title if it's provided and the thread doesn't have one yet
-        if create_title:
-            # Extract the title from the assistant's response
-            import re
-            title_match = re.search(r'\*\*Title:\*\*\s*(.+)', assistant_content)
-            if title_match:
-                thread.title = title_match.group(1).strip()
-                thread.save()
+        if create_title and 'title' in assistant_content:
+            thread.title = assistant_content['title']
+            thread.save()
 
         return JsonResponse({'assistant_response': assistant_content})
-    
-    
+        
+
     def get_chat_messages(self, request):
         user = request.user
         thread_id = request.POST.get('thread_id')

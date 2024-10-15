@@ -41,6 +41,7 @@ def active_directory_query_assistant(*, user_prompt, context=None, create_title=
         "- limit\n"
         "- excluded_attributes\n"
         "- explanation\n"
+        "Optionally, you can include a 'title' field for a concise summary of the user's request.\n"
         "Do not include any additional text outside of the JSON format."
     )
 
