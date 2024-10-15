@@ -11,44 +11,32 @@ from rest_framework.decorators import action
 from .services import execute_active_directory_query, execute_active_directory_query_assistant
 import datetime
 import base64
-from rest_framework.authentication import TokenAuthentication
 
 
-class ActiveDirectoryQueryAssistantViewSet(APIAuthBaseViewSet):
-    authentication_classes = [TokenAuthentication]
+
+class ActiveDirectoryQueryAssistantViewSet(viewsets.ViewSet):
+    authentication_classes = [TokenAuthentication]  # Require token authentication for this view
+    permission_classes = [IsAuthenticated]  # Require authenticated user for this view
 
     header_parameter = openapi.Parameter(
         'Authorization',  # name of the header
         in_=openapi.IN_HEADER,  # where the parameter is located
-        description="Type: Token <token>",
+        description="Type: Token \<token\>",
         type=openapi.TYPE_STRING,  # type of the parameter
         required=True,  # if the header is required or not
         default='<token>'  # default value
     )
 
-    user_prompt_body = openapi.Schema(
-        type=openapi.TYPE_OBJECT,
-        properties={
-            'user_prompt': openapi.Schema(
-                type=openapi.TYPE_STRING,
-                description='The user prompt for generating Active Directory query parameters',
-                example="Retrieve all disabled user accounts in 'DTUBasen' and include their account names and statuses."
-            )
-        },
-        required=['user_prompt']
-    )
-
     @swagger_auto_schema(
         manual_parameters=[header_parameter],
-        request_body=user_prompt_body,
         operation_description="""
         Active Directory Query Assistant
         
         This assistant helps generate Active Directory query parameters based on user requests. It provides a structured JSON response with the necessary fields for querying the Active Directory. The 'explanation' field should contain a brief description of the query parameters generated.
 
         Curl example: \n
-        \t curl --location --request POST 'http://api.security.ait.dtu.dk/active-directory/v1.0/query-assistant' \
-        \t --header 'Authorization: Token <token>' \
+        \t curl --location --request POST 'http://api.security.ait.dtu.dk/active-directory/v1-0-0/query-assistant/' \
+        \t --header 'Authorization: Token \<token\>' \
         \t --header 'Content-Type: application/json' \
         \t --data-raw '{
         \t     "user_prompt": "Retrieve all disabled user accounts in 'DTUBasen' and include their account names and statuses."
@@ -56,17 +44,20 @@ class ActiveDirectoryQueryAssistantViewSet(APIAuthBaseViewSet):
         
         """,
         responses={
-            200: 'Success',
-            400: 'Error: Invalid request.',
-            404: 'Error: No data found.',
+            # 200: ComputerInfoSerializer(),
+            400: 'Error: Computer name must be provided.',
+            404: 'Error: No computer found with given name',
             500: 'Error: Internal server error'
         },
+
     )
     def create(self, request):
         user_prompt = request.data.get('user_prompt')
 
-        response = execute_active_directory_query_assistant(user_prompt=user_prompt)
+        response = execute_active_directory_query_assistant(user_prompt)
         return Response(response, status=status.HTTP_200_OK)
+
+
 
 
 

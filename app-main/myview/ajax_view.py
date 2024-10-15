@@ -170,10 +170,10 @@ class AjaxView(BaseView):
                     user_input = json.loads(content)
                     user_query = user_input.get('user')
 
-                from chatgpt_app.scripts.active_directory_assistant import run_assistant_query
+                    from chatgpt_app.scripts.active_directory_assistant import run_assistant_query
 
-                try:
-                    query_result = run_assistant_query(user_query)
+                    try:
+                        query_result = run_assistant_query(user_query)
 
                         # Return the result
                         return JsonResponse(query_result, safe=False)

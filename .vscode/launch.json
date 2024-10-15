@@ -146,13 +146,15 @@
         // }
 
         ,{
-            "name": "chatgpt_app.scripts.active_directory_assistant",
+            "name": "active_directory.scripts.active_directory_query_assistant",
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/app-main/manage.py",
             "args": [
                 "runscript",
-                "chatgpt_app.scripts.active_directory_assistant"
+                "active_directory.scripts.active_directory_query_assistant",
+                "--settings",
+                "app.localhost_debug_true_settings"
             ],
             "django": true,
             "justMyCode": true
