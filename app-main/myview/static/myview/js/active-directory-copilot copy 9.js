@@ -244,20 +244,8 @@ class UIBinder {
         const messageContent = document.createElement('div');
         messageContent.classList.add('message-content');
     
-        // Format the message content
+        // Directly set the content (assuming it's safe)
         messageContent.innerHTML = this.formatMessageContent(message);
-    
-        // Create the "Run Query" button
-        const runQueryBtn = document.createElement('button');
-        runQueryBtn.textContent = 'Run Query';
-        runQueryBtn.classList.add('run-query-btn');
-        runQueryBtn.addEventListener('click', () => {
-            // For now, just console.log the response
-            console.log('Running query with parameters:', message);
-        });
-    
-        // Append the button to the message content
-        messageContent.appendChild(runQueryBtn);
     
         messageElement.appendChild(messageContent);
         this.chatMessages.appendChild(messageElement);
@@ -266,15 +254,9 @@ class UIBinder {
     
     // Utility method to format the message content
     formatMessageContent(content) {
-        // Simple replacement for **bold** and `code`
-        let formattedContent = content
-            .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>') // Bold
-            .replace(/`([^`]+)`/g, '<code>$1</code>'); // Inline code
-    
-        // Replace new lines with <br>
-        formattedContent = formattedContent.replace(/\n/g, '<br>');
-    
-        return formattedContent;
+        // Convert any markdown or special formatting if needed
+        // For simplicity, we'll assume the content is safe HTML
+        return content;
     }
     
 

@@ -97,12 +97,13 @@ class AjaxView(BaseView):
         if create_title:
             # Extract the title from the assistant's response
             import re
-            title_match = re.search(r'"title":\s*"([^"]+)"', assistant_content)
+            title_match = re.search(r'\*\*Title:\*\*\s*(.+)', assistant_content)
             if title_match:
-                thread.title = title_match.group(1)
+                thread.title = title_match.group(1).strip()
                 thread.save()
 
         return JsonResponse({'assistant_response': assistant_content})
+
 
     def get_chat_messages(self, request):
         user = request.user
