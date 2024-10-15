@@ -68,11 +68,6 @@ class AjaxView(BaseView):
         messages = ChatMessage.objects.filter(thread=thread).order_by('timestamp')
         context = [{'role': msg.role, 'content': msg.content} for msg in messages]
 
-        # Determine if we need to create a title
-        create_title = None
-        if not thread.title or thread.title == 'New Chat':
-            create_title = True
-
         # Call the assistant function
         from active_directory.services import active_directory_query_assistant
 
@@ -80,8 +75,7 @@ class AjaxView(BaseView):
             # Call the assistant function with context
             response_data, updated_context = active_directory_query_assistant(
                 user_prompt=message_content,
-                context=context[:-1],  # Exclude the latest user message (it's already included in user_prompt)
-                create_title=create_title
+                context=context[:-1]  # Exclude the latest user message (it's already included in user_prompt)
             )
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=500)
@@ -92,11 +86,6 @@ class AjaxView(BaseView):
             role='assistant',
             content=json.dumps(response_data)  # Store JSON as string
         )
-
-        # Save the title if it's provided and the thread doesn't have one yet
-        if create_title and 'title' in response_data:
-            thread.title = response_data['title']
-            thread.save()
 
         return JsonResponse({'assistant_response': response_data})
 
@@ -121,22 +110,6 @@ class AjaxView(BaseView):
         } for msg in messages]
 
         return JsonResponse({'messages': message_list})
-
-
-    def delete_chat_thread(self, request):
-        user = request.user
-        thread_id = request.POST.get('thread_id')
-
-        if not thread_id:
-            return JsonResponse({'error': 'Thread ID is required'}, status=400)
-
-        try:
-            from .models import ChatThread
-            thread = ChatThread.objects.get(id=thread_id, user=user)
-            thread.delete()
-            return JsonResponse({'success': True})
-        except ChatThread.DoesNotExist:
-            return JsonResponse({'error': 'Chat thread not found'}, status=404)
 
     def post(self, request, *args, **kwargs):
         logger.info("Received POST request at /myview/ajax/")
@@ -174,9 +147,7 @@ class AjaxView(BaseView):
                 return self.send_message(request)
             elif action == 'get_chat_messages':
                 return self.get_chat_messages(request)
-            elif action == 'delete_chat_thread':
-                return self.delete_chat_thread(request)
-            
+
             # Existing actions
             elif action == 'clear_my_ad_group_cached_data':
                 from django.core.cache import cache

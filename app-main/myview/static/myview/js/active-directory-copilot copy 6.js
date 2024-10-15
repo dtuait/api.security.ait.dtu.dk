@@ -37,17 +37,9 @@ class App {
         // Chat thread click
         this.uiBinder.chatList.addEventListener('click', (event) => {
             const threadItem = event.target.closest('.chat-thread-item');
-            if (threadItem && !event.target.classList.contains('delete-chat-btn')) {
+            if (threadItem) {
                 const threadId = threadItem.dataset.threadId;
                 this.loadChatMessages(threadId);
-            }
-
-            // Delete chat thread
-            const deleteBtn = event.target.closest('.delete-chat-btn');
-            if (deleteBtn) {
-                const threadId = deleteBtn.dataset.threadId;
-                const threadTitle = deleteBtn.parentElement.querySelector('.thread-title').textContent;
-                this.confirmDeleteChatThread(threadId, threadTitle);
             }
         });
     }
@@ -132,66 +124,10 @@ class App {
             const assistantResponse = response.assistant_response;
             this.uiBinder.appendAssistantMessage(JSON.stringify(assistantResponse, null, 2));
 
-            // Reload chat threads to update titles
-            this.loadChatThreads();
-
         } catch (error) {
             console.error('Error sending message:', error);
             this.uiBinder.hideLoading();
             this.uiBinder.appendAssistantMessage(`An error occurred: ${error}`);
-        }
-    }
-
-    confirmDeleteChatThread(threadId, threadTitle) {
-        const modalId = 'deleteChatModal';
-
-        // Use BaseAppUtils setModal to create the modal
-        this.baseAppUtils.setModal(null, modalId, {
-            title: 'Delete Chat',
-            body: `<p>Are you sure you want to delete "<strong>${this.uiBinder.escapeHtml(threadTitle)}</strong>"?</p>`,
-            footer: `
-                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Delete</button>
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-            `,
-            eventListeners: [
-                {
-                    selector: '#confirmDeleteBtn',
-                    event: 'click',
-                    handler: (event) => {
-                        this.deleteChatThread(threadId, modalId);
-                    }
-                }
-            ]
-        });
-
-        // Show the modal
-        const modalInstance = new bootstrap.Modal(document.getElementById(modalId));
-        modalInstance.show();
-    }
-
-    async deleteChatThread(threadId, modalId) {
-        try {
-            await this.baseAppUtils.restAjax('POST', '/myview/ajax/', {
-                'action': 'delete_chat_thread',
-                'thread_id': threadId
-            });
-
-            // Close the modal
-            const modalElement = document.getElementById(modalId);
-            const modalInstance = bootstrap.Modal.getInstance(modalElement);
-            modalInstance.hide();
-
-            // Refresh chat threads
-            await this.loadChatThreads();
-
-            // If the deleted thread was the current one, clear the messages
-            if (this.currentThreadId === threadId) {
-                this.currentThreadId = null;
-                this.uiBinder.clearChatMessages();
-            }
-
-        } catch (error) {
-            console.error('Error deleting chat thread:', error);
         }
     }
 
@@ -281,19 +217,7 @@ class UIBinder {
             const threadItem = document.createElement('div');
             threadItem.classList.add('chat-thread-item');
             threadItem.dataset.threadId = thread.id;
-
-            const threadTitle = document.createElement('span');
-            threadTitle.classList.add('thread-title');
-            threadTitle.textContent = thread.title;
-
-            const deleteBtn = document.createElement('button');
-            deleteBtn.classList.add('delete-chat-btn');
-            deleteBtn.dataset.threadId = thread.id;
-            deleteBtn.innerHTML = '&times;'; // X symbol
-
-            threadItem.appendChild(threadTitle);
-            threadItem.appendChild(deleteBtn);
-
+            threadItem.textContent = thread.title;
             this.chatList.appendChild(threadItem);
         });
     }

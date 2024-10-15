@@ -1,4 +1,4 @@
-def active_directory_query_assistant(*, user_prompt, context=None, create_title=None):
+def active_directory_query_assistant(*, user_prompt, context=None):
     import os
     import openai
     import json
@@ -45,13 +45,6 @@ def active_directory_query_assistant(*, user_prompt, context=None, create_title=
         "The 'explanation' field should contain a brief explanation of the query parameters you have generated.\n"
         "Do not include any additional text outside of the JSON format."
     )
-
-    # Modify the system prompt if create_title is provided
-    if create_title is not None:
-        system_prompt += (
-            "\nAdditionally, include a 'title' field in the JSON response. "
-            "The 'title' should be a concise summary of the user's request."
-        )
 
     # Initialize context if it's None
     if context is None:
@@ -172,8 +165,6 @@ def active_directory_query_assistant(*, user_prompt, context=None, create_title=
 
     # Ensure all required fields are present, including 'explanation'
     required_fields = ["base_dn", "search_filter", "search_attributes", "limit", "excluded_attributes", "explanation"]
-    if create_title is not None:
-        required_fields.append("title")
     for field in required_fields:
         if field not in arguments:
             raise Exception(f"Field '{field}' is missing from the assistant's response.")

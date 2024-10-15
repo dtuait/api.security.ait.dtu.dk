@@ -70,7 +70,7 @@ class AjaxView(BaseView):
 
         # Determine if we need to create a title
         create_title = None
-        if not thread.title or thread.title == 'New Chat':
+        if not thread.title:
             create_title = True
 
         # Call the assistant function
@@ -122,22 +122,6 @@ class AjaxView(BaseView):
 
         return JsonResponse({'messages': message_list})
 
-
-    def delete_chat_thread(self, request):
-        user = request.user
-        thread_id = request.POST.get('thread_id')
-
-        if not thread_id:
-            return JsonResponse({'error': 'Thread ID is required'}, status=400)
-
-        try:
-            from .models import ChatThread
-            thread = ChatThread.objects.get(id=thread_id, user=user)
-            thread.delete()
-            return JsonResponse({'success': True})
-        except ChatThread.DoesNotExist:
-            return JsonResponse({'error': 'Chat thread not found'}, status=404)
-
     def post(self, request, *args, **kwargs):
         logger.info("Received POST request at /myview/ajax/")
         logger.info("Request method: %s", request.method)
@@ -174,9 +158,7 @@ class AjaxView(BaseView):
                 return self.send_message(request)
             elif action == 'get_chat_messages':
                 return self.get_chat_messages(request)
-            elif action == 'delete_chat_thread':
-                return self.delete_chat_thread(request)
-            
+
             # Existing actions
             elif action == 'clear_my_ad_group_cached_data':
                 from django.core.cache import cache
