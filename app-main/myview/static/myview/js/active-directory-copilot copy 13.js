@@ -200,7 +200,6 @@ class App {
         }
     }
 
-    // Add downloadExcel method here if needed...
 
     confirmDeleteChatThread(threadId, threadTitle) {
         const modalId = 'deleteChatModal';
@@ -298,6 +297,7 @@ class UIBinder {
         this.scrollToBottom();
     }
 
+
     ntTimeToDate(ntTimeValue) {
         const ntTime = parseInt(ntTimeValue, 10);
         const ntEpoch = new Date(Date.UTC(1601, 0, 1));
@@ -318,18 +318,6 @@ class UIBinder {
         return ntTime.toString();
     }
 
-    parseSearchFilterForNtTime(searchFilter) {
-        const regex = /(\(pwdLastSet<=?(\d+)\))/;
-        const match = searchFilter.match(regex);
-        if (match) {
-            return {
-                fullMatch: match[1],
-                ntTimeValue: match[2]
-            };
-        }
-        return null;
-    }
-
     appendAssistantMessage(message, timestamp = null) {
         const messageElement = document.createElement('div');
         messageElement.classList.add('message', 'assistant-message');
@@ -337,56 +325,80 @@ class UIBinder {
         const messageContent = document.createElement('div');
         messageContent.classList.add('message-content');
 
-        // Format the message content based on the JSON data
-        if (message.error) {
-            messageContent.textContent = `An error occurred: ${message.error}`;
-        } else {
-            messageContent.innerHTML = this.formatAssistantMessageContent(message);
-        }
 
-        messageElement.appendChild(messageContent);
-        this.chatMessages.appendChild(messageElement);
-        this.scrollToBottom();
+// In appendAssistantMessage, after baseDnInput event listener
+if (baseDnInput) {
+    baseDnInput.addEventListener('input', async () => {
+        const canonicalName = baseDnInput.value;
+        if (canonicalName.length < 3) return; // Wait until the user has typed at least 3 characters
 
-        // After appending the message, we can now select the inputs
-        const baseDnInput = messageElement.querySelector('input[name="base_dn"]');
+        // Prepare query parameters
+        const params = new URLSearchParams();
+        params.append('base_dn', 'DC=win,DC=dtu,DC=dk');
+        params.append('search_filter', `(canonicalName=*${canonicalName}*)`);
+        params.append('search_attributes', 'canonicalName');
+        params.append('limit', '100');
 
-        // Add event listener for baseDnInput
-        if (baseDnInput) {
-            baseDnInput.addEventListener('input', async () => {
-                const canonicalName = baseDnInput.value;
-                if (canonicalName.length < 3) return; // Wait until the user has typed at least 3 characters
-
-                // Prepare query parameters
-                const params = new URLSearchParams();
-                params.append('base_dn', 'DC=win,DC=dtu,DC=dk');
-                params.append('search_filter', `(canonicalName=*${canonicalName}*)`);
-                params.append('search_attributes', 'canonicalName');
-                params.append('limit', '100');
-
-                try {
-                    const response = await fetch(`/active-directory/v1.0/query?${params.toString()}`, {
-                        method: 'GET',
-                        headers: {
-                            'Accept': 'application/json'
-                        },
-                        credentials: 'same-origin'
-                    });
-
-                    if (response.ok) {
-                        const result = await response.json();
-                        // Process the result to show suggestions
-                        this.showBaseDnSuggestions(baseDnInput, result);
-                    }
-                } catch (error) {
-                    console.error('Error fetching base_dn suggestions:', error);
-                }
+        try {
+            const response = await fetch(`/active-directory/v1.0/query?${params.toString()}`, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json'
+                },
+                credentials: 'same-origin'
             });
+
+            if (response.ok) {
+                const result = await response.json();
+                // Process the result to show suggestions
+                this.showBaseDnSuggestions(baseDnInput, result);
+            }
+        } catch (error) {
+            console.error('Error fetching base_dn suggestions:', error);
         }
+    });
+}
 
-        // Handle the rest of the inputs and event listeners as needed...
+/// NOT SURE WHERE TO PUT THIS
+// // Method to show suggestions
+// showBaseDnSuggestions(inputElement, suggestions) {
+//     // Implement a dropdown or autocomplete to display suggestions
+//     // For simplicity, you can use a datalist
+//     let dataList = inputElement.list;
+//     if (!dataList) {
+//         dataList = document.createElement('datalist');
+//         dataList.id = 'baseDnSuggestions';
+//         document.body.appendChild(dataList);
+//         inputElement.setAttribute('list', 'baseDnSuggestions');
+//     }
+//     dataList.innerHTML = '';
+//     suggestions.forEach(item => {
+//         const option = document.createElement('option');
+//         option.value = item['canonicalName'][0];
+//         dataList.appendChild(option);
+//     });
+// }
 
-        // Create the "Run Query" and "Download Excel" buttons
+
+// // Method to show suggestions
+// showBaseDnSuggestions(inputElement, suggestions) {
+//     // Implement a dropdown or autocomplete to display suggestions
+//     // For simplicity, you can use a datalist
+//     let dataList = inputElement.list;
+//     if (!dataList) {
+//         dataList = document.createElement('datalist');
+//         dataList.id = 'baseDnSuggestions';
+//         document.body.appendChild(dataList);
+//         inputElement.setAttribute('list', 'baseDnSuggestions');
+//     }
+//     dataList.innerHTML = '';
+//     suggestions.forEach(item => {
+//         const option = document.createElement('option');
+//         option.value = item['canonicalName'][0];
+//         dataList.appendChild(option);
+//     });
+// }
+
         if (!message.error) {
             const buttonContainer = document.createElement('div');
             buttonContainer.classList.add('button-container');
@@ -415,18 +427,9 @@ class UIBinder {
 
     formatAssistantMessageContent(data) {
         let content = '';
-
-        if (data.title) {
-            content += `<strong>Title:</strong> ${this.escapeHtml(data.title)}<br><br>`;
-        }
-
-        if (data.explanation) {
-            content += `${this.escapeHtml(data.explanation)}<br><br>`;
-        }
-
-        const fields = ['base_dn', 'search_filter', 'search_attributes', 'limit', 'excluded_attributes'];
         fields.forEach(field => {
             if (data[field]) {
+
                 if (field === 'base_dn') {
                     content += `
                     <label>
@@ -435,7 +438,10 @@ class UIBinder {
                     </label><br>
                     <small>Distinguished Name: <code id="distinguished-name">${this.escapeHtml(this.canonicalToDistinguishedName(data[field]))}</code></small><br>
                     `;
-                } else if (field === 'search_filter') {
+                }
+
+
+                else if (field === 'search_filter') {
                     const ntTimeMatch = this.parseSearchFilterForNtTime(data[field]);
                     if (ntTimeMatch) {
                         const ntTimeValue = ntTimeMatch.ntTimeValue;
@@ -461,10 +467,10 @@ class UIBinder {
                     }
                 } else {
                     content += `
-                    <label>
-                        <strong>${this.escapeHtml(field)}:</strong>
-                        <input type="text" name="${field}" value="${this.escapeHtml(data[field])}" />
-                    </label><br>`;
+                <label>
+                    <strong>${this.escapeHtml(field)}:</strong>
+                    <input type="text" name="${field}" value="${this.escapeHtml(data[field])}" />
+                </label><br>`;
                 }
             }
         });
@@ -490,23 +496,8 @@ class UIBinder {
         return distinguishedName.join(',');
     }
 
-    showBaseDnSuggestions(inputElement, suggestions) {
-        // Implement a dropdown or autocomplete to display suggestions
-        // For simplicity, you can use a datalist
-        let dataList = inputElement.list;
-        if (!dataList) {
-            dataList = document.createElement('datalist');
-            dataList.id = 'baseDnSuggestions';
-            document.body.appendChild(dataList);
-            inputElement.setAttribute('list', 'baseDnSuggestions');
-        }
-        dataList.innerHTML = '';
-        suggestions.forEach(item => {
-            const option = document.createElement('option');
-            option.value = item['canonicalName'][0];
-            dataList.appendChild(option);
-        });
-    }
+
+
 
     appendQueryResultMessage(result, messageElement) {
         let resultElement = messageElement.querySelector('.query-result');
@@ -533,6 +524,7 @@ class UIBinder {
 
         this.scrollToBottom();
     }
+
 
     showLoading() {
         this.chatMessages.appendChild(this.loadingIndicator);

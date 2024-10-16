@@ -347,21 +347,3 @@ body {
 .query-result .result-content pre {
     overflow-x: auto;
 }
-
-/* Button Container */
-.button-container {
-    display: flex;
-    gap: 10px;
-    margin-top: 10px;
-}
-
-/* Download Excel Button Styling */
-.download-excel-btn {
-    margin-top: 10px;
-    padding: 8px 12px;
-    background-color: #007bff; /* Blue button */
-    color: white;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-}

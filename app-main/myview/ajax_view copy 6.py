@@ -15,22 +15,6 @@ from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from django.contrib.auth.decorators import login_required
 
-def get_nt_time_from_date(year, month=1, day=1):
-    import datetime
-    nt_epoch = datetime.datetime(1601, 1, 1)
-    target_date = datetime.datetime(year, month, day)
-    delta = target_date - nt_epoch
-    nt_time = int(delta.total_seconds() * 10000000)
-    return nt_time
-
-def nt_time_to_date(nt_time):
-    import datetime
-    nt_epoch = datetime.datetime(1601, 1, 1)
-    delta = datetime.timedelta(microseconds=nt_time / 10)
-    target_date = nt_epoch + delta
-    return target_date.strftime('%d-%m-%Y')
-
-
 class AjaxView(BaseView):
 
     # Ensure CSRF exemption and login required
@@ -58,9 +42,6 @@ class AjaxView(BaseView):
         threads = ChatThread.objects.filter(user=user).order_by('-created_at')
         thread_list = [{'id': t.id, 'title': t.title} for t in threads]
         return JsonResponse({'threads': thread_list})
-
-
-
 
     def send_message(self, request):
         user = request.user
@@ -372,34 +353,9 @@ class AjaxView(BaseView):
 
                 return JsonResponse({'success': 'Form updated'})
 
-                            
-            elif action == 'convert_datetime_nt_time':
-                date_string = request.POST.get('date_string')
-                direction = request.POST.get('direction')  # 'to_nt_time' or 'from_nt_time'
-                try:
-                    if direction == 'to_nt_time':
-                        # Convert from date string to NT_TIME
-                        day, month, year = map(int, date_string.split('-'))
-                        nt_time = get_nt_time_from_date(year, month, day)
-                        return JsonResponse({'nt_time': nt_time})
-                    elif direction == 'from_nt_time':
-                        # Convert from NT_TIME to date string
-                        nt_time = int(date_string)
-                        date_str = nt_time_to_date(nt_time)
-                        return JsonResponse({'date_string': date_str})
-                    else:
-                        return JsonResponse({'error': 'Invalid direction'}, status=400)
-                except Exception as e:
-                    return JsonResponse({'error': str(e)}, status=500)
-
-
-
-
                 
             else:
                 return JsonResponse({'error': 'Invalid AJAX action'}, status=400)
-
-
 
 
         except Exception as e:
