@@ -297,6 +297,7 @@ class AjaxView(BaseView):
 
                 # Generate the Excel file
                 output_file_name = generate_generic_xlsx_document(result)
+                from django.conf import settings
                 output_file_url = settings.MEDIA_URL + output_file_name
 
                 return JsonResponse({'download_url': output_file_url})
