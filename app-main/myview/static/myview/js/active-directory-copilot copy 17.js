@@ -350,47 +350,9 @@ class UIBinder {
             this.newChatBtn = document.getElementById('new-chat-btn');
             this.loadingIndicator = this.createLoadingIndicator();
             this.autoRunToggle = document.getElementById('auto-run-toggle');
-
-            // New properties for scroll handling
-            this.chatWindow = document.querySelector('.chat-window');
-            this.chatInput = document.querySelector('.chat-input');
-            this.isChatInputFixed = false;
-
-            // Bind the scroll event
-            this.chatMessages.addEventListener('scroll', this.handleChatMessagesScroll.bind(this));
-
             UIBinder.instance = this;
         }
         return UIBinder.instance;
-    }
-
-
-
-    handleChatMessagesScroll() {
-        const chatInputRect = this.chatInput.getBoundingClientRect();
-        const chatWindowRect = this.chatWindow.getBoundingClientRect();
-
-        if (chatInputRect.bottom > chatWindowRect.bottom) {
-            // The chat-input is about to go off-screen upwards
-            if (!this.isChatInputFixed) {
-                this.chatInput.style.position = 'fixed';
-                this.chatInput.style.bottom = (window.innerHeight - chatWindowRect.bottom) + 'px';
-                this.chatInput.style.left = chatWindowRect.left + 'px';
-                this.chatInput.style.width = chatWindowRect.width + 'px';
-                this.chatInput.style.zIndex = '1000';
-                this.isChatInputFixed = true;
-            }
-        } else {
-            // Reset to normal position
-            if (this.isChatInputFixed) {
-                this.chatInput.style.position = '';
-                this.chatInput.style.bottom = '';
-                this.chatInput.style.left = '';
-                this.chatInput.style.width = '';
-                this.chatInput.style.zIndex = '';
-                this.isChatInputFixed = false;
-            }
-        }
     }
 
     createLoadingIndicator() {
@@ -714,6 +676,3 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
 });
-
-
-

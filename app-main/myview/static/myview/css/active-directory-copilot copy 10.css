@@ -9,51 +9,19 @@ body {
 /* Chat Interface Layout */
 .chat-interface {
     display: flex;
-    flex-grow: 1; /* Allow it to grow and fill available space */
-    height: 100%;
-    background-color: #f7f7f8;
+    height: 100vh;
+    background-color: #f7f7f8; /* Light background for main layout */
     color: #333;
 }
 
 /* Sidebar Styling */
 .sidebar {
     width: 280px;
-    background-color: #ffffff;
+    background-color: #ffffff; /* White sidebar for contrast */
     display: flex;
     flex-direction: column;
     border-right: 1px solid #e0e0e0;
-    
 }
-
-/* Chat Window Styling */
-.chat-window {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-    background-color: #ffffff;
-}
-
-/* Chat Messages Styling */
-.chat-messages {
-    flex: 1 1 auto;
-    overflow-y: auto; /* Enable internal scrolling */
-    padding: 20px;
-}
-
-/* Input Area Styling */
-.chat-input {
-    flex: 0 0 auto; /* Prevents it from growing or shrinking */
-    background-color: #fff;
-    display: flex;
-    align-items: center;
-    padding: 15px;
-    border-top: 1px solid #e0e0e0;
-    border-radius: 8px;
-    border: 1px solid #e0e0e0;
-    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-
 
 .sidebar-header {
     padding: 20px;
@@ -87,9 +55,26 @@ body {
     background-color: #e0e0e0;
 }
 
+/* Chat Window Styling */
+.chat-window {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    background-color: #ffffff;
+    overflow-y: auto;
+    position: relative;
+    padding-bottom: 100px; /* Adjust based on the height of your chat-input */
+}
 
-
-
+.chat-messages {
+    flex-grow: 1;
+    padding: 10px;
+    background-color: #f7f7f8;
+    border-radius: 8px;
+    border: 1px solid #e0e0e0;
+    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.1);
+}
 
 .message {
     margin-bottom: 15px;
@@ -117,7 +102,16 @@ body {
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-
+/* Input Area Styling */
+.chat-input {
+    position: fixed;
+    bottom: 0;
+    left: 280px; /* Adjust based on your sidebar's width */
+    width: calc(100% - 280px);
+    background-color: #fff;
+    z-index: 10;
+    /* Rest of your styles */
+}
 
 #user-input {
     flex-grow: 1;
@@ -251,7 +245,15 @@ body {
 /* ... existing styles ... */
 
 /* Input Area Styling */
-
+.chat-input {
+    display: flex;
+    align-items: center;
+    padding: 15px;
+    background-color: #fff;
+    border-radius: 8px;
+    border: 1px solid #e0e0e0;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+}
 
 #user-input {
     flex-grow: 1;

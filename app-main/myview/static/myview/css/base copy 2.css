@@ -797,11 +797,8 @@ header .mobile-header-content {
 /* MAIN STYLING STARTS HERE */
 /* This styling should be further adjusted in a template css file */
 
-
 main {
-    display: flex;
     position: relative;
-    flex-direction: column;
     /* padding-top: 20px; */
     /* padding-bottom: 20px; */
     width: var(--primary-site-width);
@@ -812,7 +809,6 @@ main {
     overflow: auto;
     min-height: calc(100vh - var(--header-height) - var(--footer-height));
 }
-
 
 main .headline {
     margin-bottom: 20px;
