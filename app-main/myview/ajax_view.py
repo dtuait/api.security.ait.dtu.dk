@@ -7,6 +7,8 @@ from active_directory.scripts.active_directory_query import active_directory_que
 from ldap3 import ALL_ATTRIBUTES
 import json
 import logging
+from django.conf import settings  # Added import for settings
+
 
 # Get the logger for your app
 logger = logging.getLogger(__name__)
@@ -33,8 +35,8 @@ def nt_time_to_date(nt_time):
 def generate_generic_xlsx_document(data):
     import pandas as pd
     import os
-    from django.conf import settings
-    from datetime import datetime
+    from datetime import datetime  # Removed 'from django.conf import settings'
+    from django.conf import settings  # Import settings here
 
     # Extract unique keys
     unique_keys = set()
@@ -270,8 +272,9 @@ class AjaxView(BaseView):
                     return JsonResponse({'message': message.content})
 
 
+
             elif action == 'generate_excel':
-                # Extract the parameters from the POST request
+                # Extract parameters from POST request
                 base_dn = request.POST.get('base_dn')
                 search_filter = request.POST.get('search_filter')
                 search_attributes = request.POST.get('search_attributes')
@@ -297,6 +300,7 @@ class AjaxView(BaseView):
                 output_file_url = settings.MEDIA_URL + output_file_name
 
                 return JsonResponse({'download_url': output_file_url})
+
 
 
 

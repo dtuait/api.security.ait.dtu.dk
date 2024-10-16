@@ -200,63 +200,66 @@ class App {
         }
     }
 
+// In your App class
+async downloadExcel(queryParameters, messageElement) {
+    try {
+        // Collect the current values from the editable fields
+        const baseDnInput = messageElement.querySelector('input[name="base_dn"]');
+        const searchFilterInput = messageElement.querySelector('input[name="search_filter"]');
+        const searchAttributesInput = messageElement.querySelector('input[name="search_attributes"]');
+        const limitInput = messageElement.querySelector('input[name="limit"]');
+        const excludedAttributesInput = messageElement.querySelector('input[name="excluded_attributes"]');
 
-    // In App class
-    async downloadExcel(queryParameters, messageElement) {
-        try {
-            // Collect the current values from the editable fields
-            const baseDnInput = messageElement.querySelector('input[name="base_dn"]');
-            const searchFilterInput = messageElement.querySelector('input[name="search_filter"]');
-            const searchAttributesInput = messageElement.querySelector('input[name="search_attributes"]');
-            const limitInput = messageElement.querySelector('input[name="limit"]');
-            const excludedAttributesInput = messageElement.querySelector('input[name="excluded_attributes"]');
+        const base_dn = baseDnInput ? baseDnInput.value : queryParameters.base_dn;
+        const search_filter = searchFilterInput ? searchFilterInput.value : queryParameters.search_filter;
+        const search_attributes = searchAttributesInput ? searchAttributesInput.value : queryParameters.search_attributes;
+        const limit = limitInput ? limitInput.value : queryParameters.limit;
+        const excluded_attributes = excludedAttributesInput ? excludedAttributesInput.value : queryParameters.excluded_attributes;
 
-            const base_dn = baseDnInput ? baseDnInput.value : queryParameters.base_dn;
-            const search_filter = searchFilterInput ? searchFilterInput.value : queryParameters.search_filter;
-            const search_attributes = searchAttributesInput ? searchAttributesInput.value : queryParameters.search_attributes;
-            const limit = limitInput ? limitInput.value : queryParameters.limit;
-            const excluded_attributes = excludedAttributesInput ? excludedAttributesInput.value : queryParameters.excluded_attributes;
+        // Prepare form data
+        const formData = new FormData();
+        formData.append('action', 'generate_excel');
+        formData.append('base_dn', base_dn);
+        formData.append('search_filter', search_filter);
+        formData.append('search_attributes', search_attributes);
+        formData.append('limit', limit);
+        formData.append('excluded_attributes', excluded_attributes);
+        formData.append('csrfmiddlewaretoken', this.getCookie('csrftoken'));
 
-            // Prepare form data
-            const formData = new FormData();
-            formData.append('action', 'generate_excel');
-            formData.append('base_dn', base_dn);
-            formData.append('search_filter', search_filter);
-            formData.append('search_attributes', search_attributes);
-            formData.append('limit', limit);
-            formData.append('excluded_attributes', excluded_attributes);
-            formData.append('csrfmiddlewaretoken', this.getCookie('csrftoken'));
+        // Make a POST request to ajax_view.py
+        const response = await fetch('/myview/ajax/', {
+            method: 'POST',
+            body: formData,
+            credentials: 'same-origin' // Include cookies for authentication
+        });
 
-            // Make a POST request to ajax_view.py
-            const response = await fetch('/myview/ajax/', {
-                method: 'POST',
-                body: formData,
-                credentials: 'same-origin' // Include cookies for authentication
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! Status: ${response.status}`);
-            }
-
-            const result = await response.json();
-
-            if (result.download_url) {
-                // Initiate file download
-                const link = document.createElement('a');
-                link.href = result.download_url;
-                link.download = 'active_directory_query.xlsx';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            } else {
-                throw new Error('Failed to generate Excel file.');
-            }
-
-        } catch (error) {
-            console.error('Error generating Excel file:', error);
-            alert('Error generating Excel file: ' + error.message);
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
         }
+
+        const result = await response.json();
+
+        if (result.download_url) {
+            // Use window.location.origin to get the base URL
+            const downloadUrl = window.location.origin + result.download_url;
+
+            // Now use downloadUrl when creating the link
+            // Create a temporary link to download the file
+            const link = document.createElement('a');
+            link.href = downloadUrl; // Use the absolute URL here
+            link.download = 'active_directory_query.xlsx';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } else {
+            throw new Error('Failed to generate Excel file.');
+        }
+
+    } catch (error) {
+        console.error('Error generating Excel file:', error);
+        alert('Error generating Excel file: ' + error.message);
     }
+}
 
     // Helper function to get CSRF token
     getCookie(name) {

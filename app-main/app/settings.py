@@ -187,6 +187,15 @@ STATICFILES_DIRS = [
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join('/mnt/shared-project-data/django/mediafiles')
 
+# Maybe this will be a fix in the future
+# # At the end of your settings.py
+# if DEBUG:
+#     STATIC_URL = '/static/'
+#     MEDIA_URL = '/media/'
+# else:
+#     STATIC_URL = 'https://api.security.ait.dtu.dk//static/'
+#     MEDIA_URL = 'https://api.security.ait.dtu.dk//media/'
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
