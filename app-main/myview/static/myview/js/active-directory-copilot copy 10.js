@@ -91,7 +91,7 @@ class App {
                 if (message.role === 'user') {
                     this.uiBinder.appendUserMessage(message.content, message.timestamp);
                 } else if (message.role === 'assistant') {
-                    this.uiBinder.appendAssistantMessage(JSON.parse(message.content), message.timestamp);
+                    this.uiBinder.appendAssistantMessage(message.content, message.timestamp);
                 }
             });
         } catch (error) {
@@ -124,67 +124,21 @@ class App {
                 'thread_id': this.currentThreadId,
                 'message': userInput
             });
-
+    
             // Hide loading indicator
             this.uiBinder.hideLoading();
-
+    
             // Display assistant's response
             const assistantResponse = response.assistant_response;
-            const assistantMessageElement = this.uiBinder.appendAssistantMessage(assistantResponse);
-
+            this.uiBinder.appendAssistantMessage(assistantResponse);
+    
             // Reload chat threads to update titles
             this.loadChatThreads();
-
-            // Check if auto-run is enabled
-            if (this.uiBinder.autoRunToggle.checked) {
-                // Simulate clicking the "Run Query" button
-                const runQueryBtn = assistantMessageElement.querySelector('.run-query-btn');
-                if (runQueryBtn) {
-                    runQueryBtn.click();
-                }
-            }
-
+    
         } catch (error) {
             console.error('Error sending message:', error);
             this.uiBinder.hideLoading();
             this.uiBinder.appendAssistantMessage({ error: error.message });
-        }
-    }
-
-    async runQuery(queryParameters, messageElement) {
-        try {
-            // Collect the current values from the editable fields
-            const baseDnInput = messageElement.querySelector('input[name="base_dn"]');
-            const searchFilterInput = messageElement.querySelector('input[name="search_filter"]');
-            const searchAttributesInput = messageElement.querySelector('input[name="search_attributes"]');
-            const limitInput = messageElement.querySelector('input[name="limit"]');
-            const excludedAttributesInput = messageElement.querySelector('input[name="excluded_attributes"]');
-
-            const base_dn = baseDnInput ? baseDnInput.value : queryParameters.base_dn;
-            const search_filter = searchFilterInput ? searchFilterInput.value : queryParameters.search_filter;
-            const search_attributes = searchAttributesInput ? searchAttributesInput.value : queryParameters.search_attributes;
-            const limit = limitInput ? limitInput.value : queryParameters.limit;
-            const excluded_attributes = excludedAttributesInput ? excludedAttributesInput.value : queryParameters.excluded_attributes;
-
-            // Prepare form data
-            const formData = new FormData();
-            formData.append('action', 'active_directory_query');
-            formData.append('base_dn', base_dn);
-            formData.append('search_filter', search_filter);
-            formData.append('search_attributes', search_attributes);
-            formData.append('limit', limit);
-            formData.append('excluded_attributes', excluded_attributes);
-
-            // Run the query
-            const response = await this.baseAppUtils.restAjax('POST', '/myview/ajax/', formData);
-
-            // Display the result
-            this.uiBinder.appendQueryResultMessage(response, messageElement);
-
-        } catch (error) {
-            console.error('Error running query:', error);
-            // Display error message
-            this.uiBinder.appendQueryResultMessage({ error: error.message }, messageElement);
         }
     }
 
@@ -258,7 +212,6 @@ class UIBinder {
             this.chatList = document.getElementById('chat-list');
             this.newChatBtn = document.getElementById('new-chat-btn');
             this.loadingIndicator = this.createLoadingIndicator();
-            this.autoRunToggle = document.getElementById('auto-run-toggle');
             UIBinder.instance = this;
         }
         return UIBinder.instance;
@@ -287,81 +240,61 @@ class UIBinder {
     appendAssistantMessage(message, timestamp = null) {
         const messageElement = document.createElement('div');
         messageElement.classList.add('message', 'assistant-message');
-
+    
         const messageContent = document.createElement('div');
         messageContent.classList.add('message-content');
-
+    
         // Format the message content based on the JSON data
-        if (message.error) {
-            messageContent.textContent = `An error occurred: ${message.error}`;
-        } else {
-            messageContent.innerHTML = this.formatAssistantMessageContent(message);
-        }
-
-        // Create the "Run Query" button if no error
-        if (!message.error) {
-            const runQueryBtn = document.createElement('button');
-            runQueryBtn.textContent = 'Run Query';
-            runQueryBtn.classList.add('run-query-btn');
-            runQueryBtn.addEventListener('click', () => {
-                // Run the query
-                App.getInstance().runQuery(message, messageElement);
-            });
-
-            // Append the button to the message content
-            messageContent.appendChild(runQueryBtn);
-        }
-
+        messageContent.innerHTML = this.formatAssistantMessageContent(message);
+    
+        // Create the "Run Query" button
+        const runQueryBtn = document.createElement('button');
+        runQueryBtn.textContent = 'Run Query';
+        runQueryBtn.classList.add('run-query-btn');
+        runQueryBtn.addEventListener('click', () => {
+            // For now, just console.log the query parameters
+            console.log('Running query with parameters:', message);
+        });
+    
+        // Append the button to the message content
+        messageContent.appendChild(runQueryBtn);
+    
         messageElement.appendChild(messageContent);
         this.chatMessages.appendChild(messageElement);
         this.scrollToBottom();
-
-        return messageElement; // Return the element for further manipulation
     }
-
+    
     formatAssistantMessageContent(data) {
+        // Data is expected to be a JSON object
         let content = '';
-
+    
         if (data.title) {
             content += `<strong>Title:</strong> ${this.escapeHtml(data.title)}<br><br>`;
         }
-
-        if (data.explanation) {
-            content += `${this.escapeHtml(data.explanation)}<br><br>`;
-        }
-
-        const fields = ['base_dn', 'search_filter', 'search_attributes', 'limit', 'excluded_attributes'];
-        fields.forEach(field => {
-            if (data[field]) {
-                content += `
-                <label>
-                    <strong>${this.escapeHtml(field)}:</strong>
-                    <input type="text" name="${field}" value="${this.escapeHtml(data[field])}" />
-                </label><br>`;
-            }
-        });
-
+    
+        content += `${this.escapeHtml(data.explanation)}<br><br>`;
+        content += `<strong>base_dn:</strong> <code>${this.escapeHtml(data.base_dn)}</code><br>`;
+        content += `<strong>search_filter:</strong> <code>${this.escapeHtml(data.search_filter)}</code><br>`;
+        content += `<strong>search_attributes:</strong> <code>${this.escapeHtml(data.search_attributes)}</code><br>`;
+        content += `<strong>limit:</strong> <code>${this.escapeHtml(data.limit)}</code><br>`;
+        content += `<strong>excluded_attributes:</strong> <code>${this.escapeHtml(data.excluded_attributes)}</code><br>`;
+    
         return content;
     }
 
-    appendQueryResultMessage(result, parentElement) {
-        const resultElement = document.createElement('div');
-        resultElement.classList.add('query-result');
-
-        const resultContent = document.createElement('div');
-        resultContent.classList.add('result-content');
-
-        if (result.error) {
-            resultContent.textContent = `An error occurred: ${result.error}`;
-        } else {
-            // Display the result as formatted JSON
-            resultContent.innerHTML = `<pre>${this.escapeHtml(JSON.stringify(result, null, 2))}</pre>`;
-        }
-
-        resultElement.appendChild(resultContent);
-        parentElement.appendChild(resultElement);
-        this.scrollToBottom();
+    // Utility method to format the message content
+    formatMessageContent(content) {
+        // Simple replacement for **bold** and `code`
+        let formattedContent = content
+            .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>') // Bold
+            .replace(/`([^`]+)`/g, '<code>$1</code>'); // Inline code
+    
+        // Replace new lines with <br>
+        formattedContent = formattedContent.replace(/\n/g, '<br>');
+    
+        return formattedContent;
     }
+    
 
     showLoading() {
         this.chatMessages.appendChild(this.loadingIndicator);

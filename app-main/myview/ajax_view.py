@@ -219,17 +219,24 @@ class AjaxView(BaseView):
                 base_dn = request.POST.get('base_dn')
                 search_filter = request.POST.get('search_filter')
                 search_attributes = request.POST.get('search_attributes')
-                search_attributes = search_attributes.split(',') if search_attributes else ALL_ATTRIBUTES
+                search_attributes = [attr.strip() for attr in search_attributes.split(',')] if search_attributes else ALL_ATTRIBUTES
                 limit = request.POST.get('limit')
-                
+                excluded_attributes = request.POST.get('excluded_attributes')
+                excluded_attributes = [attr.strip() for attr in excluded_attributes.split(',')] if excluded_attributes else []
+
                 if limit is not None:
                     limit = int(limit)
 
-
                 # Perform the active directory query
-                result = active_directory_query(base_dn=base_dn, search_filter=search_filter, search_attributes=search_attributes, limit=limit)
-                # return Response(result)
+                result = active_directory_query(
+                    base_dn=base_dn,
+                    search_filter=search_filter,
+                    search_attributes=search_attributes,
+                    limit=limit,
+                    excluded_attributes=excluded_attributes
+                )
                 return JsonResponse(result, safe=False)
+
             
 
             elif action == 'ajax_change_form_update_form_ad_groups':
