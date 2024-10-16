@@ -445,20 +445,17 @@ class UIBinder {
 
                 // Prepare query parameters
                 const params = new URLSearchParams();
-                params.append('action', 'active_directory_query');
                 params.append('base_dn', 'DC=win,DC=dtu,DC=dk');
                 params.append('search_filter', `(canonicalName=*${canonicalName}*)`);
                 params.append('search_attributes', 'canonicalName');
                 params.append('limit', '100');
 
                 try {
-                    const response = await fetch('/myview/ajax/', {
-                        method: 'POST',
+                    const response = await fetch(`/active-directory/v1.0/query?${params.toString()}`, {
+                        method: 'GET',
                         headers: {
-                            'Accept': 'application/json',
-                            'X-CSRFToken': this.getCookie('csrftoken'),
+                            'Accept': 'application/json'
                         },
-                        body: params,
                         credentials: 'same-origin'
                     });
 
@@ -472,53 +469,14 @@ class UIBinder {
                 }
             });
         }
-
-        // Add the "Run Query" and "Download Excel" buttons
-        if (!message.error) {
-            const buttonContainer = document.createElement('div');
-            buttonContainer.classList.add('button-container');
-
-            const runQueryBtn = document.createElement('button');
-            runQueryBtn.textContent = 'Run Query';
-            runQueryBtn.classList.add('run-query-btn');
-            runQueryBtn.addEventListener('click', () => {
-                App.getInstance().runQuery(message, messageElement);
-            });
-
-            const downloadExcelBtn = document.createElement('button');
-            downloadExcelBtn.textContent = 'Download Excel';
-            downloadExcelBtn.classList.add('download-excel-btn');
-            downloadExcelBtn.addEventListener('click', () => {
-                App.getInstance().downloadExcel(message, messageElement);
-            });
-
-            buttonContainer.appendChild(runQueryBtn);
-            buttonContainer.appendChild(downloadExcelBtn);
-            messageContent.appendChild(buttonContainer);
-        }
-
-        return messageElement; // Return the element for further manipulation
-    }
-
-    // Helper function to get CSRF token
-    getCookie(name) {
-        let cookieValue = null;
-        if (document.cookie && document.cookie !== '') {
-            const cookies = document.cookie.split(';');
-            for (let i = 0; i < cookies.length; i++) {
-                const cookie = cookies[i].trim();
-                // Does this cookie string begin with the name we want?
-                if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                    break;
-                }
-            }
-        }
-        return cookieValue;
     }
 
     formatAssistantMessageContent(data) {
         let content = '';
+
+        if (data.title) {
+            content += `<strong>Title:</strong> ${this.escapeHtml(data.title)}<br><br>`;
+        }
 
         if (data.explanation) {
             content += `${this.escapeHtml(data.explanation)}<br><br>`;
@@ -535,6 +493,30 @@ class UIBinder {
                     </label><br>
                     <small>Distinguished Name: <code id="distinguished-name">${this.escapeHtml(this.canonicalToDistinguishedName(data[field]))}</code></small><br>
                     `;
+                } else if (field === 'search_filter') {
+                    const ntTimeMatch = this.parseSearchFilterForNtTime(data[field]);
+                    if (ntTimeMatch) {
+                        const ntTimeValue = ntTimeMatch.ntTimeValue;
+                        const dateValue = this.ntTimeToDate(ntTimeValue);
+
+                        content += `
+                        <label>
+                            <strong>${this.escapeHtml(field)}:</strong>
+                            <input type="text" name="${field}" value="${this.escapeHtml(data[field])}" style="display:none;" />
+                        </label><br>
+                        <label>
+                            <strong>pwdLastSet Date:</strong>
+                            <input type="text" name="pwdLastSetDate" value="${this.escapeHtml(dateValue)}" />
+                        </label><br>
+                        <small>Actual search filter: <code class="actual-search-filter">${this.escapeHtml(data[field])}</code></small><br>
+                        `;
+                    } else {
+                        content += `
+                        <label>
+                            <strong>${this.escapeHtml(field)}:</strong>
+                            <input type="text" name="${field}" value="${this.escapeHtml(data[field])}" />
+                        </label><br>`;
+                    }
                 } else {
                     content += `
                     <label>
@@ -567,6 +549,8 @@ class UIBinder {
     }
 
     showBaseDnSuggestions(inputElement, suggestions) {
+        // Implement a dropdown or autocomplete to display suggestions
+        // For simplicity, you can use a datalist
         let dataList = inputElement.list;
         if (!dataList) {
             dataList = document.createElement('datalist');
@@ -581,7 +565,6 @@ class UIBinder {
             dataList.appendChild(option);
         });
     }
-
 
     appendQueryResultMessage(result, messageElement) {
         let resultElement = messageElement.querySelector('.query-result');
@@ -666,10 +649,4 @@ class UIBinder {
 
 document.addEventListener('DOMContentLoaded', function () {
     const app = App.getInstance();
-
-    // Set the autoRunToggle checkbox as checked by default
-    if (app.uiBinder && app.uiBinder.autoRunToggle) {
-        app.uiBinder.autoRunToggle.checked = true;
-    }
-
 });

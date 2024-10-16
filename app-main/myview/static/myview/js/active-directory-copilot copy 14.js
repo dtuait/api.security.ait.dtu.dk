@@ -200,81 +200,7 @@ class App {
         }
     }
 
-
-    // In App class
-    async downloadExcel(queryParameters, messageElement) {
-        try {
-            // Collect the current values from the editable fields
-            const baseDnInput = messageElement.querySelector('input[name="base_dn"]');
-            const searchFilterInput = messageElement.querySelector('input[name="search_filter"]');
-            const searchAttributesInput = messageElement.querySelector('input[name="search_attributes"]');
-            const limitInput = messageElement.querySelector('input[name="limit"]');
-            const excludedAttributesInput = messageElement.querySelector('input[name="excluded_attributes"]');
-
-            const base_dn = baseDnInput ? baseDnInput.value : queryParameters.base_dn;
-            const search_filter = searchFilterInput ? searchFilterInput.value : queryParameters.search_filter;
-            const search_attributes = searchAttributesInput ? searchAttributesInput.value : queryParameters.search_attributes;
-            const limit = limitInput ? limitInput.value : queryParameters.limit;
-            const excluded_attributes = excludedAttributesInput ? excludedAttributesInput.value : queryParameters.excluded_attributes;
-
-            // Prepare form data
-            const formData = new FormData();
-            formData.append('action', 'generate_excel');
-            formData.append('base_dn', base_dn);
-            formData.append('search_filter', search_filter);
-            formData.append('search_attributes', search_attributes);
-            formData.append('limit', limit);
-            formData.append('excluded_attributes', excluded_attributes);
-            formData.append('csrfmiddlewaretoken', this.getCookie('csrftoken'));
-
-            // Make a POST request to ajax_view.py
-            const response = await fetch('/myview/ajax/', {
-                method: 'POST',
-                body: formData,
-                credentials: 'same-origin' // Include cookies for authentication
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! Status: ${response.status}`);
-            }
-
-            const result = await response.json();
-
-            if (result.download_url) {
-                // Initiate file download
-                const link = document.createElement('a');
-                link.href = result.download_url;
-                link.download = 'active_directory_query.xlsx';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            } else {
-                throw new Error('Failed to generate Excel file.');
-            }
-
-        } catch (error) {
-            console.error('Error generating Excel file:', error);
-            alert('Error generating Excel file: ' + error.message);
-        }
-    }
-
-    // Helper function to get CSRF token
-    getCookie(name) {
-        let cookieValue = null;
-        if (document.cookie && document.cookie !== '') {
-            const cookies = document.cookie.split(';');
-            for (let i = 0; i < cookies.length; i++) {
-                const cookie = cookies[i].trim();
-                // Does this cookie string begin with the name we want?
-                if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                    break;
-                }
-            }
-        }
-        return cookieValue;
-    }
-
+    // Add downloadExcel method here if needed...
 
     confirmDeleteChatThread(threadId, threadTitle) {
         const modalId = 'deleteChatModal';
@@ -422,22 +348,10 @@ class UIBinder {
         this.chatMessages.appendChild(messageElement);
         this.scrollToBottom();
 
-        // Get the baseDnInput and distinguishedNameElement elements
+        // After appending the message, we can now select the inputs
         const baseDnInput = messageElement.querySelector('input[name="base_dn"]');
-        const distinguishedNameElement = messageElement.querySelector('#distinguished-name');
 
-        if (baseDnInput && distinguishedNameElement) {
-            baseDnInput.addEventListener('input', () => {
-                const canonicalName = baseDnInput.value;
-                const distinguishedName = this.canonicalToDistinguishedName(canonicalName);
-                distinguishedNameElement.textContent = distinguishedName;
-            });
-
-            // Trigger the input event once to initialize
-            baseDnInput.dispatchEvent(new Event('input'));
-        }
-
-        // Add event listener for baseDnInput to fetch suggestions
+        // Add event listener for baseDnInput
         if (baseDnInput) {
             baseDnInput.addEventListener('input', async () => {
                 const canonicalName = baseDnInput.value;
@@ -445,20 +359,17 @@ class UIBinder {
 
                 // Prepare query parameters
                 const params = new URLSearchParams();
-                params.append('action', 'active_directory_query');
                 params.append('base_dn', 'DC=win,DC=dtu,DC=dk');
                 params.append('search_filter', `(canonicalName=*${canonicalName}*)`);
                 params.append('search_attributes', 'canonicalName');
                 params.append('limit', '100');
 
                 try {
-                    const response = await fetch('/myview/ajax/', {
-                        method: 'POST',
+                    const response = await fetch(`/active-directory/v1.0/query?${params.toString()}`, {
+                        method: 'GET',
                         headers: {
-                            'Accept': 'application/json',
-                            'X-CSRFToken': this.getCookie('csrftoken'),
+                            'Accept': 'application/json'
                         },
-                        body: params,
                         credentials: 'same-origin'
                     });
 
@@ -473,7 +384,9 @@ class UIBinder {
             });
         }
 
-        // Add the "Run Query" and "Download Excel" buttons
+        // Handle the rest of the inputs and event listeners as needed...
+
+        // Create the "Run Query" and "Download Excel" buttons
         if (!message.error) {
             const buttonContainer = document.createElement('div');
             buttonContainer.classList.add('button-container');
@@ -500,25 +413,12 @@ class UIBinder {
         return messageElement; // Return the element for further manipulation
     }
 
-    // Helper function to get CSRF token
-    getCookie(name) {
-        let cookieValue = null;
-        if (document.cookie && document.cookie !== '') {
-            const cookies = document.cookie.split(';');
-            for (let i = 0; i < cookies.length; i++) {
-                const cookie = cookies[i].trim();
-                // Does this cookie string begin with the name we want?
-                if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                    break;
-                }
-            }
-        }
-        return cookieValue;
-    }
-
     formatAssistantMessageContent(data) {
         let content = '';
+
+        if (data.title) {
+            content += `<strong>Title:</strong> ${this.escapeHtml(data.title)}<br><br>`;
+        }
 
         if (data.explanation) {
             content += `${this.escapeHtml(data.explanation)}<br><br>`;
@@ -535,6 +435,30 @@ class UIBinder {
                     </label><br>
                     <small>Distinguished Name: <code id="distinguished-name">${this.escapeHtml(this.canonicalToDistinguishedName(data[field]))}</code></small><br>
                     `;
+                } else if (field === 'search_filter') {
+                    const ntTimeMatch = this.parseSearchFilterForNtTime(data[field]);
+                    if (ntTimeMatch) {
+                        const ntTimeValue = ntTimeMatch.ntTimeValue;
+                        const dateValue = this.ntTimeToDate(ntTimeValue);
+
+                        content += `
+                        <label>
+                            <strong>${this.escapeHtml(field)}:</strong>
+                            <input type="text" name="${field}" value="${this.escapeHtml(data[field])}" style="display:none;" />
+                        </label><br>
+                        <label>
+                            <strong>pwdLastSet Date:</strong>
+                            <input type="text" name="pwdLastSetDate" value="${this.escapeHtml(dateValue)}" />
+                        </label><br>
+                        <small>Actual search filter: <code class="actual-search-filter">${this.escapeHtml(data[field])}</code></small><br>
+                        `;
+                    } else {
+                        content += `
+                        <label>
+                            <strong>${this.escapeHtml(field)}:</strong>
+                            <input type="text" name="${field}" value="${this.escapeHtml(data[field])}" />
+                        </label><br>`;
+                    }
                 } else {
                     content += `
                     <label>
@@ -567,6 +491,8 @@ class UIBinder {
     }
 
     showBaseDnSuggestions(inputElement, suggestions) {
+        // Implement a dropdown or autocomplete to display suggestions
+        // For simplicity, you can use a datalist
         let dataList = inputElement.list;
         if (!dataList) {
             dataList = document.createElement('datalist');
@@ -581,7 +507,6 @@ class UIBinder {
             dataList.appendChild(option);
         });
     }
-
 
     appendQueryResultMessage(result, messageElement) {
         let resultElement = messageElement.querySelector('.query-result');
@@ -606,6 +531,7 @@ class UIBinder {
             resultContent.innerHTML = `<pre>${this.escapeHtml(JSON.stringify(result, null, 2))}</pre>`;
         }
 
+        this.scrollToBottom();
     }
 
     showLoading() {
@@ -666,10 +592,4 @@ class UIBinder {
 
 document.addEventListener('DOMContentLoaded', function () {
     const app = App.getInstance();
-
-    // Set the autoRunToggle checkbox as checked by default
-    if (app.uiBinder && app.uiBinder.autoRunToggle) {
-        app.uiBinder.autoRunToggle.checked = true;
-    }
-
 });

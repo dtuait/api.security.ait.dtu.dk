@@ -30,43 +30,6 @@ def nt_time_to_date(nt_time):
     target_date = nt_epoch + delta
     return target_date.strftime('%d-%m-%Y')
 
-def generate_generic_xlsx_document(data):
-    import pandas as pd
-    import os
-    from django.conf import settings
-    from datetime import datetime
-
-    # Extract unique keys
-    unique_keys = set()
-    for item in data:
-        unique_keys.update(item.keys())
-
-    # Extract data
-    extracted_data = []
-    for item in data:
-        row = {}
-        for key in unique_keys:
-            value = item.get(key, "")
-            if isinstance(value, list):
-                row[key] = ', '.join(map(str, value))
-            else:
-                row[key] = value
-        extracted_data.append(row)
-
-    # Convert to DataFrame
-    df = pd.DataFrame(extracted_data)
-
-    # Generate unique file name
-    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-    output_file_name = f'active_directory_query_{timestamp}.xlsx'
-    output_file_path = os.path.join(settings.MEDIA_ROOT, output_file_name)
-
-    # Save to XLSX
-    df.to_excel(output_file_path, index=False)
-
-    return output_file_name
-
-
 
 class AjaxView(BaseView):
 
@@ -268,36 +231,6 @@ class AjaxView(BaseView):
                     )
 
                     return JsonResponse({'message': message.content})
-
-
-            elif action == 'generate_excel':
-                # Extract the parameters from the POST request
-                base_dn = request.POST.get('base_dn')
-                search_filter = request.POST.get('search_filter')
-                search_attributes = request.POST.get('search_attributes')
-                search_attributes = [attr.strip() for attr in search_attributes.split(',')] if search_attributes else ALL_ATTRIBUTES
-                limit = request.POST.get('limit')
-                excluded_attributes = request.POST.get('excluded_attributes')
-                excluded_attributes = [attr.strip() for attr in excluded_attributes.split(',')] if excluded_attributes else []
-
-                if limit is not None:
-                    limit = int(limit)
-
-                # Perform the active directory query
-                result = active_directory_query(
-                    base_dn=base_dn,
-                    search_filter=search_filter,
-                    search_attributes=search_attributes,
-                    limit=limit,
-                    excluded_attributes=excluded_attributes
-                )
-
-                # Generate the Excel file
-                output_file_name = generate_generic_xlsx_document(result)
-                output_file_url = settings.MEDIA_URL + output_file_name
-
-                return JsonResponse({'download_url': output_file_url})
-
 
 
             elif action == 'active_directory_query':
