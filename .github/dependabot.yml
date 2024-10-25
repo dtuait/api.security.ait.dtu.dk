@@ -4,3 +4,5 @@ updates:
     directory: "/app-main"  # Set this to the directory you want Dependabot to scan
     schedule:
       interval: "weekly"  # or daily, monthly, etc., depending on your needs
+    ignored-paths:
+      - "/.devcontainer/**"
