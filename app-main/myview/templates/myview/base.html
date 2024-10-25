@@ -44,7 +44,7 @@
                         
                         
                     <!-- Dropdown -->
-                    {% if request.user.username == "vicre" or request.user.username == "dast" or request.user.username == "michro" or request.user.username == "afos" or request.user.username == "admin" %}
+                    {% if user_has_mfa_reset_access %}
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             API Helper
