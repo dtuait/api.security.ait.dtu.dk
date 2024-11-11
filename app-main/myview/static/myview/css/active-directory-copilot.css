@@ -10,9 +10,10 @@ body {
 .chat-interface {
     display: flex;
     flex-grow: 1; /* Allow it to grow and fill available space */
-    height: 100%;
+    height: 100vh;
     background-color: #f7f7f8;
     color: #333;
+    
 }
 
 /* Sidebar Styling */
@@ -23,28 +24,31 @@ body {
     flex-direction: column;
     border-right: 1px solid #e0e0e0;
     max-height: calc(100vh - var(--header-height));
-    
+    position: fixed;
+    z-index: 1;
 }
 
 /* Chat Window Styling */
 .chat-window {
+    margin-left: 280px;
+    background-color: #ffffff;
+    width: calc(100% - 280px);
     display: flex;
     flex-direction: column;
-    max-height: calc(100vh - var(--header));
-    background-color: #ffffff;
-    overflow: hidden;
+    height: 100vh; /* Full viewport height */
 }
 
 /* Chat Messages Styling */
 .chat-messages {
-    flex: 1 1 auto;
-    overflow-y: scroll;
+    flex-grow: 1;            /* Expand to fill available space */
+    overflow-y: auto;        /* Scroll when content overflows */
     padding: 20px;
 }
 
 /* Input Area Styling */
 .chat-input {
-    flex: 0 0 auto; /* Prevents it from growing or shrinking */
+    flex-shrink: 0;          /* Prevent shrinking */
+    flex: 0 0 auto;          /* Prevents it from growing or shrinking */
     background-color: #fff;
     display: flex;
     align-items: center;
@@ -53,6 +57,7 @@ body {
     border-radius: 8px;
     border: 1px solid #e0e0e0;
     box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+    /* Other styles remain unchanged */
 }
 
 
@@ -83,7 +88,6 @@ body {
     flex-grow: 1;
     overflow-y: scroll;
     padding: 20px;
-
 }
 
 .chat-thread-item {
