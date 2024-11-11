@@ -43,6 +43,7 @@ urlpatterns = [
     }),
 
     path('admin/baAT5gt52eCRX7bu58msxF5XQtbY4bye/', admin.site.urls, name='admin-panel'),
+    # path('srv-login/baAT5gt52eCRX7bu58msxF5XQtbY4bye/', SOMETHING, name='ldap-login'),
     
     # myview
     path('', RedirectView.as_view(url="myview/frontpage/", permanent=True)),

@@ -150,29 +150,36 @@ class ADGroupAssociation(BaseModel):
     def _create_or_update_django_users_if_not_exists(self, users):
         for user in users:
             try:
-                
+
                 user_principal_name = user.get('userPrincipalName', [''])[0]
-                sam_accountname = user.get('sAMAccountName', [''])[0]
+                sam_accountname     = user.get('sAMAccountName', [''])[0]
+                distinguished_name  = user.get('distinguishedName', [''])[0]
 
+                # The user needs to be a synced azure ad user, or a srv-* under 'CN=<srv-dotnet8-func-app01>,OU=SRV-API-SECURITY-AIT-DTU-DK,OU=Users,OU=SOC,OU=CIS,OU=AIT,DC=win,DC=dtu,DC=dk'
+                if user_principal_name.endswith('@dtu.dk') or user_principal_name.endswith('@win.dtu.dk'):
+                    
+                    if (user_principal_name.startswith('srv-') and distinguished_name.endswith('OU=SRV-API-SECURITY-AIT-DTU-DK,OU=Users,OU=SOC,OU=CIS,OU=AIT,DC=win,DC=dtu,DC=dk')):
+                        pass
+                    else:
+                    
+                        from graph.services import execute_get_user
+                        user_data, status_code = execute_get_user(user_principal_name=user_principal_name, select_parameters='$select=onPremisesImmutableId')
+                        if status_code != 200:                    
+                            raise ValueError(f"User {user_principal_name} not found")
+                        on_premises_immutable_id = user_data.get('onPremisesImmutableId', '')           
+                        from app.scripts.azure_user_is_synced_with_on_premise_users import azure_user_is_synced_with_on_premise_users
+                        if not azure_user_is_synced_with_on_premise_users(sam_accountname=sam_accountname, on_premises_immutable_id=on_premises_immutable_id):
+                            raise ValueError(f"User {user_principal_name} is not synched with on-premise users")
 
-                if not user_principal_name.endswith('@dtu.dk'):
-                    raise ValueError(f"User {user_principal_name} does not end with @dtu.dk")
+                else:
+                    raise ValueError(f"User {user_principal_name} is not a Graph user, nor a srv-* user")
+                    continue
                 
-                # validate user
-                from graph.services import execute_get_user
-                user_data, status_code = execute_get_user(user_principal_name=user_principal_name, select_parameters='$select=onPremisesImmutableId')
-                if status_code != 200:                    
-                    raise ValueError(f"User {user_principal_name} not found")
-                on_premises_immutable_id = user_data.get('onPremisesImmutableId', '')           
-                from app.scripts.azure_user_is_synced_with_on_premise_users import azure_user_is_synced_with_on_premise_users
-                if not azure_user_is_synced_with_on_premise_users(sam_accountname=sam_accountname, on_premises_immutable_id=on_premises_immutable_id):
-                    raise ValueError(f"User {user_principal_name} is not synched with on-premise users")
-
                 # Create new user if the user is synched with azure ad
                 username = sam_accountname
                 first_name = user.get('givenName', [''])[0]
                 last_name = user.get('sn', [''])[0]
-                email = user_principal_name
+                email = user.get('userPrincipalName', [''])[0]
 
                 from app.scripts.create_or_update_django_user import create_or_update_django_user
                 create_or_update_django_user(username=username, first_name=first_name, last_name=last_name, email=email, update_existing_user=False)

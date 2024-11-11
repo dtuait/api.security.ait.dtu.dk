@@ -442,5 +442,15 @@
         //     "webRoot": "${workspaceFolder}/app-main/myview",
         //     "disableNetworkCache": true
         // }
+    ],
+
+    "compounds": [
+        {
+            "name": "Compound: Start debug and chrome",
+            "configurations": [
+                "ServerLive: localhost_debug_true_settings",
+                "Browser: localhost"
+            ]
+        }
     ]
 }
