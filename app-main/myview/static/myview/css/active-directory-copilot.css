@@ -22,6 +22,7 @@ body {
     display: flex;
     flex-direction: column;
     border-right: 1px solid #e0e0e0;
+    max-height: calc(100vh - var(--header-height));
     
 }
 
@@ -29,14 +30,15 @@ body {
 .chat-window {
     display: flex;
     flex-direction: column;
-    width: 100%;
+    max-height: calc(100vh - var(--header));
     background-color: #ffffff;
+    overflow: hidden;
 }
 
 /* Chat Messages Styling */
 .chat-messages {
     flex: 1 1 auto;
-    overflow-y: auto; /* Enable internal scrolling */
+    overflow-y: scroll;
     padding: 20px;
 }
 
@@ -61,6 +63,12 @@ body {
     border-bottom: 1px solid #e0e0e0;
 }
 
+.sidebar-header > h2 {
+    /* Default font size based on viewport width */
+    font-size: 1.0vw;
+}
+
+
 #new-chat-btn {
     background-color: #19c37d; /* ChatGPT-like green button */
     color: white;
@@ -73,8 +81,9 @@ body {
 
 .chat-list {
     flex-grow: 1;
-    overflow-y: auto;
+    overflow-y: scroll;
     padding: 20px;
+
 }
 
 .chat-thread-item {

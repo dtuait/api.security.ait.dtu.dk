@@ -71,6 +71,31 @@ class ActiveDirectoryQueryAssistantViewSet(APIAuthBaseViewSet):
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 class ActiveDirectoryQueryViewSet(APIAuthBaseViewSet):
 
     @swagger_auto_schema(

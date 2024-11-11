@@ -295,3 +295,61 @@ try:
 except ImportError:
     print("ADOU model is not available for registration in the admin site.")
     pass
+
+
+
+
+
+
+
+# Register ChatThread admin
+try:
+    from .models import ChatThread
+    @admin.register(ChatThread)
+    class ChatThreadAdmin(admin.ModelAdmin):
+        list_display = ('id', 'title', 'user', 'created_at')  # Added 'id' for URL referencing
+        search_fields = ('title', 'user__username')
+        date_hierarchy = 'created_at'
+        ordering = ('-created_at',)
+
+        def get_queryset(self, request):
+            queryset = super().get_queryset(request)
+            return queryset.select_related('user')
+
+        def has_delete_permission(self, request, obj=None):
+            return True
+
+        def has_add_permission(self, request):
+            return True
+
+except ImportError:
+    print("ChatThread model is not available for registration in the admin site.")
+    pass
+
+# Register ChatMessage admin
+try:
+    from .models import ChatMessage
+    @admin.register(ChatMessage)
+    class ChatMessageAdmin(admin.ModelAdmin):
+        list_display = ('thread', 'role', 'content_preview', 'timestamp')
+        list_filter = ('role',)
+        search_fields = ('content', 'thread__title')
+        ordering = ('-timestamp',)
+
+        def content_preview(self, obj):
+            return obj.content[:50] + '...' if len(obj.content) > 50 else obj.content
+        content_preview.short_description = 'Content Preview'
+
+        def get_queryset(self, request):
+            queryset = super().get_queryset(request)
+            return queryset.select_related('thread')
+
+        def has_delete_permission(self, request, obj=None):
+            return True
+
+        def has_add_permission(self, request):
+            return True
+
+except ImportError:
+    print("ChatMessage model is not available for registration in the admin site.")
+    pass
