@@ -15,6 +15,7 @@ class App {
 
     init() {
         this.loadChatThreads();
+        // Set the autoRunToggle checkbox as unchecked by default
         if (this.uiBinder && this.uiBinder.autoRunToggle) {
             this.uiBinder.autoRunToggle.checked = false;
         }
@@ -44,7 +45,7 @@ class App {
         // Chat thread click
         this.uiBinder.chatList.addEventListener('click', (event) => {
             const threadItem = event.target.closest('.chat-thread-item');
-            if (threadItem && !event.target.classList.contains('delete-chat-btn') && !event.target.classList.contains('edit-chat-btn')) {
+            if (threadItem && !event.target.classList.contains('delete-chat-btn')) {
                 const threadId = threadItem.dataset.threadId;
                 this.loadChatMessages(threadId);
             }
@@ -55,27 +56,6 @@ class App {
                 const threadId = deleteBtn.dataset.threadId;
                 const threadTitle = deleteBtn.parentElement.querySelector('.thread-title').textContent;
                 this.confirmDeleteChatThread(threadId, threadTitle);
-            }
-
-            // **Edit chat thread title**
-            const editBtn = event.target.closest('.edit-chat-btn');
-            if (editBtn) {
-                const threadId = editBtn.dataset.threadId;
-                this.uiBinder.enableTitleEditing(threadId);
-            }
-        });
-
-        document.addEventListener('click', (event) => {
-            if (event.target.classList.contains('run-query-btn')) {
-                const messageElement = event.target.closest('.assistant-message');
-                const queryParameters = this.uiBinder.getQueryParameters(messageElement);
-                this.runQuery(queryParameters, messageElement);
-            }
-
-            if (event.target.classList.contains('download-excel-btn')) {
-                const messageElement = event.target.closest('.assistant-message');
-                const queryParameters = this.uiBinder.getQueryParameters(messageElement);
-                this.downloadExcel(queryParameters, messageElement);
             }
         });
 
@@ -90,22 +70,6 @@ class App {
                 this.uiBinder.clearChatMessages();
             }
         });
-    }
-
-
-    async updateThreadTitle(threadId, newTitle) {
-        try {
-            await this.baseAppUtils.restAjax('POST', '/myview/ajax/', {
-                'action': 'update_chat_thread_title',
-                'thread_id': threadId,
-                'title': newTitle
-            });
-            // Optionally, refresh the chat threads list
-            this.loadChatThreads();
-        } catch (error) {
-            console.error('Error updating thread title:', error);
-            throw error;
-        }
     }
 
     async createNewChat() {
@@ -126,6 +90,7 @@ class App {
             console.error('Error creating new chat:', error);
         }
     }
+    
 
     async loadChatThreads() {
         try {
@@ -177,8 +142,6 @@ class App {
         } catch (error) {
             console.error('Error loading chat messages:', error);
         }
-
-        this.uiBinder.bindTextareaAutoResize(this.uiBinder.messagesContainer);
     }
 
     // Updated method to update the URL with query parameter
@@ -194,6 +157,7 @@ class App {
         const threadId = urlParams.get('threadId');
         return threadId;
     }
+
 
     async handleUserInput() {
         const userInput = this.uiBinder.userInput.value.trim();
@@ -247,48 +211,48 @@ class App {
         }
     }
 
-    // Updated runQuery method
     async runQuery(queryParameters, messageElement) {
         try {
             // Collect the current values from the editable fields
-            const baseDnInput = messageElement.querySelector('textarea[name="base_dn"]');
-            const searchFilterInput = messageElement.querySelector('textarea[name="search_filter"]');
-            const searchAttributesInput = messageElement.querySelector('textarea[name="search_attributes"]');
-            const limitInput = messageElement.querySelector('textarea[name="limit"]');
-            const excludedAttributesInput = messageElement.querySelector('textarea[name="excluded_attributes"]');
-    
+            const baseDnInput = messageElement.querySelector('input[name="base_dn"]');
+            const searchFilterInput = messageElement.querySelector('input[name="search_filter"]');
+            const searchAttributesInput = messageElement.querySelector('input[name="search_attributes"]');
+            const limitInput = messageElement.querySelector('input[name="limit"]');
+            const excludedAttributesInput = messageElement.querySelector('input[name="excluded_attributes"]');
+
             const base_dn = baseDnInput ? baseDnInput.value : queryParameters.base_dn;
             const search_filter = searchFilterInput ? searchFilterInput.value : queryParameters.search_filter;
             const search_attributes = searchAttributesInput ? searchAttributesInput.value : queryParameters.search_attributes;
             const limit = limitInput ? limitInput.value : queryParameters.limit;
             const excluded_attributes = excludedAttributesInput ? excludedAttributesInput.value : queryParameters.excluded_attributes;
-    
-            // Prepare form data
-            const formData = new FormData();
-            formData.append('action', 'active_directory_query');
-            formData.append('base_dn', base_dn);
-            formData.append('search_filter', search_filter);
-            formData.append('search_attributes', search_attributes);
-            formData.append('limit', limit);
-            formData.append('excluded_attributes', excluded_attributes);
-            formData.append('csrfmiddlewaretoken', this.getCookie('csrftoken'));
-    
-            // Run the query via the AJAX endpoint
-            const response = await fetch('/myview/ajax/', {
-                method: 'POST',
-                body: formData,
-                credentials: 'same-origin' // Include cookies for authentication
+
+            // Prepare query parameters
+            const params = new URLSearchParams();
+            params.append('base_dn', base_dn);
+            params.append('search_filter', search_filter);
+            params.append('search_attributes', search_attributes);
+            params.append('limit', limit);
+            params.append('excluded_attributes', excluded_attributes);
+
+            // Run the query via the API endpoint
+            const response = await fetch(`/active-directory/v1.0/query?${params.toString()}`, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json'
+                    // Add 'Authorization' header if required
+                },
+                credentials: 'same-origin' // Include cookies for authentication if necessary
             });
-    
+
             if (!response.ok) {
                 throw new Error(`HTTP error! Status: ${response.status}`);
             }
-    
+
             const result = await response.json();
-    
+
             // Display the result
             this.uiBinder.appendQueryResultMessage(result, messageElement);
-    
+
         } catch (error) {
             console.error('Error running query:', error);
             // Display error message
@@ -296,6 +260,7 @@ class App {
         }
     }
 
+    // In your App class
     async downloadExcel(queryParameters, messageElement) {
         try {
             // Collect the current values from the editable fields
@@ -373,6 +338,7 @@ class App {
         return cookieValue;
     }
 
+
     confirmDeleteChatThread(threadId, threadTitle) {
         const modalId = 'deleteChatModal';
 
@@ -440,141 +406,41 @@ class UIBinder {
             this.sendBtn = document.getElementById('send-btn');
             this.userInput = document.getElementById('user-input');
             this.chatMessages = document.getElementById('chat-messages');
-            this.messagesContainer = document.getElementById('messages-container');
-            this.chatDetail = document.getElementById('chat-detail');
-            this.splitter = document.getElementById('splitter');
-            this.toggleChatDetailBtn = document.getElementById('toggle-chat-detail');
             this.chatList = document.getElementById('chat-list');
             this.newChatBtn = document.getElementById('new-chat-btn');
             this.loadingIndicator = this.createLoadingIndicator();
             this.autoRunToggle = document.getElementById('auto-run-toggle');
 
-            // Initialize the splitter functionality
-            this.initSplitter();
+            // New properties for scroll handling
+            this.chatWindow = document.querySelector('.chat-window');
+            this.chatInput = document.querySelector('.chat-input');
+            this.isChatInputFixed = false;
 
-            // Bind the collapse button
-            this.toggleChatDetailBtn.addEventListener('click', () => {
-                this.toggleChatDetail();
-            });
+            // Bind the scroll event
+            this.chatMessages.addEventListener('scroll', this.handleChatMessagesScroll.bind(this));
+
+            // Bind textarea auto-resize
+            this.bindTextareaAutoResize();
 
             UIBinder.instance = this;
         }
         return UIBinder.instance;
     }
 
-    getQueryParameters(messageElement) {
-        const baseDnInput = messageElement.querySelector('textarea[name="base_dn"]');
-        const searchFilterInput = messageElement.querySelector('textarea[name="search_filter"]');
-        const searchAttributesInput = messageElement.querySelector('textarea[name="search_attributes"]');
-        const limitInput = messageElement.querySelector('textarea[name="limit"]');
-        const excludedAttributesInput = messageElement.querySelector('textarea[name="excluded_attributes"]');
-    
-        return {
-            base_dn: baseDnInput ? baseDnInput.value : '',
-            search_filter: searchFilterInput ? searchFilterInput.value : '',
-            search_attributes: searchAttributesInput ? searchAttributesInput.value : '',
-            limit: limitInput ? limitInput.value : '',
-            excluded_attributes: excludedAttributesInput ? excludedAttributesInput.value : ''
-        };
+    bindTextareaAutoResize() {
+        const userInput = this.userInput;
+
+        function adjustTextareaHeight() {
+            userInput.style.height = 'auto'; // Reset height
+            userInput.style.height = userInput.scrollHeight + 'px'; // Set new height based on content
+        }
+
+        userInput.addEventListener('input', adjustTextareaHeight);
+
+        // Optionally, adjust height on initialization
+        adjustTextareaHeight();
     }
 
-
-
-    bindTextareaAutoResize(container) {
-        container.querySelectorAll('textarea').forEach(textarea => {
-            function adjustHeight() {
-                textarea.style.height = '2.5em'; // Reset to one line
-                textarea.style.height = textarea.scrollHeight + 'px'; // Adjust height based on content
-            }
-            textarea.addEventListener('input', adjustHeight);
-            // Adjust the height initially
-            adjustHeight();
-        });
-    }
-
-    
-    // bindTextareaAutoResize() {
-    //     const userInput = this.userInput;
-
-    //     function adjustTextareaHeight() {
-    //         userInput.style.height = 'auto'; // Reset height
-    //         userInput.style.height = userInput.scrollHeight + 'px'; // Set new height based on content
-    //     }
-
-    //     userInput.addEventListener('input', adjustTextareaHeight);
-
-    //     // Optionally, adjust height on initialization
-    //     adjustTextareaHeight();
-    // }
-
-
-   
-
-    disableTitleEditing(threadId, title) {
-        const threadItem = this.chatList.querySelector(`.chat-thread-item[data-thread-id="${threadId}"]`);
-        if (!threadItem) return;
-
-        const input = threadItem.querySelector('.edit-thread-title-input');
-        if (!input) return;
-
-        const threadTitle = document.createElement('span');
-        threadTitle.classList.add('thread-title');
-        threadTitle.textContent = title;
-
-        threadItem.replaceChild(threadTitle, input);
-    }
-
-
-    enableTitleEditing(threadId) {
-        const threadItem = this.chatList.querySelector(`.chat-thread-item[data-thread-id="${threadId}"]`);
-        if (!threadItem) return;
-
-        const threadTitle = threadItem.querySelector('.thread-title');
-        const currentTitle = threadTitle.textContent;
-
-        // Create an input field
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.value = currentTitle;
-        input.classList.add('edit-thread-title-input');
-
-        // Replace the threadTitle element with the input field
-        threadItem.replaceChild(input, threadTitle);
-
-        input.focus();
-        input.select();
-
-        // Event listeners for saving the new title
-        const saveTitle = () => {
-            const newTitle = input.value.trim();
-            if (newTitle === '') {
-                // If title is empty, revert to previous title
-                this.disableTitleEditing(threadId, currentTitle);
-            } else {
-                // Save the new title via AJAX
-                App.getInstance().updateThreadTitle(threadId, newTitle)
-                    .then(() => {
-                        this.disableTitleEditing(threadId, newTitle);
-                    })
-                    .catch(error => {
-                        console.error('Error updating thread title:', error);
-                        this.disableTitleEditing(threadId, currentTitle);
-                    });
-            }
-        };
-
-        input.addEventListener('keydown', (event) => {
-            if (event.key === 'Enter') {
-                saveTitle();
-            } else if (event.key === 'Escape') {
-                this.disableTitleEditing(threadId, currentTitle);
-            }
-        });
-
-        input.addEventListener('blur', () => {
-            saveTitle();
-        });
-    }
 
 
     handleChatMessagesScroll() {
@@ -604,73 +470,6 @@ class UIBinder {
         }
     }
 
-
-    initSplitter() {
-        const splitter = this.splitter;
-        const chatMessages = this.chatMessages;
-        const chatDetail = this.chatDetail;
-        const chatContent = document.querySelector('.chat-content');
-
-        let isDragging = false;
-
-        splitter.addEventListener('mousedown', (e) => {
-            isDragging = true;
-            document.body.style.cursor = 'col-resize';
-            e.preventDefault();
-        });
-
-        document.addEventListener('mousemove', (e) => {
-            if (!isDragging) return;
-            const totalWidth = chatContent.getBoundingClientRect().width;
-            const offsetLeft = chatContent.getBoundingClientRect().left;
-            let newX = e.clientX - offsetLeft;
-
-            // Minimum and maximum widths
-            const minChatMessagesWidth = 200; // Minimum width for chatMessages
-            const minChatDetailWidth = 200;   // Minimum width for chatDetail
-
-            // Calculate widths
-            let chatMessagesWidth = newX - splitter.offsetWidth / 2;
-            let chatDetailWidth = totalWidth - chatMessagesWidth - splitter.offsetWidth;
-
-            // Enforce minimum widths
-            if (chatMessagesWidth < minChatMessagesWidth) {
-                chatMessagesWidth = minChatMessagesWidth;
-                chatDetailWidth = totalWidth - chatMessagesWidth - splitter.offsetWidth;
-            }
-
-            if (chatDetailWidth < minChatDetailWidth) {
-                chatDetailWidth = minChatDetailWidth;
-                chatMessagesWidth = totalWidth - chatDetailWidth - splitter.offsetWidth;
-            }
-
-            chatMessages.style.flexBasis = `${chatMessagesWidth}px`;
-            chatDetail.style.flexBasis = `${chatDetailWidth}px`;
-        });
-
-        document.addEventListener('mouseup', () => {
-            if (isDragging) {
-                isDragging = false;
-                document.body.style.cursor = '';
-            }
-        });
-    }
-
-
-    toggleChatDetail() {
-        this.chatDetail.classList.toggle('collapsed');
-        if (this.chatDetail.classList.contains('collapsed')) {
-            this.chatMessages.style.flexBasis = 'calc(100% - 10px)';
-            this.toggleChatDetailBtn.textContent = '<'; // Change icon
-            this.splitter.style.display = 'none';
-        } else {
-            this.chatMessages.style.flexBasis = 'calc(60% - 5px)';
-            this.toggleChatDetailBtn.textContent = '>'; // Change icon
-            this.splitter.style.display = 'block';
-        }
-    }
-
-
     createLoadingIndicator() {
         const loadingDiv = document.createElement('div');
         loadingDiv.className = 'loading-indicator';
@@ -687,7 +486,7 @@ class UIBinder {
         messageContent.innerHTML = this.escapeHtml(message);
 
         messageElement.appendChild(messageContent);
-        this.messagesContainer.appendChild(messageElement);
+        this.chatMessages.appendChild(messageElement);
         this.scrollToBottom();
     }
 
@@ -713,16 +512,16 @@ class UIBinder {
 
     toggleResultFormat(result, resultElement, displayAsCSV) {
         const resultContent = resultElement.querySelector('.result-content');
-
+    
         // Remove existing content
         resultContent.innerHTML = '';
-
+    
         // Display the count
         const countElement = document.createElement('div');
         countElement.classList.add('result-count');
         countElement.textContent = `Number of objects returned: ${result.count}`;
         resultContent.appendChild(countElement);
-
+    
         if (displayAsCSV) {
             // Convert JSON to CSV table and display
             const csvTable = this.convertJSONToTable(result.results);
@@ -734,14 +533,15 @@ class UIBinder {
             resultContent.appendChild(preElement);
         }
     }
-
+    
+    
     convertJSONToTable(jsonData) {
         const table = document.createElement('table');
         table.classList.add('result-table');
-
+    
         // Get all unique keys from the JSON data
         const keys = Array.from(new Set(jsonData.flatMap(item => Object.keys(item))));
-
+    
         // Create table header
         const thead = document.createElement('thead');
         const headerRow = document.createElement('tr');
@@ -752,7 +552,7 @@ class UIBinder {
         });
         thead.appendChild(headerRow);
         table.appendChild(thead);
-
+    
         // Create table body
         const tbody = document.createElement('tbody');
         jsonData.forEach(item => {
@@ -766,9 +566,10 @@ class UIBinder {
             tbody.appendChild(row);
         });
         table.appendChild(tbody);
-
+    
         return table;
     }
+    
 
     parseSearchFilterForNtTime(searchFilter) {
         const regex = /(\(pwdLastSet<=?(\d+)\))/;
@@ -795,91 +596,91 @@ class UIBinder {
         } else {
             messageContent.innerHTML = this.formatAssistantMessageContent(message);
         }
-
-        this.bindTextareaAutoResize(messageElement);
     
         messageElement.appendChild(messageContent);
+        this.chatMessages.appendChild(messageElement);
+        this.scrollToBottom();
     
-        // Clear previous content and append to chat-detail
-        this.chatDetail.innerHTML = '';
-        this.chatDetail.appendChild(messageElement);
-
         // Get the baseDnInput and distinguishedNameElement elements
         const baseDnInput = messageElement.querySelector('input[name="base_dn"]');
         const distinguishedNameElement = messageElement.querySelector('#distinguished-name');
-
+    
         if (baseDnInput && distinguishedNameElement) {
             baseDnInput.addEventListener('input', () => {
                 const canonicalName = baseDnInput.value;
                 const distinguishedName = this.canonicalToDistinguishedName(canonicalName);
                 distinguishedNameElement.textContent = distinguishedName;
             });
-
+    
             // Trigger the input event once to initialize
             baseDnInput.dispatchEvent(new Event('input'));
         }
-
+    
         // Add event listener for baseDnInput to fetch suggestions
         if (baseDnInput) {
             baseDnInput.addEventListener('input', async () => {
                 const canonicalName = baseDnInput.value;
                 if (canonicalName.length < 3) return; // Wait until the user has typed at least 3 characters
-
-                // Prepare form data
-                const formData = new FormData();
-                formData.append('action', 'active_directory_query');
-                formData.append('base_dn', 'DC=win,DC=dtu,DC=dk');
-                formData.append('search_filter', `(canonicalName=*${canonicalName}*)`);
-                formData.append('search_attributes', 'canonicalName');
-                formData.append('limit', '100');
-                formData.append('csrfmiddlewaretoken', this.getCookie('csrftoken'));
-
+    
+                // Prepare query parameters
+                const params = new URLSearchParams();
+                params.append('action', 'active_directory_query');
+                params.append('base_dn', 'DC=win,DC=dtu,DC=dk');
+                params.append('search_filter', `(canonicalName=*${canonicalName}*)`);
+                params.append('search_attributes', 'canonicalName');
+                params.append('limit', '100');
+    
                 try {
                     const response = await fetch('/myview/ajax/', {
                         method: 'POST',
-                        body: formData,
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-CSRFToken': this.getCookie('csrftoken'),
+                        },
+                        body: params,
                         credentials: 'same-origin'
                     });
-
+    
                     if (response.ok) {
                         const result = await response.json();
                         // Process the result to show suggestions
-                        this.showBaseDnSuggestions(baseDnInput, result.results);
+                        this.showBaseDnSuggestions(baseDnInput, result);
                     }
                 } catch (error) {
                     console.error('Error fetching base_dn suggestions:', error);
                 }
             });
         }
-
+    
         // Add the "Run Query" and "Download Excel" buttons
         if (!message.error) {
             const buttonContainer = document.createElement('div');
             buttonContainer.classList.add('button-container');
-
+    
             const runQueryBtn = document.createElement('button');
             runQueryBtn.textContent = 'Run Query';
             runQueryBtn.classList.add('run-query-btn');
             runQueryBtn.addEventListener('click', () => {
                 App.getInstance().runQuery(message, messageElement);
             });
-
+    
             const downloadExcelBtn = document.createElement('button');
             downloadExcelBtn.textContent = 'Download Excel';
             downloadExcelBtn.classList.add('download-excel-btn');
             downloadExcelBtn.addEventListener('click', () => {
                 App.getInstance().downloadExcel(message, messageElement);
             });
-
+    
             // Append buttons to the button container
             buttonContainer.appendChild(runQueryBtn);
             buttonContainer.appendChild(downloadExcelBtn);
-
+    
             messageContent.appendChild(buttonContainer);
         }
-
+    
         return messageElement; // Return the element for further manipulation
     }
+    
 
     // Helper function to get CSRF token
     getCookie(name) {
@@ -963,78 +764,81 @@ class UIBinder {
         });
     }
 
+
     appendQueryResultMessage(result, messageElement) {
         let resultElement = messageElement.querySelector('.query-result');
         if (!resultElement) {
             resultElement = document.createElement('div');
             resultElement.classList.add('query-result');
-
+    
             // Create a container for the header and content
             const resultHeader = document.createElement('div');
             resultHeader.classList.add('result-header');
-
+    
             // Create the 'Copy Code' button
             const copyButton = document.createElement('button');
             copyButton.classList.add('copy-code-btn');
             copyButton.textContent = 'Copy Code';
             resultHeader.appendChild(copyButton);
-
+    
             // Event listener for 'Copy Code' button
             copyButton.addEventListener('click', () => {
                 this.copyResultContent(resultContent);
             });
-
+    
             // Create the toggle switch container
             const toggleContainer = document.createElement('div');
             toggleContainer.classList.add('toggle-container');
-
+    
             // Create the toggle switch input
             const toggleInput = document.createElement('input');
             toggleInput.type = 'checkbox';
             toggleInput.classList.add('toggle-checkbox');
             toggleInput.id = 'formatToggle' + Date.now(); // Unique ID
-
+    
             // Create the label for the toggle switch
             const toggleLabel = document.createElement('label');
             toggleLabel.classList.add('toggle-label');
             toggleLabel.htmlFor = toggleInput.id;
-
+    
             // Add a text label
             const toggleText = document.createElement('span');
             toggleText.textContent = 'Display as CSV';
-
+    
             // Append elements to toggle container
             toggleContainer.appendChild(toggleText);
             toggleContainer.appendChild(toggleInput);
             toggleContainer.appendChild(toggleLabel);
-
+    
             // Event listener for the toggle switch
             toggleInput.addEventListener('change', () => {
                 this.toggleResultFormat(result, resultElement, toggleInput.checked);
             });
-
+    
             // Append the toggle switch to the result header
             resultHeader.appendChild(toggleContainer);
-
+    
             // Create the result content container
             const resultContent = document.createElement('div');
             resultContent.classList.add('result-content');
-
+    
             // Append the header and content to the result element
             resultElement.appendChild(resultHeader);
             resultElement.appendChild(resultContent);
-
+    
             messageElement.appendChild(resultElement);
         } else {
             // Clear previous content
             resultElement.querySelector('.result-content').innerHTML = '';
         }
-
+    
         const resultContent = resultElement.querySelector('.result-content');
-
+    
         if (result.error) {
             resultContent.textContent = `An error occurred: ${result.error}`;
         } else {
+            // Initially display the result as formatted JSON
+            // resultContent.innerHTML = `<pre>${this.escapeHtml(JSON.stringify(result, null, 2))}</pre>`;
             // Display the count
             const countElement = document.createElement('div');
             countElement.classList.add('result-count');
@@ -1047,12 +851,15 @@ class UIBinder {
             resultContent.appendChild(preElement);
         }
     }
+    
+
 
     copyResultContent(resultContent) {
         const textToCopy = resultContent.innerText;
         if (navigator.clipboard && window.isSecureContext) {
             // Modern asynchronous clipboard API
             navigator.clipboard.writeText(textToCopy).then(() => {
+                alert('Result copied to clipboard!');
             }).catch(err => {
                 console.error('Failed to copy: ', err);
             });
@@ -1073,6 +880,7 @@ class UIBinder {
             document.body.removeChild(textarea);
         }
     }
+    
 
     showLoading() {
         this.chatMessages.appendChild(this.loadingIndicator);
@@ -1090,7 +898,7 @@ class UIBinder {
     }
 
     clearChatMessages() {
-        this.messagesContainer.innerHTML = '';
+        this.chatMessages.innerHTML = '';
     }
 
     populateChatThreads(threads) {
@@ -1104,18 +912,12 @@ class UIBinder {
             threadTitle.classList.add('thread-title');
             threadTitle.textContent = thread.title;
 
-            const editBtn = document.createElement('button');
-            editBtn.classList.add('edit-chat-btn');
-            editBtn.dataset.threadId = thread.id;
-            editBtn.innerHTML = '&#9998;'; // Pencil icon
-
             const deleteBtn = document.createElement('button');
             deleteBtn.classList.add('delete-chat-btn');
             deleteBtn.dataset.threadId = thread.id;
             deleteBtn.innerHTML = '&times;'; // X symbol
 
             threadItem.appendChild(threadTitle);
-            threadItem.appendChild(editBtn);
             threadItem.appendChild(deleteBtn);
 
             this.chatList.appendChild(threadItem);
@@ -1128,6 +930,9 @@ class UIBinder {
         return div.innerHTML;
     }
 
+
+    
+
     static getInstance() {
         if (!UIBinder.instance) {
             UIBinder.instance = new UIBinder();
@@ -1138,13 +943,19 @@ class UIBinder {
 
 document.addEventListener('DOMContentLoaded', function () {
     const app = App.getInstance();
+
+    // Set the autoRunToggle checkbox as unchecked by default
     if (app.uiBinder && app.uiBinder.autoRunToggle) {
         app.uiBinder.autoRunToggle.checked = false;
     }
+
 });
+
 
 (function () {
     const app = App.getInstance();
     app.init();
 })();
+
+
 

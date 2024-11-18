@@ -70,6 +70,8 @@ def generate_generic_xlsx_document(data):
 
 
 
+
+
 class AjaxView(BaseView):
 
     # Ensure CSRF exemption and login required
@@ -88,8 +90,15 @@ class AjaxView(BaseView):
     def create_chat_thread(self, request):
         user = request.user
         from .models import ChatThread
-        thread = ChatThread.objects.create(user=user)
-        return JsonResponse({'thread_id': thread.id, 'title': thread.title})
+
+        # Check if there's already a thread with title "New Chat" for this user
+        existing_thread = ChatThread.objects.filter(user=user, title='New Chat').first()
+        if existing_thread:
+            return JsonResponse({'thread_id': existing_thread.id, 'title': existing_thread.title, 'existing': True})
+        else:
+            thread = ChatThread.objects.create(user=user)
+            return JsonResponse({'thread_id': thread.id, 'title': thread.title, 'existing': False})
+
 
     def get_chat_threads(self, request):
         user = request.user
@@ -228,6 +237,8 @@ class AjaxView(BaseView):
 
             if action == 'create_chat_thread':
                 return self.create_chat_thread(request)
+            elif action == 'update_chat_thread_title':
+                return self.update_chat_thread_title(request)
             elif action == 'get_chat_threads':
                 return self.get_chat_threads(request)
             elif action == 'send_message':
@@ -326,7 +337,13 @@ class AjaxView(BaseView):
                     limit=limit,
                     excluded_attributes=excluded_attributes
                 )
-                return JsonResponse(result, safe=False)
+
+                response_data = {
+                    'count': len(result),
+                    'results': result
+                }
+                
+                return JsonResponse(response_data, safe=False)
 
             
 
@@ -477,3 +494,22 @@ class AjaxView(BaseView):
         except Exception as e:
             logger.error(f"Error processing action '{action}': {e}")
             return JsonResponse({'error': str(e)}, status=500)
+
+
+
+    def update_chat_thread_title(self, request):
+        user = request.user
+        thread_id = request.POST.get('thread_id')
+        new_title = request.POST.get('title')
+
+        if not thread_id or not new_title:
+            return JsonResponse({'error': 'Thread ID and new title are required'}, status=400)
+
+        try:
+            from .models import ChatThread
+            thread = ChatThread.objects.get(id=thread_id, user=user)
+            thread.title = new_title
+            thread.save()
+            return JsonResponse({'success': True})
+        except ChatThread.DoesNotExist:
+            return JsonResponse({'error': 'Chat thread not found'}, status=404)
