@@ -13,6 +13,14 @@ class App {
         return App.instance;
     }
 
+    init() {
+        this.loadChatThreads();
+        // Set the autoRunToggle checkbox as unchecked by default
+        if (this.uiBinder && this.uiBinder.autoRunToggle) {
+            this.uiBinder.autoRunToggle.checked = false;
+        }
+    }
+
     _setBindings() {
         // Send button click
         this.uiBinder.sendBtn.addEventListener('click', (event) => {
@@ -406,9 +414,26 @@ class UIBinder {
             // Bind the scroll event
             this.chatMessages.addEventListener('scroll', this.handleChatMessagesScroll.bind(this));
 
+            // Bind textarea auto-resize
+            this.bindTextareaAutoResize();
+
             UIBinder.instance = this;
         }
         return UIBinder.instance;
+    }
+
+    bindTextareaAutoResize() {
+        const userInput = this.userInput;
+
+        function adjustTextareaHeight() {
+            userInput.style.height = 'auto'; // Reset height
+            userInput.style.height = userInput.scrollHeight + 'px'; // Set new height based on content
+        }
+
+        userInput.addEventListener('input', adjustTextareaHeight);
+
+        // Optionally, adjust height on initialization
+        adjustTextareaHeight();
     }
 
 
@@ -480,6 +505,56 @@ class UIBinder {
         return ntTime.toString();
     }
 
+    toggleResultFormat(result, resultElement, displayAsCSV) {
+        const resultContent = resultElement.querySelector('.result-content');
+    
+        if (displayAsCSV) {
+            // Convert JSON to CSV table and display
+            const csvTable = this.convertJSONToTable(result);
+            resultContent.innerHTML = '';
+            resultContent.appendChild(csvTable);
+        } else {
+            // Display JSON
+            resultContent.innerHTML = `<pre>${this.escapeHtml(JSON.stringify(result, null, 2))}</pre>`;
+        }
+    }
+    
+    convertJSONToTable(jsonData) {
+        const table = document.createElement('table');
+        table.classList.add('result-table');
+    
+        // Get all unique keys from the JSON data
+        const keys = Array.from(new Set(jsonData.flatMap(item => Object.keys(item))));
+    
+        // Create table header
+        const thead = document.createElement('thead');
+        const headerRow = document.createElement('tr');
+        keys.forEach(key => {
+            const th = document.createElement('th');
+            th.textContent = key;
+            headerRow.appendChild(th);
+        });
+        thead.appendChild(headerRow);
+        table.appendChild(thead);
+    
+        // Create table body
+        const tbody = document.createElement('tbody');
+        jsonData.forEach(item => {
+            const row = document.createElement('tr');
+            keys.forEach(key => {
+                const td = document.createElement('td');
+                const value = item[key] ? item[key].join(', ') : '';
+                td.textContent = value;
+                row.appendChild(td);
+            });
+            tbody.appendChild(row);
+        });
+        table.appendChild(tbody);
+    
+        return table;
+    }
+    
+
     parseSearchFilterForNtTime(searchFilter) {
         const regex = /(\(pwdLastSet<=?(\d+)\))/;
         const match = searchFilter.match(regex);
@@ -495,42 +570,42 @@ class UIBinder {
     appendAssistantMessage(message, timestamp = null) {
         const messageElement = document.createElement('div');
         messageElement.classList.add('message', 'assistant-message');
-
+    
         const messageContent = document.createElement('div');
         messageContent.classList.add('message-content');
-
+    
         // Format the message content based on the JSON data
         if (message.error) {
             messageContent.textContent = `An error occurred: ${message.error}`;
         } else {
             messageContent.innerHTML = this.formatAssistantMessageContent(message);
         }
-
+    
         messageElement.appendChild(messageContent);
         this.chatMessages.appendChild(messageElement);
         this.scrollToBottom();
-
+    
         // Get the baseDnInput and distinguishedNameElement elements
         const baseDnInput = messageElement.querySelector('input[name="base_dn"]');
         const distinguishedNameElement = messageElement.querySelector('#distinguished-name');
-
+    
         if (baseDnInput && distinguishedNameElement) {
             baseDnInput.addEventListener('input', () => {
                 const canonicalName = baseDnInput.value;
                 const distinguishedName = this.canonicalToDistinguishedName(canonicalName);
                 distinguishedNameElement.textContent = distinguishedName;
             });
-
+    
             // Trigger the input event once to initialize
             baseDnInput.dispatchEvent(new Event('input'));
         }
-
+    
         // Add event listener for baseDnInput to fetch suggestions
         if (baseDnInput) {
             baseDnInput.addEventListener('input', async () => {
                 const canonicalName = baseDnInput.value;
                 if (canonicalName.length < 3) return; // Wait until the user has typed at least 3 characters
-
+    
                 // Prepare query parameters
                 const params = new URLSearchParams();
                 params.append('action', 'active_directory_query');
@@ -538,7 +613,7 @@ class UIBinder {
                 params.append('search_filter', `(canonicalName=*${canonicalName}*)`);
                 params.append('search_attributes', 'canonicalName');
                 params.append('limit', '100');
-
+    
                 try {
                     const response = await fetch('/myview/ajax/', {
                         method: 'POST',
@@ -549,7 +624,7 @@ class UIBinder {
                         body: params,
                         credentials: 'same-origin'
                     });
-
+    
                     if (response.ok) {
                         const result = await response.json();
                         // Process the result to show suggestions
@@ -560,33 +635,36 @@ class UIBinder {
                 }
             });
         }
-
+    
         // Add the "Run Query" and "Download Excel" buttons
         if (!message.error) {
             const buttonContainer = document.createElement('div');
             buttonContainer.classList.add('button-container');
-
+    
             const runQueryBtn = document.createElement('button');
             runQueryBtn.textContent = 'Run Query';
             runQueryBtn.classList.add('run-query-btn');
             runQueryBtn.addEventListener('click', () => {
                 App.getInstance().runQuery(message, messageElement);
             });
-
+    
             const downloadExcelBtn = document.createElement('button');
             downloadExcelBtn.textContent = 'Download Excel';
             downloadExcelBtn.classList.add('download-excel-btn');
             downloadExcelBtn.addEventListener('click', () => {
                 App.getInstance().downloadExcel(message, messageElement);
             });
-
+    
+            // Append buttons to the button container
             buttonContainer.appendChild(runQueryBtn);
             buttonContainer.appendChild(downloadExcelBtn);
+    
             messageContent.appendChild(buttonContainer);
         }
-
+    
         return messageElement; // Return the element for further manipulation
     }
+    
 
     // Helper function to get CSRF token
     getCookie(name) {
@@ -676,25 +754,107 @@ class UIBinder {
         if (!resultElement) {
             resultElement = document.createElement('div');
             resultElement.classList.add('query-result');
+    
+            // Create a container for the header and content
+            const resultHeader = document.createElement('div');
+            resultHeader.classList.add('result-header');
+    
+            // Create the 'Copy Code' button
+            const copyButton = document.createElement('button');
+            copyButton.classList.add('copy-code-btn');
+            copyButton.textContent = 'Copy Code';
+            resultHeader.appendChild(copyButton);
+    
+            // Event listener for 'Copy Code' button
+            copyButton.addEventListener('click', () => {
+                this.copyResultContent(resultContent);
+            });
+    
+            // Create the toggle switch container
+            const toggleContainer = document.createElement('div');
+            toggleContainer.classList.add('toggle-container');
+    
+            // Create the toggle switch input
+            const toggleInput = document.createElement('input');
+            toggleInput.type = 'checkbox';
+            toggleInput.classList.add('toggle-checkbox');
+            toggleInput.id = 'formatToggle' + Date.now(); // Unique ID
+    
+            // Create the label for the toggle switch
+            const toggleLabel = document.createElement('label');
+            toggleLabel.classList.add('toggle-label');
+            toggleLabel.htmlFor = toggleInput.id;
+    
+            // Add a text label
+            const toggleText = document.createElement('span');
+            toggleText.textContent = 'Display as CSV';
+    
+            // Append elements to toggle container
+            toggleContainer.appendChild(toggleText);
+            toggleContainer.appendChild(toggleInput);
+            toggleContainer.appendChild(toggleLabel);
+    
+            // Event listener for the toggle switch
+            toggleInput.addEventListener('change', () => {
+                this.toggleResultFormat(result, resultElement, toggleInput.checked);
+            });
+    
+            // Append the toggle switch to the result header
+            resultHeader.appendChild(toggleContainer);
+    
+            // Create the result content container
             const resultContent = document.createElement('div');
             resultContent.classList.add('result-content');
+    
+            // Append the header and content to the result element
+            resultElement.appendChild(resultHeader);
             resultElement.appendChild(resultContent);
+    
             messageElement.appendChild(resultElement);
         } else {
             // Clear previous content
             resultElement.querySelector('.result-content').innerHTML = '';
         }
-
+    
         const resultContent = resultElement.querySelector('.result-content');
-
+    
         if (result.error) {
             resultContent.textContent = `An error occurred: ${result.error}`;
         } else {
-            // Display the result as formatted JSON
+            // Initially display the result as formatted JSON
             resultContent.innerHTML = `<pre>${this.escapeHtml(JSON.stringify(result, null, 2))}</pre>`;
         }
-
     }
+    
+
+
+    copyResultContent(resultContent) {
+        const textToCopy = resultContent.innerText;
+        if (navigator.clipboard && window.isSecureContext) {
+            // Modern asynchronous clipboard API
+            navigator.clipboard.writeText(textToCopy).then(() => {
+                alert('Result copied to clipboard!');
+            }).catch(err => {
+                console.error('Failed to copy: ', err);
+            });
+        } else {
+            // Fallback for older browsers
+            const textarea = document.createElement('textarea');
+            textarea.value = textToCopy;
+            textarea.style.position = 'fixed'; // Prevent scrolling to bottom
+            document.body.appendChild(textarea);
+            textarea.focus();
+            textarea.select();
+            try {
+                document.execCommand('copy');
+                alert('Result copied to clipboard!');
+            } catch (err) {
+                console.error('Fallback: Oops, unable to copy', err);
+            }
+            document.body.removeChild(textarea);
+        }
+    }
+    
 
     showLoading() {
         this.chatMessages.appendChild(this.loadingIndicator);
@@ -744,6 +904,9 @@ class UIBinder {
         return div.innerHTML;
     }
 
+
+    
+
     static getInstance() {
         if (!UIBinder.instance) {
             UIBinder.instance = new UIBinder();
@@ -761,6 +924,12 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
 });
+
+
+(function () {
+    const app = App.getInstance();
+    app.init();
+})();
 
 
 

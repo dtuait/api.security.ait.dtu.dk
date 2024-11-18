@@ -6,14 +6,23 @@ body {
     background-color: #f7f7f8; /* ChatGPT-like light background */
 }
 
+
+
+
+
+.chat-list {
+    flex-grow: 1;
+    overflow-y: scroll;
+    padding: 20px;
+}
+
+
+
 /* Chat Interface Layout */
 .chat-interface {
     display: flex;
-    flex-grow: 1; /* Allow it to grow and fill available space */
-    height: 100vh;
     background-color: #f7f7f8;
     color: #333;
-    
 }
 
 /* Sidebar Styling */
@@ -23,21 +32,22 @@ body {
     display: flex;
     flex-direction: column;
     border-right: 1px solid #e0e0e0;
-    max-height: calc(100vh - var(--header-height));
     position: fixed;
-    z-index: 1;
+    top: var(--header-height); /* Start below the header */
+    left: 0;
+    bottom: 0; /* Extend to the bottom of the viewport */
+    overflow-y: auto; /* Enable vertical scrolling */
 }
 
 /* Chat Window Styling */
 .chat-window {
-    margin-left: 280px;
+    margin-left: 280px; /* Account for the sidebar width */
     background-color: #ffffff;
-    width: calc(100% - 280px);
+    width: calc(100% - 280px); /* Adjust width to fill remaining space */
+    height: calc(100vh - var(--header-height)); /* Fill the space below the header */
     display: flex;
     flex-direction: column;
-    height: 100vh; /* Full viewport height */
 }
-
 /* Chat Messages Styling */
 .chat-messages {
     flex-grow: 1;            /* Expand to fill available space */
@@ -48,16 +58,11 @@ body {
 /* Input Area Styling */
 .chat-input {
     flex-shrink: 0;          /* Prevent shrinking */
-    flex: 0 0 auto;          /* Prevents it from growing or shrinking */
     background-color: #fff;
     display: flex;
     align-items: center;
     padding: 15px;
     border-top: 1px solid #e0e0e0;
-    border-radius: 8px;
-    border: 1px solid #e0e0e0;
-    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
-    /* Other styles remain unchanged */
 }
 
 
@@ -134,7 +139,7 @@ body {
 
 #user-input {
     flex-grow: 1;
-    resize: none;
+    resize: none; /* Prevent manual resizing */
     padding: 10px;
     background-color: #f7f7f8;
     color: #333;
@@ -142,7 +147,12 @@ body {
     border-radius: 5px;
     font-size: 14px;
     box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+    margin-right: 10px;
+    height: auto; /* Allow automatic height adjustment */
+    max-height: calc(1.5em * 10); /* Approximate height for 10 lines */
+    overflow-y: auto; /* Enable vertical scrollbar after max-height */
 }
+
 
 #send-btn {
     background-color: #19c37d;
@@ -156,6 +166,92 @@ body {
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
+
+.result-header {
+    position: relative;
+}
+
+.copy-code-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    padding: 6px 12px;
+    background-color: #19c37d;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.copy-code-btn:hover {
+    background-color: #17a673;
+}
+
+
+
+
+/* Toggle Switch Styling */
+.toggle-container {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.toggle-checkbox {
+    height: 0;
+    width: 0;
+    visibility: hidden;
+}
+
+.toggle-label {
+    cursor: pointer;
+    text-indent: -9999px;
+    width: 50px;
+    height: 25px;
+    background: grey;
+    display: block;
+    border-radius: 100px;
+    position: relative;
+}
+
+.toggle-label:after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 21px;
+    height: 21px;
+    background: #fff;
+    border-radius: 90px;
+    transition: 0.3s;
+}
+
+.toggle-checkbox:checked + .toggle-label {
+    background: #19c37d;
+}
+
+.toggle-checkbox:checked + .toggle-label:after {
+    left: calc(100% - 2px);
+    transform: translateX(-100%);
+}
+
+/* Table Styling */
+.result-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+.result-table th,
+.result-table td {
+    border: 1px solid #ddd;
+    padding: 8px;
+}
+
+.result-table th {
+    background-color: #f2f2f2;
+    text-align: left;
+}
 
 
 
@@ -385,4 +481,8 @@ body {
     border: none;
     border-radius: 5px;
     cursor: pointer;
+}
+
+footer {
+    display: none;
 }

@@ -23,6 +23,31 @@
 
 
 
+/* Base scrollbar styling */
+
+/* For WebKit browsers */
+*::-webkit-scrollbar {
+    width: 8px; /* Adjust the width as needed */
+}
+
+*::-webkit-scrollbar-track {
+    background: #f1f1f1; /* Background of the scrollbar track */
+}
+
+*::-webkit-scrollbar-thumb {
+    background: #888; /* Color of the scrollbar thumb */
+    border-radius: 4px; /* Rounded corners */
+}
+
+*::-webkit-scrollbar-thumb:hover {
+    background: #555; /* Color when hovered */
+}
+
+/* For Firefox */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: #888 #f1f1f1;
+}
 
 
 
@@ -450,8 +475,6 @@ header {
     background: var(--primary-background-color);
     width: auto;
     height: var(--header-height);
-    overflow: auto;
-    padding-right: 20px;
 }
 
 header .default-header-content {
@@ -506,8 +529,6 @@ header .default-header-content {
 
 
 
-
-
 /* <!-- default header menu. starts here --> */
 
 /* <!-- navigiation to the left starts here --> */
@@ -517,6 +538,9 @@ header .nav-left {
     align-items: center;
 }
 
+header > nav:first-child {
+    height: 100%;
+}
 
 
 header .nav-left .nav-link {
