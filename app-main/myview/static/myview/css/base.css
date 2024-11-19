@@ -914,28 +914,55 @@ main .headline-description {
 
 
 
-/* FOOTER STYLING STARTS HERE */
 footer {
     width: 100%;
     background: var(--primary-background-color);
     height: var(--footer-height);
-    padding: 0;
-    padding-left: 20px;
-    padding-top: 20px;
-    padding-bottom: 20px;
-}
-
-.footer-content p {
-    margin: 0;
+    padding: 20px 20px 20px 0;
+    display: flex;
+    justify-content: center;
 }
 
 .footer-content {
     width: 100%;
     max-width: var(--primary-site-width-max);
     margin: 0 auto;
-
-    flex-wrap: wrap; /* Allows wrapping in case of small screens */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
 }
+
+.footer-content p {
+    margin: 0;
+}
+
+.right {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap; /* For responsiveness */
+}
+
+.browser-support {
+    display: flex;
+    align-items: center;
+    gap: 10px; /* Space between text and icons */
+}
+
+.browser-icons {
+    display: flex;
+    gap: -10px; /* Slight overlap for SVGs */
+}
+
+.browser-icons img {
+    margin-left: -10px; /* Overlaps each icon slightly */
+    transition: transform 0.3s ease;
+}
+
+.browser-icons img:hover {
+    transform: scale(1.1); /* Slightly enlarge on hover for better UI experience */
+}
+
 
 
 
