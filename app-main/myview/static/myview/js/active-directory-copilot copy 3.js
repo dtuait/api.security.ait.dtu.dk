@@ -1,5 +1,3 @@
-import { BaseUIBinder, BaseAppUtils } from "./base.js";
-
 console.log('Active Directory Copilot JS loaded');
 
 class App {
@@ -9,7 +7,7 @@ class App {
             this.baseAppUtils = baseAppUtils;
             this.currentThreadId = null;
             this._setBindings();
-            this.init();
+            this.loadChatThreads();
             App.instance = this;
         }
         return App.instance;
@@ -17,6 +15,9 @@ class App {
 
     init() {
         this.loadChatThreads();
+        if (this.uiBinder && this.uiBinder.autoRunToggle) {
+            this.uiBinder.autoRunToggle.checked = false;
+        }
     }
 
     _setBindings() {
@@ -56,7 +57,7 @@ class App {
                 this.confirmDeleteChatThread(threadId, threadTitle);
             }
 
-            // Edit chat thread title
+            // **Edit chat thread title**
             const editBtn = event.target.closest('.edit-chat-btn');
             if (editBtn) {
                 const threadId = editBtn.dataset.threadId;
@@ -90,6 +91,7 @@ class App {
             }
         });
     }
+
 
     async updateThreadTitle(threadId, newTitle) {
         try {
@@ -254,13 +256,13 @@ class App {
             const searchAttributesInput = messageElement.querySelector('textarea[name="search_attributes"]');
             const limitInput = messageElement.querySelector('textarea[name="limit"]');
             const excludedAttributesInput = messageElement.querySelector('textarea[name="excluded_attributes"]');
-
+    
             const base_dn = baseDnInput ? baseDnInput.value : queryParameters.base_dn;
             const search_filter = searchFilterInput ? searchFilterInput.value : queryParameters.search_filter;
             const search_attributes = searchAttributesInput ? searchAttributesInput.value : queryParameters.search_attributes;
             const limit = limitInput ? limitInput.value : queryParameters.limit;
             const excluded_attributes = excludedAttributesInput ? excludedAttributesInput.value : queryParameters.excluded_attributes;
-
+    
             // Prepare form data
             const formData = new FormData();
             formData.append('action', 'active_directory_query');
@@ -270,23 +272,23 @@ class App {
             formData.append('limit', limit);
             formData.append('excluded_attributes', excluded_attributes);
             formData.append('csrfmiddlewaretoken', this.getCookie('csrftoken'));
-
+    
             // Run the query via the AJAX endpoint
             const response = await fetch('/myview/ajax/', {
                 method: 'POST',
                 body: formData,
                 credentials: 'same-origin' // Include cookies for authentication
             });
-
+    
             if (!response.ok) {
                 throw new Error(`HTTP error! Status: ${response.status}`);
             }
-
+    
             const result = await response.json();
-
+    
             // Display the result
             this.uiBinder.appendQueryResultMessage(result, messageElement);
-
+    
         } catch (error) {
             console.error('Error running query:', error);
             // Display error message
@@ -297,11 +299,11 @@ class App {
     async downloadExcel(queryParameters, messageElement) {
         try {
             // Collect the current values from the editable fields
-            const baseDnInput = messageElement.querySelector('textarea[name="base_dn"]');
-            const searchFilterInput = messageElement.querySelector('textarea[name="search_filter"]');
-            const searchAttributesInput = messageElement.querySelector('textarea[name="search_attributes"]');
-            const limitInput = messageElement.querySelector('textarea[name="limit"]');
-            const excludedAttributesInput = messageElement.querySelector('textarea[name="excluded_attributes"]');
+            const baseDnInput = messageElement.querySelector('input[name="base_dn"]');
+            const searchFilterInput = messageElement.querySelector('input[name="search_filter"]');
+            const searchAttributesInput = messageElement.querySelector('input[name="search_attributes"]');
+            const limitInput = messageElement.querySelector('input[name="limit"]');
+            const excludedAttributesInput = messageElement.querySelector('input[name="excluded_attributes"]');
 
             const base_dn = baseDnInput ? baseDnInput.value : queryParameters.base_dn;
             const search_filter = searchFilterInput ? searchFilterInput.value : queryParameters.search_filter;
@@ -1005,72 +1007,61 @@ class UIBinder {
             const copyButton = document.createElement('button');
             copyButton.classList.add('copy-code-btn');
             copyButton.textContent = 'Copy Code';
-
-            // Create the result content container
-            const resultContent = document.createElement('div');
-            resultContent.classList.add('result-content');
+            resultHeader.appendChild(copyButton);
 
             // Event listener for 'Copy Code' button
             copyButton.addEventListener('click', () => {
                 this.copyResultContent(resultContent);
             });
 
-            resultHeader.appendChild(copyButton);
-
             // Create the toggle switch container
             const toggleContainer = document.createElement('div');
             toggleContainer.classList.add('toggle-container');
 
-            // Create the label for the toggle switch
-            const toggleLabel = document.createElement('label');
-            toggleLabel.classList.add('toggle-switch');
-
             // Create the toggle switch input
             const toggleInput = document.createElement('input');
             toggleInput.type = 'checkbox';
+            toggleInput.classList.add('toggle-checkbox');
             toggleInput.id = 'formatToggle' + Date.now(); // Unique ID
 
-            // Create the slider span
-            const sliderSpan = document.createElement('span');
-            sliderSpan.classList.add('slider');
+            // Create the label for the toggle switch
+            const toggleLabel = document.createElement('label');
+            toggleLabel.classList.add('toggle-label');
+            toggleLabel.htmlFor = toggleInput.id;
 
-            // Append input and slider to label
-            toggleLabel.appendChild(toggleInput);
-            toggleLabel.appendChild(sliderSpan);
-
-            // Create the text label
+            // Add a text label
             const toggleText = document.createElement('span');
             toggleText.textContent = 'Display as CSV';
 
             // Append elements to toggle container
-            toggleContainer.appendChild(toggleLabel);
             toggleContainer.appendChild(toggleText);
-
-            // Append the toggle switch to the result header
-            resultHeader.appendChild(toggleContainer);
-
-            // Append the header and content to the result element
-            resultElement.appendChild(resultHeader);
-            resultElement.appendChild(resultContent);
-
-            // Append the result element to the message element
-            messageElement.appendChild(resultElement);
-
-            // Now that resultContent is appended, we can call toggleResultFormat
-            toggleInput.checked = this.userSettings.displayAsCSVEnabled;
-            this.toggleResultFormat(result, resultElement, toggleInput.checked);
+            toggleContainer.appendChild(toggleInput);
+            toggleContainer.appendChild(toggleLabel);
 
             // Event listener for the toggle switch
+            toggleInput.checked = this.userSettings.displayAsCSVEnabled;
+            this.toggleResultFormat(result, resultElement, toggleInput.checked);
+        
             toggleInput.addEventListener('change', () => {
                 this.userSettings.displayAsCSVEnabled = toggleInput.checked;
                 this.saveUserSettings();
                 this.toggleResultFormat(result, resultElement, toggleInput.checked);
             });
+            // Append the toggle switch to the result header
+            resultHeader.appendChild(toggleContainer);
 
+            // Create the result content container
+            const resultContent = document.createElement('div');
+            resultContent.classList.add('result-content');
+
+            // Append the header and content to the result element
+            resultElement.appendChild(resultHeader);
+            resultElement.appendChild(resultContent);
+
+            messageElement.appendChild(resultElement);
         } else {
             // Clear previous content
-            const resultContent = resultElement.querySelector('.result-content');
-            resultContent.innerHTML = '';
+            resultElement.querySelector('.result-content').innerHTML = '';
         }
 
         const resultContent = resultElement.querySelector('.result-content');
@@ -1181,7 +1172,6 @@ class UIBinder {
 
 document.addEventListener('DOMContentLoaded', function () {
     const app = App.getInstance();
-    BaseAppUtils.initializeTooltips();
     if (app.uiBinder && app.uiBinder.autoRunToggle) {
         app.uiBinder.userSettings = app.uiBinder.loadUserSettings();
         app.uiBinder.initializeToggles();

@@ -1,11 +1,11 @@
-// mfa-reset.js
-
 console.log('MFA Reset JS loaded');
 
-import { BaseUIBinder, BaseAppUtils } from './base.js';
+
+
 
 class App {
     constructor(uiBinder = UIBinder.getInstance(), baseUIBinder = BaseUIBinder.getInstance(), appUtils = AppUtils.getInstance(), baseAppUtils = BaseAppUtils.getInstance()) {
+
         if (!App.instance) {
             this.uiBinder = uiBinder;
             this.baseUIBinder = baseUIBinder;
@@ -14,17 +14,21 @@ class App {
             this._setBindings();
             App.instance = this;
         }
+
         return App.instance;
     }
 
     _setBindings() {
-        this.uiBinder.mfaUserLookupSubmitBtn.addEventListener('click', this.handleUserLookUpbinder.bind(this));
+        this.uiBinder.mfaUserLookupSubmitBtn.on('click', this.handleUserLookUpbinder.bind(this));
     }
+
 
     handleUserLookUpbinder(event) {
         event.preventDefault();
-        this.appUtils.handleUserLookup(event, this);
+        this.appUtils.handleUserLookup(event, this)
     }
+
+
 
     static getInstance(uiBinder = UIBinder.getInstance(), baseUIBinder = BaseUIBinder.getInstance(), appUtils = AppUtils.getInstance(), baseAppUtils = BaseAppUtils.getInstance()) {
         if (!App.instance) {
@@ -34,6 +38,107 @@ class App {
     }
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 class AppUtils {
     constructor() {
         if (!AppUtils.instance) {
@@ -42,9 +147,11 @@ class AppUtils {
         return AppUtils.instance;
     }
 
+
     printHelloWorld() {
         console.log('Hello World');
     }
+
 
     async validateUserPrincipalName(userPrincipalName) {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;  // Regular expression for validating email
@@ -62,13 +169,17 @@ class AppUtils {
         return true;
     }
 
+
     async getUserAuthenticationMethods(app) {
-        const userPrincipalName = app.uiBinder.userPrincipalName.value;  // Get the userPrincipalName
+
+        const userPrincipalName = app.uiBinder.userPrincipalName.val();  // Get the userPrincipalName
+
         const url = `/graph/v1.0/list/${encodeURIComponent(userPrincipalName)}/authentication-methods`;
 
         const response = await app.baseAppUtils.restAjax('GET', url);
 
         return response;
+
     }
 
     prepareMethodDetails(method) {
@@ -106,13 +217,16 @@ class AppUtils {
         if (buttonClassSuffix === 'mfa') {
             modalOptions.title = 'Microsoft Authenticator Method';
             modalOptions.body = 'This authentication method is Microsoft Authenticator.';
-        } else if (buttonClassSuffix === 'phone') {
+        }
+        else if (buttonClassSuffix === 'phone') {
             modalOptions.title = 'Phone Method';
             modalOptions.body = 'This authentication method is Phone.';
-        } else if (buttonClassSuffix === 'software-oath') {
+        }
+        else if (buttonClassSuffix === 'software-oath') {
             modalOptions.title = 'Software Oath Method';
             modalOptions.body = 'This authentication method is Software Oath.';
-        } else {
+        }
+        else {
             modalOptions.title = `This is an undetermined method`;
             modalOptions.body = `This authentication method is disabled because it is not an MFA method. If you want to DELETE it, you can do it via the API:<br><a href="${protocol}//${server}:${port}/myview/swagger/">${protocol}//${server}:${port}/myview/swagger/</a>`;
         }
@@ -120,49 +234,59 @@ class AppUtils {
     }
 
     async fetchAndDisplayUserAuthenticationMethods(app) {
+
         const userAuthenticationMethods = await this.getUserAuthenticationMethods(app);
-        // Clear the card container
-        app.uiBinder.cardsContainer.innerHTML = '';
+        // clear the card container
+        app.uiBinder.cardsContainer.empty();
         userAuthenticationMethods.value.forEach(authenticationMethod => {
             this.displayAuthenticationMethod(app, authenticationMethod);
         });
+
+
+
+
     }
 
     async deleteSoftwareAuthenticationMethod(app, userEmail, authID) {
         const url = `/graph/v1.0/users/${encodeURIComponent(userEmail)}/software-authentication-methods/${authID}`;
+
         const headers = {
             'accept': 'application/json'
         };
 
-        const response = await app.baseAppUtils.restAjax('DELETE', url, null, headers);
+        const response = await app.baseAppUtils.restAjax('DELETE', url, { headers: headers });
         return response;
     }
 
     displayAuthenticationMethod(app, authenticationMethod) {
+
         try {
-            const userPrincipalName = app.uiBinder.userPrincipalName.value;  // Get the userPrincipalName
+            const userPrincipalName = app.uiBinder.userPrincipalName.val();  // Get the userPrincipalName
             const { formattedDate, buttonClassSuffix, enabledOrDisabled, modalOptions } = this.prepareMethodDetails(authenticationMethod);
 
             const card = this.constructAuthenticationMethodCard(authenticationMethod, formattedDate, buttonClassSuffix, enabledOrDisabled);
 
-            // Append the card HTML to the cards container
-            app.uiBinder.cardsContainer.insertAdjacentHTML('beforeend', card.card);
+            app.uiBinder.cardsContainer.append(card.card);
+
+
+
+
+
 
             const deleteConfirmButtonId = `delete-confirm-button`;
             const deleteCancelButtonId = `delete-cancel-button`;
-
             const deleteModalOptions = {
                 title: "Confirm Deletion",
                 body: "<p>Are you sure you want to delete this authentication method?</p>",
                 footer: `
-                    <button type="button" class="btn btn-danger" id="${deleteConfirmButtonId}">Yes, Delete it</button>
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="${deleteCancelButtonId}">No, Cancel</button>
+                <button type="button" class="btn btn-danger" id="${deleteConfirmButtonId}">Yes, Delete it</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="${deleteCancelButtonId}">No, Cancel</button>
                 `,
                 eventListeners: [
                     {
                         selector: `#${deleteConfirmButtonId}`,
                         event: 'click',
-                        handler: async () => {
+                        handler: async function () {
                             try {
                                 console.log("deleteConfirmButtonId clicked");
                                 if (buttonClassSuffix === 'mfa') {
@@ -174,14 +298,17 @@ class AppUtils {
                                 } else {
                                     throw new Error(`This authentication method is disabled because it is not an MFA method. If you want to DELETE it, you can do it via the API.`);
                                 }
-                                app.baseUIBinder.displayNotification(`The authentication method was successfully deleted. Refreshing the page in 2 seconds`, 'alert-success');
+                                app.baseUIBinder.displayNotification(`The authentication method was successfully deleted. Refreshes the page in 2 seconds`, 'alert-success');
                                 app.appUtils.setUserPrincipalNameQueryParam(userPrincipalName);
                                 setTimeout(() => {
                                     location.reload();
                                 }, 2000);
+
                             } catch (error) {
                                 app.baseUIBinder.displayNotification(`${error} `, 'alert-danger');
                                 console.log(error);
+                            } finally {
+
                             }
                         }
                     },
@@ -194,15 +321,21 @@ class AppUtils {
                     }
                 ]
             };
-
-            // Set the modals using BaseAppUtils
             app.baseAppUtils.setModal(`#${card.deleteButtonId}`, `delete-${card.deleteButtonId}`, deleteModalOptions);
-            app.baseAppUtils.setModal(`#${card.infoButtonId}`, `info-${card.modalId}`, modalOptions);
+            app.baseAppUtils.setModal(`#${card.infoButtonId}`, `info-${card.modalId}`, modalOptions); // Set the modal for the info button    
+
+
+
+
+
 
         } catch (error) {
             throw error;
         }
+
+
     }
+
 
     setUserPrincipalNameQueryParam(userPrincipalName) {
         // Create a URL object based on the current location
@@ -221,25 +354,37 @@ class AppUtils {
         window.history.pushState({ path: newUrl }, '', newUrl);
     }
 
+
     async deleteMicrosoftAuthenticationMethod(app, userEmail, authID) {
         const url = `/graph/v1.0/users/${encodeURIComponent(userEmail)}/microsoft-authentication-methods/${authID}`;
+
+        let response;
+
+
         const headers = {
             'accept': 'application/json'
         };
 
-        const response = await app.baseAppUtils.restAjax('DELETE', url, null, headers);
+        response = await app.baseAppUtils.restAjax('DELETE', url, { headers: headers });
+
         return response;
+
     }
+
+
 
     async handleUserLookup(event, app) {
         event.preventDefault();
 
-        app.uiBinder.spinner.style.display = 'inline-block';
-        app.uiBinder.mfaUserLookupSubmitBtn.disabled = true;
+        // this.baseUIBinder.displayNotification("Hello World", "alert-info");
+        app.uiBinder.spinner.show();
+        app.uiBinder.mfaUserLookupSubmitBtn.prop('disabled', true);
 
         try {
-            await app.appUtils.validateUserPrincipalName(app.uiBinder.userPrincipalName.value);
-            await app.appUtils.fetchAndDisplayUserAuthenticationMethods(app);
+
+            await app.appUtils.validateUserPrincipalName(app.uiBinder.userPrincipalName.val());
+
+            await app.appUtils.fetchAndDisplayUserAuthenticationMethods(app)
 
             app.baseUIBinder.displayNotification('User lookup successful', 'alert-info', 5000);
 
@@ -247,56 +392,85 @@ class AppUtils {
             app.baseUIBinder.displayNotification(`${error} `, 'alert-danger');
             console.log(error);
         } finally {
-            app.uiBinder.spinner.style.display = 'none';
-            app.appUtils.setUserPrincipalNameQueryParam(app.uiBinder.userPrincipalName.value);
-            app.uiBinder.mfaUserLookupSubmitBtn.disabled = false;
+            app.uiBinder.spinner.hide();
+            app.appUtils.setUserPrincipalNameQueryParam(app.uiBinder.userPrincipalName.val());
+            app.uiBinder.mfaUserLookupSubmitBtn.prop('disabled', false);
         }
+
+
+
     }
+
 
     async deletePhoneAuthenticationMethod(app, userEmail, authID) {
         const url = `/graph/v1.0/users/${encodeURIComponent(userEmail)}/phone-authentication-methods/${authID}`;
+
+        let response;
+
         const headers = {
             'accept': 'application/json'
         };
 
-        const response = await app.baseAppUtils.restAjax('DELETE', url, null, headers);
+        response = await app.baseAppUtils.restAjax('DELETE', url, { headers: headers });
+        // const response = {'status': 204}
+        // Check for a 204 status code specifically
+
+
         return response;
+
+
     }
+
 
     constructAuthenticationMethodCard(method, formattedDate, buttonClassSuffix, enabledOrDisabled) {
         const infoButtonId = `info-btn-${buttonClassSuffix}-${method.id}`;
         const deleteButtonId = `delete-btn-${buttonClassSuffix}-${method.id}`;
         const modalId = `modal-${buttonClassSuffix}-${method.id}`;
+        // const cardId = `${method.id}`;
 
-        let cardHtml = `
-            <div class="card my-2" id="${modalId}">
-                <div class="card-body">
-                    <h5 class="card-title">${method['@odata.type']}</h5>
-        `;
+        // if formattded date is 1970 then it is N/A
+        let cardObj = {
+            'infoButtonId': infoButtonId,
+            'deleteButtonId': deleteButtonId,
+            'modalId': modalId,
+            'card': ''
+            // `
+            //     <div class="card my-2">
+            //         <div class="card-body">
+            //             <h5 class="card-title">${method['@odata.type']}</h5>
+            //             <p class="card-text">ID: ${method.id}</p>
+            //             <p class="card-text">Created: ${formattedDate || 'N/A'}</p>
+            //             <button class="btn btn-danger ${enabledOrDisabled}" id="${deleteButtonId}">Remove</button>
+            //             <button class="btn btn-info cardinfo-${buttonClassSuffix}" id="${infoButtonId}">Info</button>
+            //         </div>
+            //     </div>
+            // `
+        }
+
+        // Card is being generated here!
+        cardObj.card += `
+                <div class="card my-2" id=${modalId}>
+                    <div class="card-body">
+                        <h5 class="card-title">${method['@odata.type']}</h5>
+            `;
 
         Object.entries(method).forEach(([key, value]) => {
             if (key !== '@odata.type') {
-                if (key === 'createdDateTime') {
-                    cardHtml += `<p class="card-text">${key}: ${formattedDate || 'N/A'}</p>`;
-                } else {
-                    cardHtml += `<p class="card-text">${key}: ${value}</p>`;
-                }
+                cardObj.card += `<p class="card-text">${key}: ${value}</p>`;
+            }
+            else if (key === 'createdDateTime') {
+                cardObj.card += `<p class="card-text">${key}: ${formattedDate || 'N/A'}</p>`;
             }
         });
 
-        cardHtml += `
-                    <button class="btn btn-danger ${enabledOrDisabled}" id="${deleteButtonId}">Remove</button>
-                    <button class="btn btn-info" id="${infoButtonId}">Info</button>
+        cardObj.card += `
+                        <button class="btn btn-danger ${enabledOrDisabled}" id="${deleteButtonId}">Remove</button>
+                        <button class="btn btn-info cardinfo-${buttonClassSuffix}" id="${infoButtonId}">Info</button>
+                    </div>
                 </div>
-            </div>
-        `;
+            `
 
-        return {
-            infoButtonId,
-            deleteButtonId,
-            modalId,
-            card: cardHtml
-        };
+        return cardObj;
     }
 
     static getInstance() {
@@ -307,17 +481,24 @@ class AppUtils {
     }
 }
 
+
+
 class UIBinder {
     constructor() {
+
         if (!UIBinder.instance) {
-            this.mfaUserLookupSubmitBtn = document.getElementById('mfa-user-lookup-submit-btn');
-            this.spinner = document.getElementById('loadingSpinner');
-            this.userPrincipalName = document.getElementById('id-userprincipalname');
-            this.cardsContainer = document.getElementById('cards-container');
+
+            this.mfaUserLookupSubmitBtn = $('#mfa-user-lookup-submit-btn');
+            this.spinner = $('#loadingSpinner');
+            this.userPrincipalName = $('#id-userprincipalname');
+            this.cardsContainer = $('#cards-container');
             UIBinder.instance = this;
         }
+
         return UIBinder.instance;
     }
+
+
 
     static getInstance() {
         if (!UIBinder.instance) {
@@ -327,15 +508,22 @@ class UIBinder {
     }
 }
 
-document.addEventListener('DOMContentLoaded', function () {
-    const app = App.getInstance();
-    BaseAppUtils.initializeTooltips();
 
-    // Check if userPrincipalName is in the URL as a query parameter
+document.addEventListener('DOMContentLoaded', function () {
+
+
+
+    const app = App.getInstance();
+
+    // check if userprincipalname is in the url as a query parameter, if it is print hello world
+    // ?userPrincipalName=vicre-test01@dtudk.onmicrosoft.com
     const urlParams = new URLSearchParams(window.location.search);
     const userPrincipalName = urlParams.get('userPrincipalName');
     if (userPrincipalName) {
-        app.uiBinder.userPrincipalName.value = userPrincipalName;
+        app.uiBinder.userPrincipalName.val(userPrincipalName);
         app.handleUserLookUpbinder(new Event('click'));
     }
+
+
 });
+

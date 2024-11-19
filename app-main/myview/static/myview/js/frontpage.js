@@ -1,9 +1,11 @@
+// frontpage.js
+
 console.log('Frontpage JS loaded');
 
+import { BaseUIBinder, BaseAppUtils } from './base.js';
 
 class App {
     constructor(uiBinder = UIBinder.getInstance(), baseUIBinder = BaseUIBinder.getInstance(), appUtils = AppUtils.getInstance(), baseAppUtils = BaseAppUtils.getInstance()) {
-
         if (!App.instance) {
             this.uiBinder = uiBinder;
             this.baseUIBinder = baseUIBinder;
@@ -12,23 +14,15 @@ class App {
             this._setBindings();
             App.instance = this;
         }
-
         return App.instance;
     }
 
-
     _setBindings() {
-
-        // // Set binding for user lookup form submission
-        // this.uiBinder.generateTokenBtn.on('click', (event) => {
-        //     event.preventDefault();
-        //     this.handleCreateNewApiTokenBtn(event, this);
-        // });
-
-        const generateTokenBtn = `#${this.uiBinder.generateTokenBtn[0].id}`; // this is the button that will trigger the modal
+        const generateTokenBtnSelector = `#${this.uiBinder.generateTokenBtn.id}`; // Selector string for the trigger
         const modalId = 'tokenDisplayModal';
-        const modalConfirmBtn = 'modalConfirmBtn'; // these are refering to elements generation innside the modal, not the main page
-        this.baseAppUtils.setModal(generateTokenBtn, modalId, {
+        const modalConfirmBtn = 'modalConfirmBtn'; // ID for the confirm button inside the modal
+
+        this.baseAppUtils.setModal(generateTokenBtnSelector, modalId, {
             title: 'Generate New Token',
             body: '<p>The token will only be displayed once, are you sure you want to generate a new token?</p>',
             footer: `
@@ -37,30 +31,25 @@ class App {
             `,
             eventListeners: [
                 {
-                    selector: '#modalConfirmBtn',
+                    selector: `#${modalConfirmBtn}`,
                     event: 'click',
                     handler: (event) => {
-                        // how do i access modalId in this scope?
                         this.handleCreateNewApiToken(event, modalId, this);
                     }
                 }
             ]
         });
-
     }
-
-
-
 
     async handleCreateNewApiToken(event, modalId, app = App.getInstance()) {
         event.preventDefault();
-        const button = $(this);
-        const spinner = $('#loadingSpinnerGenerateTokenBtn');
+        const button = event.currentTarget;
+        const spinner = document.getElementById('loadingSpinnerGenerateTokenBtn');
         // Show the spinner and disable the button
-        spinner.show();
-        button.prop('disabled', true);
+        spinner.style.display = 'inline-block';
+        button.disabled = true;
 
-        // set a modal to display the token a
+        // Prepare form data
         let formData = new FormData();
         formData.append('action', 'create_custom_token');
 
@@ -70,49 +59,48 @@ class App {
             response = await app.baseAppUtils.restAjax('POST', '/myview/ajax/', formData);
         } catch (error) {
             console.log('Error:', error);
-            app.baseUIBinder.displayNotification(error, 'alert-danger')
+            app.baseUIBinder.displayNotification(error.message, 'alert-danger');
             errorOccurred = true;
         } finally {
             if (!errorOccurred) {
-                // if success
+                // If success
                 app.baseUIBinder.displayNotification('Token generated successfully!', 'alert-success');
 
                 const token = response.custom_token;
-                
+
                 const modalBody = `
-                <p>Your new token is:</p>
-                <pre id="token">${token}</pre>
-                <button id="copyButton" type="button" class="btn btn-primary">Copy Token</button>
-                <span id="copyMessage" style="display: none;">Copied!</span>
-                `
+                    <p>Your new token is:</p>
+                    <pre id="token">${token}</pre>
+                    <button id="copyButton" type="button" class="btn btn-primary">Copy Token</button>
+                    <span id="copyMessage" style="display: none;">Copied!</span>
+                `;
 
                 const eventListeners = [
                     {
                         selector: '#copyButton',
                         event: 'click',
                         handler: (event) => {
-                            const token = document.getElementById('token').innerText;
-                            navigator.clipboard.writeText(token);
+                            const tokenText = document.getElementById('token').innerText;
+                            navigator.clipboard.writeText(tokenText);
 
                             let copyMessage = document.getElementById('copyMessage');
                             copyMessage.style.display = 'inline';
                             setTimeout(function () {
                                 copyMessage.style.display = 'none';
-                            }, 800);  // Message will disappear after 2 seconds
+                            }, 800); // Message will disappear after 800 milliseconds
                         }
                     }
-                ]
+                ];
 
-                app.baseAppUtils.updateModalContent(modalId, {modalBody: modalBody, eventListeners});
+                app.baseAppUtils.updateModalContent(modalId, { modalBody: modalBody, eventListeners });
             }
 
             // Hide the spinner and enable the button
-            spinner.hide();
-            button.prop('disabled', false);
+            spinner.style.display = 'none';
+            button.disabled = false;
         }
-
-
     }
+
     static getInstance(uiBinder = UIBinder.getInstance(), baseUIBinder = BaseUIBinder.getInstance(), appUtils = AppUtils.getInstance(), baseAppUtils = BaseAppUtils.getInstance()) {
         if (!App.instance) {
             App.instance = new App(uiBinder, baseUIBinder, appUtils, baseAppUtils);
@@ -120,7 +108,6 @@ class App {
         return App.instance;
     }
 }
-
 
 class AppUtils {
     constructor() {
@@ -130,18 +117,10 @@ class AppUtils {
         return AppUtils.instance;
     }
 
-
     printHelloWorld() {
         console.log('Hello World');
         return "Hello World";
     }
-
-
-
-        
-
-
-
 
     static getInstance() {
         if (!AppUtils.instance) {
@@ -151,20 +130,14 @@ class AppUtils {
     }
 }
 
-
-
-
 class UIBinder {
     constructor() {
         if (!UIBinder.instance) {
-            this.generateTokenBtn = $('#generateTokenBtn');
+            this.generateTokenBtn = document.getElementById('generateTokenBtn');
             UIBinder.instance = this;
         }
         return UIBinder.instance;
     }
-
-
-
 
     static getInstance() {
         if (!UIBinder.instance) {
@@ -174,10 +147,7 @@ class UIBinder {
     }
 }
 
-
-
-
-
 document.addEventListener('DOMContentLoaded', function () {
     const app = App.getInstance();
+    BaseAppUtils.initializeTooltips();
 });
