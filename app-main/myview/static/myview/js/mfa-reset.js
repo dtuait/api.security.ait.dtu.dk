@@ -2,7 +2,7 @@
 
 console.log('MFA Reset JS loaded');
 
-import { BaseUIBinder, BaseAppUtils } from './base.js';
+import { BaseUIBinder, BaseAppUtils } from './base-classes.js';
 
 class App {
     constructor(uiBinder = UIBinder.getInstance(), baseUIBinder = BaseUIBinder.getInstance(), appUtils = AppUtils.getInstance(), baseAppUtils = BaseAppUtils.getInstance()) {

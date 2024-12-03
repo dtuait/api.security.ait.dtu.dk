@@ -1,4 +1,4 @@
-import { BaseUIBinder, BaseAppUtils } from "./base.js";
+import { BaseUIBinder, BaseAppUtils } from "./base-classes.js";
 
 console.log('Active Directory Copilot JS loaded');
 

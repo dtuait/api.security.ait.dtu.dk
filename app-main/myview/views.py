@@ -4,7 +4,7 @@ from django.http import HttpResponseForbidden
 from django.shortcuts import render
 from django.shortcuts import render
 from .forms import LargeTextAreaForm
-from .models import Endpoint
+from .models import Endpoint, UserSettings
 import subprocess
 from django.utils.decorators import method_decorator
 from django.contrib.auth.decorators import login_required
@@ -46,23 +46,22 @@ class BaseView(View):
         return super().dispatch(request, *args, **kwargs)
 
     def get_git_info(self):
-        try:
-            branch = subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD']).decode('utf-8').strip()
-            commit = subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode('utf-8').strip()
-            last_updated = subprocess.check_output(['git', 'log', '-1', '--format=%cd']).decode('utf-8').strip()
-
-            # Parse the last_updated date string and reformat it
-            last_updated_dt = datetime.strptime(last_updated, '%a %b %d %H:%M:%S %Y %z')
-            last_updated_formatted = last_updated_dt.strftime('%H:%M %d-%m-%Y')
-        except subprocess.CalledProcessError:
-            # Default values if git commands fail
-            branch = "unknown"
-            commit = "unknown"
-            last_updated = "unknown"
-        return branch, commit, last_updated_formatted
+            try:
+                branch = subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD']).decode('utf-8').strip()
+                commit = subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode('utf-8').strip()
+                last_updated = subprocess.check_output(['git', 'log', '-1', '--format=%cd']).decode('utf-8').strip()
+                commit_message = subprocess.check_output(['git', 'log', '-1', '--format=%s%n%b', commit]).decode('utf-8')
+                # Split into title and description
+                lines = commit_message.strip().split('\n')
+                commit_title = lines[0]
+                commit_description = '\n'.join(lines[1:]).strip()
+                last_updated_formatted = datetime.strptime(last_updated, '%a %b %d %H:%M:%S %Y %z').strftime('%H:%M %d-%m-%Y')
+            except subprocess.CalledProcessError:
+                branch = commit = last_updated_formatted = commit_title = commit_description = "unknown"
+            return branch, commit, last_updated_formatted, commit_title, commit_description
 
     def get_context_data(self, **kwargs):
-        branch, commit, last_updated = self.get_git_info()
+        branch, commit, last_updated, commit_title, commit_description  = self.get_git_info()
         
         # Existing context setup
         user_ad_groups = self.request.user.ad_group_members.all()
@@ -117,6 +116,15 @@ class BaseView(View):
             'debug': settings.DEBUG,
             'all_limiter_types': associated_limiter_types,
         }
+
+        if self.request.user.is_authenticated:
+            user_settings, created = UserSettings.objects.get_or_create(user=self.request.user)
+            if user_settings.last_seen_commit != commit:
+                context['show_new_features_modal'] = True
+                context['commit_title'] = commit_title
+                context['commit_description'] = commit_description
+            else:
+                context['show_new_features_modal'] = False
 
         return context
 

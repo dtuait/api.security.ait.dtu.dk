@@ -299,3 +299,13 @@ class ChatMessage(models.Model):
 
     def __str__(self):
         return f"{self.role}: {self.content[:50]}"
+    
+
+
+
+class UserSettings(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='settings')
+    last_seen_commit = models.CharField(max_length=40)  # SHA-1 hash length is 40
+
+    def __str__(self):
+        return f"Settings for {self.user.username}"
