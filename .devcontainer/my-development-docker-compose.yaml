@@ -42,6 +42,18 @@ services:
       - shared_network
 ##### only for production ####
 
+  # xx-api-security-ait-dtu-dk-ngrok-service:
+  #   image: ngrok/ngrok:latest
+  #   environment:
+  #     - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN}
+  #   command: ngrok tcp --region=eu xx-api-security-ait-dtu-dk-httpd-service:8120
+  #   depends_on:
+  #     - xx-api-security-ait-dtu-dk-httpd-service
+  #   networks:
+  #     - shared_network
+
+
+
   xx-api-security-ait-dtu-dk-mariadb-service:
     image: mariadb:11.3.2
     restart: always
