@@ -18,30 +18,22 @@ fi
 # Set git to ignore file mode (permissions) changes globally for all repositories
 git config --global core.fileMode false
 
-echo "Enter your username:"
-read username
-case $username in
-    afos)
-        git config --global user.email "afos@dtu.dk"
-        git config --global user.name "Anders Fosgerau"
-        ;;
-    jaholm)
-        git config --global user.email "jaholm@dtu.dk"
-        git config --global user.name "Jakob Holm"
-        ;;
-    vicre)
-        git config --global user.email "vicre@dtu.dk"
-        git config --global user.name "Victor Reipur"
-        ;;
-    *)
-        echo "Enter your email:"
-        read email
-        git config --global user.email "$email"
-        echo "Enter your name:"
-        read name
-        git config --global user.name "$name"
-        ;;
-esac
+# Try to get name and email from .env.local
+if [ -f "/usr/src/project/app-main/.env.local" ]; then
+  GIT_USER_NAME=$(grep -oP '^DEVCONTAINER_GITHUB_NAME=\K.*' /usr/src/project/.devcontainer/.env)
+  GIT_USER_EMAIL=$(grep -oP '^DEVCONTAINER_GITHUB_EMAIL=\K.*' /usr/src/project/.devcontainer/.env)
+fi
+
+# If name or email is empty, prompt the user
+if [ -z "$GIT_USER_NAME" ]; then
+  echo "Enter your name:"
+  read GIT_USER_NAME
+fi
+
+if [ -z "$GIT_USER_EMAIL" ]; then
+  echo "Enter your email:"
+  read GIT_USER_EMAIL
+fi
 
 git config --global --add safe.directory /usr/src/project
 # git config --global --add safe.directory /mnt/project
