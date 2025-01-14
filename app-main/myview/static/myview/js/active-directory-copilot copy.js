@@ -506,6 +506,8 @@ class UIBinder {
         };
     }
 
+
+
     bindTextareaAutoResize(container) {
         container.querySelectorAll('textarea').forEach(textarea => {
             function adjustHeight() {
@@ -517,6 +519,24 @@ class UIBinder {
             adjustHeight();
         });
     }
+
+    
+    // bindTextareaAutoResize() {
+    //     const userInput = this.userInput;
+
+    //     function adjustTextareaHeight() {
+    //         userInput.style.height = 'auto'; // Reset height
+    //         userInput.style.height = userInput.scrollHeight + 'px'; // Set new height based on content
+    //     }
+
+    //     userInput.addEventListener('input', adjustTextareaHeight);
+
+    //     // Optionally, adjust height on initialization
+    //     adjustTextareaHeight();
+    // }
+
+
+   
 
     disableTitleEditing(threadId, title) {
         const threadItem = this.chatList.querySelector(`.chat-thread-item[data-thread-id="${threadId}"]`);
@@ -531,6 +551,7 @@ class UIBinder {
 
         threadItem.replaceChild(threadTitle, input);
     }
+
 
     enableTitleEditing(threadId) {
         const threadItem = this.chatList.querySelector(`.chat-thread-item[data-thread-id="${threadId}"]`);
@@ -583,6 +604,7 @@ class UIBinder {
         });
     }
 
+
     handleChatMessagesScroll() {
         const chatInputRect = this.chatInput.getBoundingClientRect();
         const chatWindowRect = this.chatWindow.getBoundingClientRect();
@@ -609,6 +631,7 @@ class UIBinder {
             }
         }
     }
+
 
     initSplitter() {
         const splitter = this.splitter;
@@ -661,6 +684,7 @@ class UIBinder {
         });
     }
 
+
     toggleChatDetail() {
         this.chatDetail.classList.toggle('collapsed');
         if (this.chatDetail.classList.contains('collapsed')) {
@@ -673,6 +697,7 @@ class UIBinder {
             this.splitter.style.display = 'block';
         }
     }
+
 
     createLoadingIndicator() {
         const loadingDiv = document.createElement('div');
@@ -785,9 +810,6 @@ class UIBinder {
         return null;
     }
 
-    // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-    // Updated appendAssistantMessage: Now appends to left side.
-    // >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
     appendAssistantMessage(message, timestamp = null) {
         const messageElement = document.createElement('div');
         messageElement.classList.add('message', 'assistant-message');
@@ -805,15 +827,12 @@ class UIBinder {
         this.bindTextareaAutoResize(messageElement);
     
         messageElement.appendChild(messageContent);
+    
+        // Clear previous content and append to chat-detail
+        this.chatDetail.innerHTML = '';
+        this.chatDetail.appendChild(messageElement);
 
-        // >>> The critical change: append assistant message to .messagesContainer.
-        this.messagesContainer.appendChild(messageElement);
-        this.scrollToBottom();
-
-        // If you still want to show something in the right panel, remove or adjust lines below:
-        // (Here, we do not clear `chatDetail` or append the entire message to the right side anymore.)
-
-        // Setup base_dn logic (if any):
+        // Get the baseDnInput and distinguishedNameElement elements
         const baseDnInput = messageElement.querySelector('input[name="base_dn"]');
         const distinguishedNameElement = messageElement.querySelector('#distinguished-name');
 
@@ -1173,3 +1192,4 @@ document.addEventListener('DOMContentLoaded', function () {
     const app = App.getInstance();
     app.init();
 })();
+

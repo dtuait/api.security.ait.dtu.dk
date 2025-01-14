@@ -1,0 +1,111 @@
+{% extends base_template %}
+
+{% load static %}
+
+{% block title %}Active Directory Copilot{% endblock %}
+
+{% block dynamic_head_content %}
+<link rel="stylesheet" type="text/css" media="all" href="{% static 'myview/css/active-directory-copilot.css' %}" />
+{% endblock %}
+
+{% block main-content %}
+<div class="chat-interface">
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h2>Active Directory Copilot</h2>
+            <button id="new-chat-btn">+ New Chat</button>
+        </div>
+        <!-- Chat Threads -->
+        <div class="chat-list" id="chat-list">
+            <!-- Chat threads will be populated here -->
+        </div>
+    </div>
+
+    <!-- Main Chat Window -->
+    <div class="chat-window">
+        <!-- Collapse Button -->
+        <button id="toggle-chat-detail" class="collapse-btn">&gt;</button>
+
+        <!-- Chat Content (Left and Right Areas) -->
+        <div class="chat-content">
+            <!-- Left Side: User Messages -->
+            <div class="chat-messages" id="chat-messages">
+                <!-- Container for messages -->
+                <div class="messages-container" id="messages-container">
+                    <!-- User messages will appear here -->
+                </div>
+
+                <!-- Input Area -->
+                <div class="chat-input">
+                    <textarea id="user-input" placeholder="Type your query here..."></textarea>
+                    <div class="input-actions">
+                        <button id="send-btn">Send</button>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="auto-run-toggle">
+                            <span class="slider"></span>
+                        </label>
+                        <span>Auto Run Query</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Splitter -->
+            <div class="splitter" id="splitter"></div>
+
+            <!-- Right Side: Assistant Messages and Query Results -->
+            <div class="chat-detail" id="chat-detail">
+                <!-- Assistant messages and query results will appear here -->
+
+                <!-- Static Template Starts Here -->
+                <div class="message assistant-message">
+                    <div class="message-content">
+                        <label>
+                            <strong>base_dn (Canonical Name):</strong>
+                            <textarea name="base_dn">DC=win,DC=dtu,DC=dk</textarea>
+                        </label><br>
+                        <small>Distinguished Name: <code id="distinguished-name">DC=DC=win,DC=dtu,DC=dk</code></small><br>
+                        <label>
+                            <strong>search_filter:</strong>
+                            <textarea name="search_filter">(&(objectClass=user)(sAMAccountName=vicre))</textarea>
+                        </label><br>
+                        <label>
+                            <strong>search_attributes:</strong>
+                            <textarea name="search_attributes">pwdLastSet</textarea>
+                        </label><br>
+                        <label>
+                            <strong>limit:</strong>
+                            <textarea name="limit">100</textarea>
+                        </label><br>
+                        <label>
+                            <strong>excluded_attributes:</strong>
+                            <textarea name="excluded_attributes">thumbnailPhoto</textarea>
+                        </label><br>
+                        <div class="button-container">
+                            <button class="run-query-btn">Run Query</button>
+                            <button class="download-excel-btn">Download Excel</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Static Query Result Template -->
+                <div style="display:none" class="query-result">
+                    <div class="result-header">
+                        <button class="copy-code-btn">Copy Code</button>
+                        <div class="toggle-container">
+                            <span>Display as CSV</span>
+                            <input type="checkbox" class="toggle-checkbox" id="formatToggleStatic">
+                            <label class="toggle-label" for="formatToggleStatic"></label>
+                        </div>
+                    </div>
+                </div>
+                <!-- Static Template Ends Here -->
+
+            </div>
+        </div>
+
+
+    </div>
+</div>
+<script type="module" src="{% static 'myview/js/active-directory-copilot.js' %}" defer></script>
+{% endblock %}
