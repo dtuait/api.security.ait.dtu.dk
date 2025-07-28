@@ -68,7 +68,10 @@ urlpatterns = [
 
     # path('admin/app/ajax/', AjaxView.as_view(), name='admin-app-ajax'),
 
+    # Add a path for tiandefender:
+    path('tiandefender/', include('tiandefender.urls')),
 
+    path('pwnedproxy/', include('pwnedproxy.urls')),
 
 ]
 

@@ -1,3 +1,6 @@
 source app-main/venv/bin/activate
 cd /usr/src/project/app-main && python manage.py collectstatic
 tree -Is 'node_modules|public|data|scripts' -L 3
+
+
+tree -I 'migrations|static'

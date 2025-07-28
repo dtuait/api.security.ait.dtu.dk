@@ -31,6 +31,8 @@ class AccessControlMiddleware(MiddlewareMixin):
             '/admin/baAT5gt52eCRX7bu58msxF5XQtbY4bye/',
             '/myview/',
             '/media/',
+            '/tiandefender/hello/',
+            '/tiandefender/dashboard/',
         ]
         super().__init__(get_response)
 

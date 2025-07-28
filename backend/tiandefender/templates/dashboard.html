@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Tiandefender Dashboard</title>
+    <meta charset="UTF-8">
+    <style>
+        #map { height: 600px; width: 100%; }
+    </style>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+</head>
+<body>
+    <h1> Alerted Login Locations</h1>
+
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        const map = L.map('map').setView([20, 0], 2);  // Centered on world
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+        }).addTo(map);
+
+        const alerts = JSON.parse('{{ alerts_json|escapejs }}');
+
+        alerts.forEach(alert => {
+            L.marker([alert.latitude, alert.longitude])
+            .addTo(map)
+            .bindPopup(`<b>${alert.city}, ${alert.country}</b><br>${alert.reason}<br>${alert.timestamp}`);
+        });
+    </script>
+</body>
+</html>

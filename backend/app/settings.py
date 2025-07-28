@@ -94,6 +94,8 @@ INSTALLED_APPS = [
     'misc',
     'chatgpt_app',
     'defender',
+    'tiandefender',
+    'pwnedproxy',
 ]
 
 
