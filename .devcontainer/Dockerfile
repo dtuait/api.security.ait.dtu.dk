@@ -24,7 +24,7 @@ RUN apt-get update && apt-get install -y \
     gnupg2 \
     iputils-ping \
     tree \
-    mariadb-client \
+    postgresql-client \
     gosu \
     sudo \
     bash \

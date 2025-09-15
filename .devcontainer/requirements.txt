@@ -37,7 +37,7 @@ msal==1.27.0
 msal-extensions==1.1.0
 msgraph-core==1.0.0
 multidict==6.0.5
-mysqlclient==2.2.4
+psycopg2-binary==2.9.9
 openai==0.27.10
 opentelemetry-api==1.23.0
 opentelemetry-sdk==1.23.0
@@ -48,7 +48,6 @@ portalocker==2.8.2
 pyasn1==0.5.1
 pycparser==2.21
 PyJWT==2.8.0
-PyMySQL==1.1.1
 pyodbc==4.0.39
 python-cas==1.6.0
 python-dotenv==1.0.1

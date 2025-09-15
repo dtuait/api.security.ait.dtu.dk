@@ -31,32 +31,28 @@ services:
       - shared_network
 
 
-  xx-api-security-ait-dtu-dk-mariadb-service:
-    image: mariadb:11.3.2
+  xx-api-security-ait-dtu-dk-postgres-service:
+    image: postgres:16
     restart: always
     environment:
-      PMA_HOST: ${MYSQL_HOST}
-      MYSQL_ROOT_PASSWORD: ${MYSQL_DATABASE}
-      MYSQL_USER: ${MYSQL_USER}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
-      - beta-api-security-ait-dtu-dk-mariadb-service-volume:/var/lib/mysql
-      - ../mariadb-service/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - beta-api-security-ait-dtu-dk-postgres-service-volume:/var/lib/postgresql/data
+      # If you have Postgres init scripts, mount them here
+      # - ../postgres-service/init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - shared_network
 
-  xx-api-security-ait-dtu-dk-phpmyadmin-service:
-      image: phpmyadmin/phpmyadmin:5.2.1
+  xx-api-security-ait-dtu-dk-pgadmin-service:
+      image: dpage/pgadmin4:8.11
       restart: always
       ports:
         - "5010:80"
       environment:
-        PMA_HOST: xx-api-security-ait-dtu-dk-mariadb-service
-        MYSQL_ROOT_PASSWORD: ${MYSQL_DATABASE}
-        MYSQL_USER: ${MYSQL_USER}
-        MYSQL_PASSWORD: ${MYSQL_PASSWORD}
-      volumes:
-        - ../phpmyadmin-service/phpmyadmin-misc.ini:/usr/local/etc/php/conf.d/phpmyadmin-misc.ini
+        PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+        PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
       networks:
         - shared_network
 
@@ -65,5 +61,5 @@ networks:
     external: true
 
 volumes:
-  beta-api-security-ait-dtu-dk-mariadb-service-volume:
+  beta-api-security-ait-dtu-dk-postgres-service-volume:
     external: true
