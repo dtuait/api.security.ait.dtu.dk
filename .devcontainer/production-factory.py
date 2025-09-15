@@ -2,7 +2,7 @@
 import yaml
 
 # The command to be added to the xx-api-security-ait-dtu-dk-app-main service
-COMMAND = '"bash -c \\"cd /usr/src/project/app-main && source /usr/src/venvs/app-main/bin/activate && python3 manage.py runserver 0.0.0.0:8121\\""'
+COMMAND = '"bash -c \\"cd /usr/src/project/app-main && source /usr/src/venvs/app-main/bin/activate && gunicorn app.wsgi:application --bind 0.0.0.0:8121\\""'
 
 # The path to the development docker-compose file
 DEVELOPMENT_FILE = "./my-development-docker-compose.yaml"

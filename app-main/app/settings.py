@@ -59,8 +59,6 @@ AZURE_AD = {
 ALLOWED_HOSTS = [
     'localhost',
     '192.38.87.230',
-    'beta-api-security-ait-dtu-dk-httpd-service',
-    'api-security-ait-dtu-dk-httpd-service',
     'api.security.ait.dtu.dk',
     'beta-api.security.ait.dtu.dk',
 ]
