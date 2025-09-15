@@ -15,7 +15,7 @@ services:
     # development command
     command: sleep infinity
     # production command
-    # command: 'bash -c "cd /usr/src/project/app-main && source /usr/src/venvs/app-main/bin/activate && python3 manage.py runserver 0.0.0.0:8121 --settings app.production_settings"'
+    # command: 'bash -c "cd /usr/src/project/app-main && source /usr/src/venvs/app-main/bin/activate && gunicorn app.wsgi:application --bind 0.0.0.0:8121"'
 
 
     restart: always
@@ -30,17 +30,6 @@ services:
     networks:
       - shared_network
 
-##### only for production ####
-  xx-api-security-ait-dtu-dk-httpd-service:
-    image: dtuait/api-security-ait-dtu-dk-httpd-service:httpd-2.4-myversion-1.0.0
-    restart: always
-    volumes:
-      - ../shared-project-data:/mnt/shared-project-data
-      - ../httpd-service/data/virtualhosts:/usr/local/apache2/conf/virtualhosts
-      - ../httpd-service/data/httpd.conf:/usr/local/apache2/conf/httpd.conf
-    networks:
-      - shared_network
-##### only for production ####
 
   xx-api-security-ait-dtu-dk-mariadb-service:
     image: mariadb:11.3.2

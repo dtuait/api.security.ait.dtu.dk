@@ -12,3 +12,15 @@ This app is designed for environments with multiple sub-IT departments, where se
 
 # Services
 - [x] MFA Reset
+
+## Running with Gunicorn
+
+### Test mode
+1. Install dependencies:
+   ```bash
+   pip install -r app-main/requirements.txt
+   ```
+2. Start the application with Gunicorn in test mode (auto-reloading on changes):
+   ```bash
+   gunicorn app.wsgi:application --bind 0.0.0.0:8121 --reload
+   ```
