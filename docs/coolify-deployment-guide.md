@@ -80,3 +80,23 @@ docker compose -f docker-compose.coolify.yml up --build
 
 If you already have a differently named Traefik network, skip the `docker network create` command and export `TRAEFIK_NETWORK=<your-network>` before running Compose. The stack will come up exactly as Coolify orchestrates it, so you can validate migrations, networking, and integrations ahead of time.
 
+## 8. Troubleshooting
+
+### `network coolify-network declared as external, but could not be found`
+
+This error appears when Docker cannot find the Traefik network referenced by the compose file. On Coolify hosts the network is
+usually created automatically, but if you see this message:
+
+```
+network coolify-network declared as external, but could not be found
+```
+
+SSH into the Coolify server and create the network once:
+
+```bash
+docker network create coolify-network
+```
+
+If your Traefik installation uses a different network name, set the `TRAEFIK_NETWORK` environment variable in Coolify to that
+name instead of creating `coolify-network`.
+
