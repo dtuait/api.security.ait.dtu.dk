@@ -47,7 +47,9 @@ At a minimum you will:
    `POSTGRES_*` credentials, `TRAEFIK_*` routing metadata, and any integration secrets you require.
 2. Create a Coolify **Docker Compose** application that points to this repository and select `docker-compose.coolify.yml` as the
    compose file. The default Traefik labels expect the external network to be called `coolify-network` with a `websecure`
-   entrypoint—override the variables if your installation differs.
+   entrypoint—override the variables if your installation differs. If your Coolify host does not already have that network, SSH
+   into the host once and run `docker network create coolify-network` (or set `TRAEFIK_NETWORK` to the Traefik network name you
+   actually use) before triggering a deployment.
 3. Deploy the stack. Coolify will build the image from `Dockerfile`, run database migrations and `collectstatic` via
    `docker/entrypoint.sh`, and expose the site through Traefik on the hostname configured by `TRAEFIK_HOST`.
 
