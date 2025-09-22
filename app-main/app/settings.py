@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 from pathlib import Path
 
 import os
+import warnings
 
 # Load .env file
 # Import load_dotenv
@@ -129,16 +130,53 @@ WSGI_APPLICATION = 'app.wsgi.application'
 
 
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('POSTGRES_DB'),
-        'USER': os.getenv('POSTGRES_USER'),
-        'PASSWORD': os.getenv('POSTGRES_PASSWORD'),
-        'HOST': os.getenv('POSTGRES_HOST'),
-        'PORT': os.getenv('POSTGRES_PORT', '5432'),
+POSTGRES_REQUIRED_ENV_VARS = (
+    'POSTGRES_DB',
+    'POSTGRES_USER',
+    'POSTGRES_PASSWORD',
+    'POSTGRES_HOST',
+)
+
+postgres_configured = all(os.getenv(var) for var in POSTGRES_REQUIRED_ENV_VARS)
+postgres_dependencies_available = False
+
+if postgres_configured:
+    try:  # Prefer psycopg3 if available
+        import psycopg  # type: ignore  # noqa: F401
+    except ImportError:
+        try:
+            import psycopg2  # type: ignore  # noqa: F401
+        except ImportError:
+            postgres_dependencies_available = False
+        else:
+            postgres_dependencies_available = True
+    else:
+        postgres_dependencies_available = True
+
+if postgres_configured and postgres_dependencies_available:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.getenv('POSTGRES_DB'),
+            'USER': os.getenv('POSTGRES_USER'),
+            'PASSWORD': os.getenv('POSTGRES_PASSWORD'),
+            'HOST': os.getenv('POSTGRES_HOST'),
+            'PORT': os.getenv('POSTGRES_PORT', '5432'),
+        }
     }
-}
+else:
+    if postgres_configured and not postgres_dependencies_available:
+        warnings.warn(
+            'PostgreSQL environment variables are set but the psycopg/psycopg2 package '
+            'is not installed. Falling back to SQLite database configuration.'
+        )
+
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
 # Password validation
 # https://docs.djangoproject.com/en/4.2/ref/settings/#auth-password-validators
