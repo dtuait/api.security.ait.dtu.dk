@@ -1,13 +1,25 @@
 from django.contrib import admin
+from django.contrib import messages
 from django.http import HttpRequest
 from django.contrib.admin.widgets import FilteredSelectMultiple
 from django.db import transaction
 from django.db import models
 from myview.models import ADGroupAssociation
 from django.contrib.contenttypes.admin import GenericTabularInline
-import logging
 from django.contrib.contenttypes.models import ContentType
+from django.template.response import TemplateResponse
+from django.urls import path
+from django.utils.html import format_html
+from django.utils.text import slugify
+from django.utils.translation import gettext_lazy as _
+from django.shortcuts import redirect
 from django import forms
+import logging
+import ast
+import importlib.util
+import io
+from contextlib import redirect_stdout, redirect_stderr
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -295,3 +307,207 @@ try:
 except ImportError:
     print("ADOU model is not available for registration in the admin site.")
     pass
+
+
+UTILITY_SCRIPTS_DIRECTORY = Path(__file__).resolve().parents[1] / "utils"
+MAX_OUTPUT_CHARACTERS = 2000
+MAX_OUTPUT_LINES = 20
+
+
+def _format_script_display_name(stem: str) -> str:
+    words = stem.replace("_", " ").replace("-", " ")
+    words = " ".join(filter(None, words.split()))
+    return words.title() if words else stem
+
+
+def _load_script_docstring(path: Path) -> str:
+    try:
+        module = ast.parse(path.read_text(encoding="utf-8"))
+    except (OSError, SyntaxError) as exc:
+        logger.warning("Unable to parse %s for docstring: %s", path.name, exc)
+        return ""
+    doc = ast.get_docstring(module)
+    return doc.strip() if doc else ""
+
+
+def _list_utility_scripts():
+    scripts = []
+    if not UTILITY_SCRIPTS_DIRECTORY.exists():
+        logger.warning(
+            "Utility scripts directory %s does not exist.", UTILITY_SCRIPTS_DIRECTORY
+        )
+        return scripts
+
+    for path in sorted(UTILITY_SCRIPTS_DIRECTORY.glob("*.py")):
+        if path.name == "__init__.py":
+            continue
+        slug = slugify(path.stem)
+        if not slug:
+            slug = path.stem
+        scripts.append(
+            {
+                "slug": slug,
+                "display_name": _format_script_display_name(path.stem),
+                "filename": path.name,
+                "path": path,
+                "doc": _load_script_docstring(path),
+            }
+        )
+
+    return scripts
+
+
+def _get_utility_script(slug: str):
+    for script in _list_utility_scripts():
+        if script["slug"] == slug:
+            return script
+    return None
+
+
+def _load_utility_script_module(script):
+    module_name = f"admin_utility_{script['slug'].replace('-', '_')}"
+    spec = importlib.util.spec_from_file_location(module_name, script["path"])
+    if spec is None or spec.loader is None:
+        raise ImportError(f"Unable to load {script['filename']}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)  # type: ignore[attr-defined]
+    return module
+
+
+def _call_utility_script(run_callable):
+    buffer = io.StringIO()
+    error_message = None
+    try:
+        with redirect_stdout(buffer), redirect_stderr(buffer):
+            run_callable()
+    except Exception as exc:  # noqa: BLE001
+        error_message = f"{exc.__class__.__name__}: {exc}"
+        logger.exception("Utility script raised an error.")
+    output = buffer.getvalue().strip()
+    return output, error_message
+
+
+def _trim_script_output(text: str, max_characters: int = MAX_OUTPUT_CHARACTERS, max_lines: int = MAX_OUTPUT_LINES) -> str:
+    if not text:
+        return ""
+
+    lines = text.splitlines()
+    truncated = False
+
+    if len(lines) > max_lines:
+        lines = lines[:max_lines]
+        truncated = True
+
+    text = "\n".join(lines)
+
+    if len(text) > max_characters:
+        text = text[:max_characters].rstrip()
+        truncated = True
+
+    if truncated:
+        text += "\n…"
+
+    return text
+
+
+def _format_output_html(text: str):
+    return format_html("<pre style=\"white-space: pre-wrap;\">{}</pre>", text)
+
+
+def utility_scripts_view(request: HttpRequest):
+    scripts = _list_utility_scripts()
+    context = {
+        **admin.site.each_context(request),
+        "title": _("Utility scripts"),
+        "scripts": scripts,
+    }
+    return TemplateResponse(request, "admin/utility_scripts.html", context)
+
+
+def run_utility_script(request: HttpRequest, slug: str):
+    if request.method != "POST":
+        return redirect("admin:utility-scripts")
+
+    script = _get_utility_script(slug)
+    if script is None:
+        messages.error(request, _("The requested utility script could not be found."))
+        return redirect("admin:utility-scripts")
+
+    try:
+        module = _load_utility_script_module(script)
+    except ImportError as exc:
+        logger.exception("Unable to load utility script %s", script["filename"])
+        messages.error(
+            request,
+            format_html(
+                _("Failed to load <strong>{}</strong>: {}"),
+                script["display_name"],
+                exc,
+            ),
+        )
+        return redirect("admin:utility-scripts")
+
+    run_callable = getattr(module, "run", None)
+    if not callable(run_callable):
+        messages.error(
+            request,
+            format_html(
+                _("The script <strong>{}</strong> does not define a callable named <code>run()</code>."),
+                script["display_name"],
+            ),
+        )
+        return redirect("admin:utility-scripts")
+
+    output, error_message = _call_utility_script(run_callable)
+    trimmed_output = _trim_script_output(output)
+
+    if error_message:
+        logger.error(
+            "Utility script %s executed by %s failed: %s",
+            script["filename"],
+            request.user,
+            error_message,
+        )
+        message = format_html(
+            _("Execution of <strong>{}</strong> failed: {}"),
+            script["display_name"],
+            error_message,
+        )
+        if trimmed_output:
+            message = format_html("{}<br>{}", message, _format_output_html(trimmed_output))
+        messages.error(request, message)
+    else:
+        logger.info(
+            "Utility script %s executed by %s completed successfully.",
+            script["filename"],
+            request.user,
+        )
+        message = format_html(
+            _("Execution of <strong>{}</strong> completed successfully."),
+            script["display_name"],
+        )
+        if trimmed_output:
+            message = format_html("{}<br>{}", message, _format_output_html(trimmed_output))
+        messages.success(request, message)
+
+    return redirect("admin:utility-scripts")
+
+
+def _register_utility_admin_urls():
+    original_get_urls = admin.site.get_urls
+
+    def get_urls():
+        custom_urls = [
+            path("utility-scripts/", admin.site.admin_view(utility_scripts_view), name="utility-scripts"),
+            path(
+                "utility-scripts/<slug:slug>/run/",
+                admin.site.admin_view(run_utility_script),
+                name="run-utility-script",
+            ),
+        ]
+        return custom_urls + original_get_urls()
+
+    admin.site.get_urls = get_urls
+
+
+_register_utility_admin_urls()
