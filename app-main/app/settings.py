@@ -96,6 +96,11 @@ INSTALLED_APPS = [
 ]
 
 
+MIGRATION_MODULES = {
+    'authtoken': 'app_mod.authtoken_migrations',
+}
+
+
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
