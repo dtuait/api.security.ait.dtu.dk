@@ -146,15 +146,41 @@ class BaseAppUtils {
         credentials: 'include' // Ensure credentials are sent with requests (e.g., cookies)
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
+      const contentType = response.headers.get('Content-Type') || '';
+      let parsedData = null;
+
+      if (response.status !== 204) {
+        try {
+          if (contentType.includes('application/json')) {
+            parsedData = await response.json();
+          } else {
+            parsedData = await response.text();
+          }
+        } catch (parseError) {
+          console.error('Failed to parse response body:', parseError);
+        }
       }
 
-      if (response.status === 204) {
-        return {};
+      const metadata = {
+        status: response.status,
+        ok: response.ok,
+      };
+
+      let normalizedResponse;
+
+      if (parsedData === null || typeof parsedData === 'undefined') {
+        normalizedResponse = { ...metadata, data: null };
+      } else if (Array.isArray(parsedData)) {
+        normalizedResponse = [...parsedData];
+        normalizedResponse.data = parsedData;
+        Object.assign(normalizedResponse, metadata);
+      } else if (typeof parsedData === 'object') {
+        normalizedResponse = { ...parsedData, ...metadata, data: parsedData };
       } else {
-        return await response.json();
+        normalizedResponse = { ...metadata, data: parsedData };
       }
+
+      return normalizedResponse;
 
     } catch (error) {
       console.error('Request failed:', error);

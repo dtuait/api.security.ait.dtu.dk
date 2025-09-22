@@ -41,6 +41,7 @@ All of the other entries in `.env.example` are optional or relate to integration
 5. Under the **Environment Variables** tab, add the keys discussed above (copy/paste from your `.env`). You can bulk import by pasting the contents of your `.env` file.
 6. Ensure the Traefik network name matches your setup. By default the compose file expects an external network named `coolify-network`. Adjust the `TRAEFIK_NETWORK` variable if your Traefik network is different, or create the network beforehand. On a raw Docker host (for example when rehearsing locally) run `docker network create coolify-network` once to satisfy the external network reference. Coolify creates `coolify-network` automatically when Traefik is enabled.
 
+
 ## 4. First deployment
 
 1. Click **Deploy**. Coolify will:
@@ -78,3 +79,4 @@ docker compose -f docker-compose.coolify.yml up --build
 ```
 
 If you already have a differently named Traefik network, skip the `docker network create` command and export `TRAEFIK_NETWORK=<your-network>` before running Compose. The stack will come up exactly as Coolify orchestrates it, so you can validate migrations, networking, and integrations ahead of time.
+
