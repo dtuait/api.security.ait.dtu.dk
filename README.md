@@ -55,8 +55,12 @@ To run the same stack locally without Coolify:
 
 ```bash
 cp .env.example .env
+# Create the external Traefik network expected by the compose file (run once)
+docker network create coolify-network
 docker compose -f docker-compose.coolify.yml up --build
 ```
 
 The web container automatically waits for PostgreSQL, applies migrations, and runs `collectstatic` on startup. Static and
-media files persist across deployments via the named volumes defined in the compose file.
+media files persist across deployments via the named volumes defined in the compose file. If your Traefik network has a
+different name locally, set `TRAEFIK_NETWORK=<your-network>` before starting Compose instead of creating `coolify-network`.
+
