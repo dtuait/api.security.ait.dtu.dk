@@ -16,14 +16,47 @@ import os
 import warnings
 
 # Load .env file
-# Import load_dotenv
 from dotenv import load_dotenv
-dotenv_path = '/usr/src/project/.devcontainer/.env'
-load_dotenv(dotenv_path=dotenv_path)
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+
+def _as_bool(value: str | None, default: bool) -> bool:
+    """Return a boolean value for environment variables."""
+
+    if value is None:
+        return default
+
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+PROJECT_ROOT = BASE_DIR.parent
+
+custom_env_file = os.getenv("DJANGO_ENV_FILE")
+candidate_env_paths = []
+
+if custom_env_file:
+    custom_env_path = Path(custom_env_file)
+    if not custom_env_path.is_absolute():
+        custom_env_path = PROJECT_ROOT / custom_env_path
+    candidate_env_paths.append(custom_env_path)
+
+candidate_env_paths.extend(
+    [
+        PROJECT_ROOT / ".env",
+        PROJECT_ROOT / ".devcontainer" / ".env",
+    ]
+)
+
+for env_path in candidate_env_paths:
+    if env_path and env_path.exists():
+        load_dotenv(dotenv_path=env_path)
+        break
+else:
+    # Fall back to standard .env discovery (no-op if the file does not exist).
+    load_dotenv()
 
 # settings.py
 
@@ -39,7 +72,7 @@ AD_GROUP_CACHE_TIMEOUT = 15 * 60  # This
 SECRET_KEY = os.getenv('DJANGO_SECRET')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = _as_bool(os.getenv("DJANGO_DEBUG"), False)
 
 
 # CAS_SERVER_URL = 'https://auth2.dtu.dk/dtu/' # with multifactor
@@ -50,29 +83,58 @@ AZURE_AD = {
     'TENANT_ID': os.getenv('AZURE_TENANT_ID'),
     'CLIENT_ID': os.getenv('AIT_SOC_MSAL_VICRE_CLIENT_ID'),
     'CLIENT_SECRET': os.getenv('AIT_SOC_MSAL_VICRE_MSAL_SECRET_VALUE'),
-    'REDIRECT_URI': 'https://api.security.ait.dtu.dk/auth/callback', # Update with actual redirect URI
+    'REDIRECT_URI': os.getenv('AZURE_REDIRECT_URI', 'https://api.security.ait.dtu.dk/auth/callback'),  # Update with actual redirect URI
     'AUTHORITY': f'https://login.microsoftonline.com/{os.getenv("AZURE_TENANT_ID")}',
-    'SCOPE': ['User.Read'] # Add other scopes if needed
+    'SCOPE': ['User.Read']  # Add other scopes if needed
 }
 
 # 'HOST': os.getenv('MYSQL_HOST'),
 
-ALLOWED_HOSTS = [
+default_allowed_hosts = [
     'localhost',
+    '127.0.0.1',
     '192.38.87.230',
     'api.security.ait.dtu.dk',
     'beta-api.security.ait.dtu.dk',
 ]
 
+allowed_hosts_env = os.getenv('DJANGO_ALLOWED_HOSTS')
 
-CSRF_COOKIE_DOMAIN = 'api.security.ait.dtu.dk'
+if allowed_hosts_env:
+    ALLOWED_HOSTS = [host.strip() for host in allowed_hosts_env.split(',') if host.strip()]
+else:
+    ALLOWED_HOSTS = default_allowed_hosts
+
+
+default_csrf_domain = os.getenv('DJANGO_CSRF_COOKIE_DOMAIN')
+if default_csrf_domain is not None:
+    CSRF_COOKIE_DOMAIN = default_csrf_domain or None
+else:
+    CSRF_COOKIE_DOMAIN = 'api.security.ait.dtu.dk'
+
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SECURE = True
-SECURE_HSTS_SECONDS = 3600  # This sets the duration for one hour, adjust as needed.
-SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-SECURE_HSTS_PRELOAD = True
-SECURE_SSL_REDIRECT = False
+SESSION_COOKIE_SECURE = _as_bool(os.getenv('DJANGO_SESSION_COOKIE_SECURE'), True)
+CSRF_COOKIE_SECURE = _as_bool(os.getenv('DJANGO_CSRF_COOKIE_SECURE'), True)
+SECURE_HSTS_SECONDS = int(os.getenv('DJANGO_SECURE_HSTS_SECONDS', '3600'))  # This sets the duration for one hour, adjust as needed.
+SECURE_HSTS_INCLUDE_SUBDOMAINS = _as_bool(os.getenv('DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS'), True)
+SECURE_HSTS_PRELOAD = _as_bool(os.getenv('DJANGO_SECURE_HSTS_PRELOAD'), True)
+SECURE_SSL_REDIRECT = _as_bool(os.getenv('DJANGO_SECURE_SSL_REDIRECT'), False)
+
+trusted_origins_env = os.getenv('DJANGO_CSRF_TRUSTED_ORIGINS')
+if trusted_origins_env:
+    CSRF_TRUSTED_ORIGINS = [origin.strip() for origin in trusted_origins_env.split(',') if origin.strip()]
+else:
+    candidate_origins = []
+    for host in ALLOWED_HOSTS:
+        if not host:
+            continue
+        if host in {'localhost', '127.0.0.1'}:
+            candidate_origins.extend([f'http://{host}', f'https://{host}'])
+        else:
+            candidate_origins.append(f'https://{host}')
+
+    # Preserve order while removing duplicates
+    CSRF_TRUSTED_ORIGINS = list(dict.fromkeys(candidate_origins))
 # Application definition
 
 INSTALLED_APPS = [
@@ -215,13 +277,13 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
 STATIC_URL = 'static/'
-STATIC_ROOT = os.path.join('/mnt/shared-project-data/django/staticfiles')
+STATIC_ROOT = os.getenv('DJANGO_STATIC_ROOT', '/mnt/shared-project-data/django/staticfiles')
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'static'),
 ]
 
 MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join('/mnt/shared-project-data/django/mediafiles')
+MEDIA_ROOT = os.getenv('DJANGO_MEDIA_ROOT', '/mnt/shared-project-data/django/mediafiles')
 
 # Maybe this will be a fix in the future
 # # At the end of your settings.py
