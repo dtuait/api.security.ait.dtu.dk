@@ -35,24 +35,32 @@ developing.
 
 ## Deploying with Coolify + Traefik
 
-Coolify can build and run the application directly from this repository using the provided `Dockerfile` and
-`docker-compose.coolify.yml` compose descriptor. The compose file wires the Django container to PostgreSQL, exposes the
-Gunicorn service to Traefik, and provisions persistent volumes for static and media assets.
+A detailed, step-by-step deployment walkthrough is available in
+[`docs/coolify-deployment-guide.md`](docs/coolify-deployment-guide.md). In summary, Coolify can build and run the application
+directly from this repository using the provided `Dockerfile` and `docker-compose.coolify.yml` compose descriptor. The compose
+file wires the Django container to PostgreSQL, exposes the Gunicorn service to Traefik, and provisions persistent volumes for
+static and media assets.
 
-1. Create a copy of `.env.example` named `.env` and fill in the values (or add the same key/value pairs as environment
-   variables in Coolify). Pay particular attention to `DJANGO_SECRET`, `POSTGRES_*`, and `TRAEFIK_*` values.
-2. In Coolify, create a "Docker Compose" application pointing to this repository and select `docker-compose.coolify.yml` as the
-   compose file. The default labels assume Traefik uses the `coolify-network` overlay and the `websecure` entrypoint—override
-   the `TRAEFIK_*` variables if your installation differs.
-3. Coolify will build the image from `Dockerfile`, run database migrations, collect static assets, and expose the site through
-   Traefik on the hostname configured by `TRAEFIK_HOST`.
+At a minimum you will:
+
+1. Copy `.env.example` to `.env` (or paste the same key/value pairs into Coolify) and provide values for `DJANGO_SECRET`, the
+   `POSTGRES_*` credentials, `TRAEFIK_*` routing metadata, and any integration secrets you require.
+2. Create a Coolify **Docker Compose** application that points to this repository and select `docker-compose.coolify.yml` as the
+   compose file. The default Traefik labels expect the external network to be called `coolify-network` with a `websecure`
+   entrypoint—override the variables if your installation differs.
+3. Deploy the stack. Coolify will build the image from `Dockerfile`, run database migrations and `collectstatic` via
+   `docker/entrypoint.sh`, and expose the site through Traefik on the hostname configured by `TRAEFIK_HOST`.
 
 To run the same stack locally without Coolify:
 
 ```bash
 cp .env.example .env
+# Create the external Traefik network expected by the compose file (run once)
+docker network create coolify-network
 docker compose -f docker-compose.coolify.yml up --build
 ```
 
 The web container automatically waits for PostgreSQL, applies migrations, and runs `collectstatic` on startup. Static and
-media files persist across deployments via the named volumes defined in the compose file.
+media files persist across deployments via the named volumes defined in the compose file. If your Traefik network has a
+different name locally, set `TRAEFIK_NETWORK=<your-network>` before starting Compose instead of creating `coolify-network`.
+
