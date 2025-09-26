@@ -3,7 +3,7 @@
     "dockerComposeFile": "my-development-docker-compose.yaml",
     "service": "xx-api-security-ait-dtu-dk-app-main",
     "workspaceFolder": "/usr/src/project",
-    "remoteUser": "dockeruser",
+    "remoteUser": "django",
     "customizations": {
         "vscode": {
             "settings": {
