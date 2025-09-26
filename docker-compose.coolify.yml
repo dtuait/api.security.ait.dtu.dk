@@ -65,5 +65,5 @@ networks:
   internal:
     driver: bridge
   traefik:
-    external: true
     name: ${TRAEFIK_NETWORK:-coolify-network}
+    driver: bridge
