@@ -3,16 +3,26 @@
 # this script runs first time when container is created
 echo "running postCreateCommand.sh"
 
+# Resolve workspace path provided by the devcontainer runtime (falls back to /app)
+workspace_dir=${REMOTE_CONTAINERS_WORKSPACE_FOLDER:-/app}
+venv_pip="/usr/src/venvs/app-main/bin/pip"
+requirements_target="$workspace_dir/app-main/requirements.txt"
+
+if [ ! -d "$workspace_dir" ]; then
+    echo "Error: workspace directory '$workspace_dir' does not exist."
+    exit 1
+fi
+
 # store current pwd into a variable
 current_pwd=$(pwd)
-cd /usr/src/project
+cd "$workspace_dir"
 
-# Check if /usr/src/project/.git is a valid git repository
-if [ -d "/usr/src/project/.git" ]; then
+# Check if the workspace is a valid git repository
+if [ -d ".git" ]; then
     # Set git to ignore file mode (permissions) changes in this repository
-    git --git-dir=/usr/src/project/.git config core.fileMode false
+    git config core.fileMode false
 else
-    echo "Error: /usr/src/project/.git is not a valid git repository."
+    echo "Error: $workspace_dir/.git is not a valid git repository."
 fi
 
 # Set git to ignore file mode (permissions) changes globally for all repositories
@@ -43,20 +53,30 @@ case $username in
         ;;
 esac
 
-git config --global --add safe.directory /usr/src/project
+git config --global --add safe.directory "$workspace_dir"
 # git config --global --add safe.directory /mnt/project
-# git config --global --add safe.directory /usr/src/project/.devcontainer/.docker-migrate
-# git config --global --add safe.directory /usr/src/project/.devcontainer/.docker-image-builder
-git config pull.rebase true
+# git config --global --add safe.directory "$workspace_dir/.devcontainer/.docker-migrate"
+# git config --global --add safe.directory "$workspace_dir/.devcontainer/.docker-image-builder"
+
+if [ -d ".git" ]; then
+    git config pull.rebase true
+fi
 
 # show current pip freeze
 echo "Show current pip freeze into requirements.txt"
-/usr/src/venvs/app-main/bin/pip freeze > /usr/src/project/app-main/requirements.txt
+if [ -x "$venv_pip" ]; then
+    "$venv_pip" freeze > "$requirements_target"
+else
+    echo "Warning: pip executable '$venv_pip' not found; skipping freeze."
+fi
 
-echo "Getting git submodules"
-git submodule init && git submodule update
+if [ -d ".git" ]; then
+    echo "Getting git submodules"
+    git submodule init && git submodule update
+fi
+
 
 echo "Ending postCreateCommand.sh"
 
 # restore the pwd
-cd $current_pwd
+cd "$current_pwd"
