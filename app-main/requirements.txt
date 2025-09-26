@@ -38,7 +38,6 @@ msal==1.27.0
 msal-extensions==1.1.0
 msgraph-core==1.0.0
 multidict==6.0.5
-psycopg2-binary==2.9.9
 mysqlclient==2.2.4
 numpy==2.1.2
 openai==0.27.10
