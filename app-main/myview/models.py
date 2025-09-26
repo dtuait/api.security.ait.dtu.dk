@@ -175,7 +175,9 @@ class ADGroupAssociation(BaseModel):
                     raise ValueError(f"User {user_principal_name} is not synched with on-premise users")
 
                 # Create new user if the user is synched with azure ad
-                username = sam_accountname
+                # Normalize the username to lowercase so that it matches the
+                # representation used when linking users to AD groups later.
+                username = sam_accountname.lower()
                 first_name = user.get('givenName', [''])[0]
                 last_name = user.get('sn', [''])[0]
                 email = user_principal_name

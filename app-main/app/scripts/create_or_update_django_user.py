@@ -6,6 +6,9 @@ def create_or_update_django_user(username, first_name, last_name, email, is_supe
     try:
         if not username:
             raise ValueError("username cannot be null or empty")
+        # Store usernames in lowercase to avoid case-sensitive mismatches
+        # when syncing memberships from Active Directory.
+        username = username.lower()
         from django.contrib.auth.models import User
         existing_user = User.objects.filter(username=username).first()
         if existing_user:
