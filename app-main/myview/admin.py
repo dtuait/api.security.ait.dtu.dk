@@ -75,12 +75,13 @@ try:
             return self.readonly_fields
         
         def save_model(self, request, obj, form, change):
-            # Your custom logic here
-            from myview.models import ADGroupAssociation
-
-            ADGroupAssociation.sync_ad_group_members(obj)
-
+            # Persist the object before attempting to sync members so that the
+            # many-to-many relation can be updated safely. Newly created
+            # instances trigger their sync inside the model's save method.
             super().save_model(request, obj, form, change)
+
+            if change:
+                obj.sync_ad_group_members()
         def member_count(self, obj):
             return obj.members.count()
         member_count.short_description = 'Member Count'
