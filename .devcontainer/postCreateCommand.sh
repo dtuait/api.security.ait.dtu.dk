@@ -28,30 +28,67 @@ fi
 # Set git to ignore file mode (permissions) changes globally for all repositories
 git config --global core.fileMode false
 
-echo "Enter your username:"
-read username
-case $username in
-    afos)
-        git config --global user.email "afos@dtu.dk"
-        git config --global user.name "Anders Fosgerau"
-        ;;
-    jaholm)
-        git config --global user.email "jaholm@dtu.dk"
-        git config --global user.name "Jakob Holm"
-        ;;
-    vicre)
-        git config --global user.email "vicre@dtu.dk"
-        git config --global user.name "Victor Reipur"
-        ;;
-    *)
-        echo "Enter your email:"
-        read email
-        git config --global user.email "$email"
-        echo "Enter your name:"
-        read name
-        git config --global user.name "$name"
-        ;;
-esac
+allow_prompt=${DEVCONTAINER_ALLOW_INTERACTIVE_PROMPT:-0}
+username=${DEVCONTAINER_GIT_USERNAME:-}
+email=${DEVCONTAINER_GIT_EMAIL:-}
+name=${DEVCONTAINER_GIT_NAME:-}
+
+if [ "$allow_prompt" = "1" ] && [ -t 0 ]; then
+    echo "Enter your username:"
+    read -r username
+    case "$username" in
+        afos)
+            git config --global user.email "afos@dtu.dk"
+            git config --global user.name "Anders Fosgerau"
+            ;;
+        jaholm)
+            git config --global user.email "jaholm@dtu.dk"
+            git config --global user.name "Jakob Holm"
+            ;;
+        vicre)
+            git config --global user.email "vicre@dtu.dk"
+            git config --global user.name "Victor Reipur"
+            ;;
+        *)
+            echo "Enter your email:"
+            read -r email
+            git config --global user.email "$email"
+            echo "Enter your name:"
+            read -r name
+            git config --global user.name "$name"
+            ;;
+    esac
+fi
+
+if [ -z "$email" ] || [ -z "$name" ]; then
+    case "$username" in
+        afos)
+            email="afos@dtu.dk"
+            name="Anders Fosgerau"
+            ;;
+        jaholm)
+            email="jaholm@dtu.dk"
+            name="Jakob Holm"
+            ;;
+        vicre)
+            email="vicre@dtu.dk"
+            name="Victor Reipur"
+            ;;
+        "")
+            echo "Skipping git identity setup (no username/email provided)."
+            ;;
+        *)
+            if [ -z "$email" ] || [ -z "$name" ]; then
+                echo "Skipping git identity setup: no email/name provided for username '$username'."
+            fi
+            ;;
+    esac
+fi
+
+if [ -n "$email" ] && [ -n "$name" ]; then
+    git config --global user.email "$email"
+    git config --global user.name "$name"
+fi
 
 git config --global --add safe.directory "$workspace_dir"
 # git config --global --add safe.directory /mnt/project
