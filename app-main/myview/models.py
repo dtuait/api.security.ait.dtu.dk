@@ -1,4 +1,5 @@
 from django.db import models
+import logging
 from django.contrib.auth.models import User
 from django.contrib.auth import get_user_model
 from django.conf import settings
@@ -9,6 +10,8 @@ from django.utils.translation import gettext_lazy as _
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
+
+logger = logging.getLogger(__name__)
 
 class BaseModel(models.Model):
     datetime_created = models.DateTimeField(auto_now_add=True)
@@ -155,38 +158,62 @@ class ADGroupAssociation(BaseModel):
 
     def _create_or_update_django_users_if_not_exists(self, users):
         for user in users:
+            # Defensive defaults
+            user_principal_name = user.get('userPrincipalName', [''])
+            user_principal_name = user_principal_name[0] if isinstance(user_principal_name, list) else user_principal_name
+            sam_accountname = user.get('sAMAccountName', [''])
+            sam_accountname = sam_accountname[0] if isinstance(sam_accountname, list) else sam_accountname
+
             try:
-                
-                user_principal_name = user.get('userPrincipalName', [''])[0]
-                sam_accountname = user.get('sAMAccountName', [''])[0]
+                # Only consider DTU users; skip others quietly
+                if not user_principal_name or not user_principal_name.endswith('@dtu.dk'):
+                    logger.debug("Skipping non-DTU or missing UPN: %s", user_principal_name)
+                    continue
 
-
-                if not user_principal_name.endswith('@dtu.dk'):
-                    raise ValueError(f"User {user_principal_name} does not end with @dtu.dk")
-                
-                # validate user
+                # Validate user presence in Azure AD
                 from graph.services import execute_get_user
-                user_data, status_code = execute_get_user(user_principal_name=user_principal_name, select_parameters='$select=onPremisesImmutableId')
-                if status_code != 200:                    
-                    raise ValueError(f"User {user_principal_name} not found")
-                on_premises_immutable_id = user_data.get('onPremisesImmutableId', '')           
-                from app.scripts.azure_user_is_synced_with_on_premise_users import azure_user_is_synced_with_on_premise_users
-                if not azure_user_is_synced_with_on_premise_users(sam_accountname=sam_accountname, on_premises_immutable_id=on_premises_immutable_id):
-                    raise ValueError(f"User {user_principal_name} is not synched with on-premise users")
+                user_data, status_code = execute_get_user(
+                    user_principal_name=user_principal_name,
+                    select_parameters='$select=onPremisesImmutableId'
+                )
+                if status_code != 200:
+                    # Treat as normal skip instead of raising
+                    logger.info("Azure AD user not found, skipping: %s", user_principal_name)
+                    continue
 
-                # Create new user if the user is synched with azure ad
-                # Normalize the username to lowercase so that it matches the
-                # representation used when linking users to AD groups later.
-                username = sam_accountname.lower()
-                first_name = user.get('givenName', [''])[0]
-                last_name = user.get('sn', [''])[0]
+                on_premises_immutable_id = user_data.get('onPremisesImmutableId', '')
+                from app.scripts.azure_user_is_synced_with_on_premise_users import azure_user_is_synced_with_on_premise_users
+                if not azure_user_is_synced_with_on_premise_users(
+                    sam_accountname=sam_accountname,
+                    on_premises_immutable_id=on_premises_immutable_id,
+                ):
+                    logger.info("User not synced with on-prem AD, skipping: %s", user_principal_name)
+                    continue
+
+                # Create new user if the user is synced with Azure AD
+                username = (sam_accountname or '').lower()
+                if not username:
+                    logger.warning("Missing sAMAccountName for %s; cannot create user", user_principal_name)
+                    continue
+
+                first_name = user.get('givenName', [''])
+                first_name = first_name[0] if isinstance(first_name, list) else first_name
+                last_name = user.get('sn', [''])
+                last_name = last_name[0] if isinstance(last_name, list) else last_name
                 email = user_principal_name
 
                 from app.scripts.create_or_update_django_user import create_or_update_django_user
-                create_or_update_django_user(username=username, first_name=first_name, last_name=last_name, email=email, update_existing_user=False)
+                create_or_update_django_user(
+                    username=username,
+                    first_name=first_name,
+                    last_name=last_name,
+                    email=email,
+                    update_existing_user=False,
+                )
 
-            except Exception as error:
-                print(f"An unexpected error occurred: {error}")
+            except Exception:
+                # Log unexpected errors with stack trace but keep syncing
+                logger.exception("Unexpected error while ensuring Django user for %s", user_principal_name)
 
 
 
