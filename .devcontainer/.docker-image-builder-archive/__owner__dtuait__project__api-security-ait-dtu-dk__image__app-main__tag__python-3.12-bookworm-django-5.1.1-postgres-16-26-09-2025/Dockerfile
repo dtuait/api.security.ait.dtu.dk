@@ -62,12 +62,11 @@ COPY requirements.txt /tmp/requirements.txt
 RUN python -m pip install --upgrade pip \
     && pip install --no-cache-dir -r /tmp/requirements.txt
 
-COPY docker/entrypoint.sh /entrypoint.sh
+COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-COPY . /app
-
-RUN chown -R django:django /app
+RUN mkdir -p /app \
+    && chown -R django:django /app
 
 USER django
 
