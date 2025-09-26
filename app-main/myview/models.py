@@ -177,8 +177,30 @@ class ADGroupAssociation(BaseModel):
                     select_parameters='$select=onPremisesImmutableId'
                 )
                 if status_code != 200:
-                    # Treat as normal skip instead of raising
-                    logger.info("Azure AD user not found, skipping: %s", user_principal_name)
+                    # Improve observability: distinguish 404 vs auth/other errors
+                    err_detail = None
+                    try:
+                        if isinstance(user_data, dict):
+                            err_detail = user_data.get('error')
+                    except Exception:
+                        err_detail = None
+
+                    if status_code == 404:
+                        logger.info("Azure AD user not found (404), skipping: %s", user_principal_name)
+                    elif status_code in (401, 403):
+                        logger.warning(
+                            "Azure Graph auth/permission error (%s) for %s: %s",
+                            status_code,
+                            user_principal_name,
+                            err_detail,
+                        )
+                    else:
+                        logger.warning(
+                            "Azure Graph error (%s) for %s: %s",
+                            status_code,
+                            user_principal_name,
+                            err_detail,
+                        )
                     continue
 
                 on_premises_immutable_id = user_data.get('onPremisesImmutableId', '')
