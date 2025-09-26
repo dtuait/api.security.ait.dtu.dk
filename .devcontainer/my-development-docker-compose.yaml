@@ -6,27 +6,23 @@
 
 services:
   xx-api-security-ait-dtu-dk-app-main:
-    image: dtuait/api-security-ait-dtu-dk-app-main:python-3.10-bullseye-django-4.2.11-27-03-2024-venv-myversion-1.0.23
+    image: dtuait/api-security-ait-dtu-dk-app-main:python-3.12-bookworm-django-5.1.1-postgres-16-26-09-2025
     # build:
     #   context: .
     #   dockerfile: Dockerfile
-    user: dockeruser
 
     # development command
     command: sleep infinity
     # production command
-    # command: 'bash -c "cd /usr/src/project/app-main && source /usr/src/venvs/app-main/bin/activate && gunicorn app.wsgi:application --bind 0.0.0.0:8121"'
+    # command: 'bash -c "cd /app/app-main && gunicorn app.wsgi:application --bind 0.0.0.0:8121"'
 
 
     restart: always
     tty: true
     volumes:
-      - ..:/usr/src/project
+      - ..:/app
       - ../shared-project-data:/mnt/shared-project-data
       # - ./entrypoint.sh:/entrypoint.sh # you dont need to mount it since it is already in the image
-    environment:
-      - HOST_UID=${DOCKERUSER_UID} # Replace with the host's UID - dockeruser I alwways use 65000
-      - HOST_GID=${DOCKERUSER_GID} # Replace with the host's GID - dockeruser I alwways use 65000
     networks:
       - shared_network
 
