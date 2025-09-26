@@ -67,7 +67,7 @@ class ADGroupAssociation(BaseModel):
     def save(self, *args, **kwargs):
         if not self.distinguished_name.startswith('CN=') or not self.distinguished_name.endswith(',DC=win,DC=dtu,DC=dk'):
             raise ValidationError("distinguished_name must start with 'CN=' and end with ',DC=win,DC=dtu,DC=dk'")
-        
+
         # if the canonical_name is empty or None, create it from the distinguished_name
         if not self.canonical_name:
             from myview.scripts.distinguished_to_canonical import distinguished_to_canonical
@@ -75,11 +75,17 @@ class ADGroupAssociation(BaseModel):
             # CN=AIT-ADM-employees-29619,OU=SecurityGroups,OU=AIT,OU=DTUBasen,DC=win,DC=dtu,DC=dk
             # >> win.dtu.dk/DTUBasen/AIT/SecurityGroups/AIT-ADM-employees-29619
 
-        
-        
         if not self.canonical_name.startswith('win.dtu.dk/'):
             raise ValidationError("canonical_name must start with 'win.dtu.dk/'")
+
+        is_new = self._state.adding
+
         super().save(*args, **kwargs)
+
+        if is_new:
+            # Ensure that newly created associations immediately reflect the current
+            # membership of the backing AD group inside Django.
+            self.sync_ad_group_members()
 
 
     # This function should only sync with already existing groups in the django db.
