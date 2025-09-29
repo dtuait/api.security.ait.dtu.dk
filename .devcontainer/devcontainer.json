@@ -4,6 +4,10 @@
     "service": "xx-api-security-ait-dtu-dk-app-main",
     "workspaceFolder": "/app",
     "remoteUser": "django",
+    "containerEnv": {
+        "DEVCONTAINER_GITHUB_NAME": "Victor Reipur",
+        "DEVCONTAINER_GITHUB_EMAIL": "vicre@dtu.dk"
+    },
     "customizations": {
         "vscode": {
             "settings": {
