@@ -1,6 +1,32 @@
-from django.test import TestCase, Client
-from django.urls import reverse
-from django.contrib.auth import get_user_model
+from django.test import TestCase
+
+
+class LimiterTypeSyncTests(TestCase):
+    """Tests for automatic limiter type population."""
+
+    def test_ensure_limiter_types_populates_expected_entries(self):
+        from django.apps import apps as django_apps
+
+        config = django_apps.get_app_config('myview')
+        LimiterType = django_apps.get_model('myview', 'LimiterType')
+
+        LimiterType.objects.all().delete()
+
+        config._ensure_limiter_types()
+
+        limiters = LimiterType.objects.order_by('name')
+
+        self.assertEqual(limiters.count(), 2)
+
+        ip_limiter = limiters.filter(name='IP Limiter').first()
+        self.assertIsNotNone(ip_limiter)
+        self.assertEqual(ip_limiter.description, 'This model represents a specific IP limiter.')
+        self.assertEqual(ip_limiter.content_type.model, 'iplimiter')
+
+        ou_limiter = limiters.filter(name='AD Organizational Unit Limiter').first()
+        self.assertIsNotNone(ou_limiter)
+        self.assertEqual(ou_limiter.description, 'This model represents an AD organizational unit limiter.')
+        self.assertEqual(ou_limiter.content_type.model, 'adorganizationalunitlimiter')
 
 
 
