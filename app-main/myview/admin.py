@@ -51,10 +51,10 @@ try:
 
     @admin.register(ADGroupAssociation)
     class ADGroupAssociationAdmin(admin.ModelAdmin):
-        list_display = ('canonical_name', 'distinguished_name', 'member_count')  # Fields to display in the admin list view
-        search_fields = ('canonical_name',)
+        list_display = ('name', 'canonical_name', 'distinguished_name', 'member_count')  # Fields to display in the admin list view
+        search_fields = ('name', 'canonical_name')
         filter_horizontal = ('members',)  # Provides a more user-friendly widget for ManyToMany relations
-        readonly_fields = ('canonical_name', 'distinguished_name', 'member_count')  # Fields that should be read-only in the admin
+        readonly_fields = ('name', 'canonical_name', 'distinguished_name', 'member_count')  # Fields that should be read-only in the admin
         list_per_page = 40
         actions = [sync_ad_group_members]
 
