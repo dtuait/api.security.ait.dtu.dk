@@ -45,7 +45,7 @@ class GetUserViewSet(APIAuthBaseViewSet):
     autho_bearer_token = openapi.Parameter(
         'Authorization',  # name of the header        
         in_=openapi.IN_HEADER,  # where the parameter is located
-        description="Required. Must be in the format '\<token\> or real token'.",
+        description="Required. Must be in the format '<token> or real token'.",
         type=openapi.TYPE_STRING,  # type of the parameter
         required=True,  # if the header is required or not
         default='<token>'  # default value
@@ -60,7 +60,7 @@ class GetUserViewSet(APIAuthBaseViewSet):
             openapi.Parameter(
                 'Authorization',  # name of the header        
                 in_=openapi.IN_HEADER,  # where the parameter is located
-                description="Required. Must be in the format '\<token\> or real token'.",
+                description="Required. Must be in the format '<token> or real token'.",
                 type=openapi.TYPE_STRING,  # type of the parameter
                 required=True,  # if the header is required or not
                 default='<token>'  # default value
@@ -91,7 +91,7 @@ class GetUserViewSet(APIAuthBaseViewSet):
 
         Curl example: \n
         \t curl --location --request GET 'https://api.security.ait.dtu.dk/v1.0/graph/get-user/<user>'
-        \t\t  --header 'Authorization: Token \<token\>'
+        \t\t  --header 'Authorization: Token <token>'
 
 
 
@@ -160,7 +160,7 @@ class ListUserAuthenticationMethodsViewSet(APIAuthBaseViewSet):
     autho_bearer_token = openapi.Parameter(
         'Authorization',  # name of the header        
         in_=openapi.IN_HEADER,  # where the parameter is located
-        description="Required. Must be in the format '\<token\> or real token'.",
+        description="Required. Must be in the format '<token> or real token'.",
         type=openapi.TYPE_STRING,  # type of the parameter
         required=True,  # if the header is required or not
         default='<token>'  # default value
@@ -259,7 +259,7 @@ class DeleteSoftwareMfaViewSet(APIAuthBaseViewSet):
     autho_bearer_token = openapi.Parameter(
         'Authorization',
         in_=openapi.IN_HEADER,
-        description="Required. Must be in the format '\<token\> or real token'.",
+        description="Required. Must be in the format '<token> or real token'.",
         type=openapi.TYPE_STRING,
         required=True,
         default='<token>'
@@ -349,7 +349,7 @@ class DeleteMfaViewSet(APIAuthBaseViewSet):
     autho_bearer_token = openapi.Parameter(
         'Authorization',  # name of the header        
         in_=openapi.IN_HEADER,  # where the parameter is located
-        description="Required. Must be in the format '\<token\> or real token'.",
+        description="Required. Must be in the format '<token> or real token'.",
         type=openapi.TYPE_STRING,  # type of the parameter
         required=True,  # if the header is required or not
         default='<token>'  # default value
@@ -451,7 +451,7 @@ class DeletePhoneViewSet(APIAuthBaseViewSet):
     autho_bearer_token = openapi.Parameter(
         'Authorization',  # name of the header        
         in_=openapi.IN_HEADER,  # where the parameter is located
-        description="Required. Must be in the format '\<token\> or real token'.",
+        description="Required. Must be in the format '<token> or real token'.",
         type=openapi.TYPE_STRING,  # type of the parameter
         required=True,  # if the header is required or not
         default='<token>'  # default value
@@ -596,7 +596,7 @@ class HuntingQueryViewSet(APIAuthBaseViewSet):
     autho_bearer_token = openapi.Parameter(
         'Authorization',  # name of the header
         in_=openapi.IN_HEADER,  # where the parameter is located
-        description="Required. Must be in the format 'Token \<token\>'.",
+        description="Required. Must be in the format 'Token <token>'.",
         type=openapi.TYPE_STRING,  # type of the parameter
         required=True  # if the header is required or not
     )
@@ -660,6 +660,4 @@ class HuntingQueryViewSet(APIAuthBaseViewSet):
         except Exception as e:
             # Handle other unforeseen exceptions
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
 
