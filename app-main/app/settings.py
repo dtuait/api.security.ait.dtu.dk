@@ -32,6 +32,19 @@ def _as_bool(value: str | None, default: bool) -> bool:
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _split_env_list(value: str | None) -> list[str]:
+    """Split an environment variable into a list of non-empty strings."""
+
+    if not value:
+        return []
+
+    separators = [';', ',']
+    for separator in separators:
+        value = value.replace(separator, '\n')
+
+    return [item.strip() for item in value.splitlines() if item.strip()]
+
+
 PROJECT_ROOT = BASE_DIR.parent
 
 custom_env_file = os.getenv("DJANGO_ENV_FILE")
@@ -62,6 +75,15 @@ else:
 
 # AD group cache timeout (15 minutes)
 AD_GROUP_CACHE_TIMEOUT = 15 * 60  # This
+
+default_group_sync_bases = _split_env_list(os.getenv('AD_GROUP_SYNC_BASE_DNS'))
+if not default_group_sync_bases:
+    default_group_sync_bases = [
+        'OU=API-SECURITY-AIT-DTU-DK,OU=Groups,OU=SOC,OU=CIS,OU=AIT,DC=win,DC=dtu,DC=dk',
+    ]
+
+AD_GROUP_SYNC_BASE_DNS = tuple(default_group_sync_bases)
+AD_GROUP_SYNC_DELETE_MISSING = _as_bool(os.getenv('AD_GROUP_SYNC_DELETE_MISSING'), True)
 
 
 # Quick-start development settings - unsuitable for production
