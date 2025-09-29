@@ -21,22 +21,50 @@ def update_env_file(env_path, key, new_value):
 
 # Function to generate a new token
 def _generate_new_token():
-    # Replace this with your actual logic to generate a new token
+    """Generate a new Microsoft Graph access token using client credentials.
 
-    url = 'https://login.microsoftonline.com/' + os.getenv("AZURE_TENANT_ID") + '/oauth2/token'
+    Uses the OAuth v2.0 token endpoint and the 
+    "https://graph.microsoft.com/.default" scope, which leverages the app's
+    configured application permissions.
+    """
 
+    tenant_id = os.getenv("AZURE_TENANT_ID")
+    client_id = os.getenv("GRAPH_CLIENT_ID")
+    client_secret = os.getenv("GRAPH_CLIENT_SECRET")
+    grant_type = os.getenv("GRAPH_GRANT_TYPE", "client_credentials")
+
+    # Default to Graph resource if not provided
+    graph_resource = os.getenv("GRAPH_RESOURCE", "https://graph.microsoft.com").rstrip("/")
+
+    # OAuth v2 endpoint + scope-based permission
+    url = f"https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token"
     data = {
-        'resource': os.getenv("GRAPH_RESOURCE"),
-        'client_id': os.getenv("GRAPH_CLIENT_ID"),
-        'client_secret': os.getenv("GRAPH_CLIENT_SECRET"),
-        'grant_type': os.getenv("GRAPH_GRANT_TYPE")
+        "client_id": client_id,
+        "client_secret": client_secret,
+        "grant_type": grant_type,
+        "scope": f"{graph_resource}/.default",
     }
 
-    response = requests.post(url, data=data)
-
-    if response.status_code == 200:
-        return response.json()['access_token']
-    else:
+    try:
+        response = requests.post(url, data=data, timeout=20)
+        if response.status_code == 200:
+            body = response.json()
+            return body.get("access_token")
+        else:
+            # Fall back to v1 endpoint if tenant is still configured that way
+            # or if admins only allowed v1 (rare, but keep compatibility)
+            url_v1 = f"https://login.microsoftonline.com/{tenant_id}/oauth2/token"
+            data_v1 = {
+                "resource": graph_resource,
+                "client_id": client_id,
+                "client_secret": client_secret,
+                "grant_type": grant_type,
+            }
+            resp_v1 = requests.post(url_v1, data=data_v1, timeout=20)
+            if resp_v1.status_code == 200:
+                return resp_v1.json().get("access_token")
+            return None
+    except Exception:
         return None
 
 
@@ -45,45 +73,41 @@ def _generate_new_token():
 
 
 def _get_bearertoken():
-    
+    """Return a valid Graph access token, refreshing if needed.
+
+    If the token is missing or expired, attempts to generate a new one and
+    persists it to the devcontainer .env file for reuse.
+    """
 
     # Load environment variables from .env file
     env_path = '/usr/src/project/.devcontainer/.env'
     load_dotenv(dotenv_path=env_path, override=True)
 
-    # Get the expiration time from the environment variables
-    expires_on = int(os.getenv("GRAPH_ACCESS_BEARER_TOKEN_EXPIRES_ON"))
+    # Get expiration time (default to 0 so we refresh if missing/invalid)
+    try:
+        expires_on = int(os.getenv("GRAPH_ACCESS_BEARER_TOKEN_EXPIRES_ON", "0") or "0")
+    except ValueError:
+        expires_on = 0
 
-    # Get the current time as a Unix timestamp
     current_time = int(time.time())
 
-    # Check if the token is expired
-    if current_time > expires_on:
-        # Generate a new token
-        
+    # Proactively refresh 2 minutes before expiry
+    if current_time >= (expires_on - 120):
+        new_token = _generate_new_token()
+        if new_token:
+            try:
+                update_env_file(env_path, 'GRAPH_ACCESS_BEARER_TOKEN', new_token)
+                update_env_file(env_path, 'GRAPH_ACCESS_BEARER_TOKEN_EXPIRES_ON', str(current_time + 3600))
+                # Reload env so subsequent calls in the same process see updates
+                load_dotenv(dotenv_path=env_path, override=True)
+            except Exception:
+                # If persisting fails, still return the in-memory token
+                return new_token
+        else:
+            # If we cannot refresh, fall back to whatever is present (may be empty)
+            pass
 
-
-        # Update the .env file with the new token and expiration time
-        # Replace 3600 with the actual lifetime of the token in seconds
-        try:
-            # throw error if retunrn none, else update the env file
-            new_token = _generate_new_token()
-
-            if new_token is None:
-                raise Exception("Failed to generate a new token")
-        
-            update_env_file(env_path, 'GRAPH_ACCESS_BEARER_TOKEN', new_token)
-            update_env_file(env_path, 'GRAPH_ACCESS_BEARER_TOKEN_EXPIRES_ON', str(current_time + 3600))
-            
-            # Reload the environment variables
-            load_dotenv(dotenv_path=env_path, override=True)
-
-        except Exception as e:
-            return str(e)
-
-    # Use the token to perform the hunting query
-    token = os.getenv("GRAPH_ACCESS_BEARER_TOKEN")
-    return token
+    return os.getenv("GRAPH_ACCESS_BEARER_TOKEN", "")
 
 
 
