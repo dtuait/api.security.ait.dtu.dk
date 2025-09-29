@@ -150,3 +150,69 @@ echo "Ending postCreateCommand.sh"
 
 # restore the pwd
 cd "$current_pwd"
+
+# ------------------------------
+# Django setup: migrate and ensure admin user (idempotent)
+# Uses env vars from .devcontainer/.env:
+#   DJANGO_ADMIN_USERNAME, DJANGO_ADMIN_PASSWORD
+# ------------------------------
+
+# Load project .env if present (export variables)
+if [ -f "$workspace_dir/.devcontainer/.env" ]; then
+    set -a
+    # shellcheck disable=SC1090
+    source "$workspace_dir/.devcontainer/.env"
+    set +a
+fi
+
+# Pick Python executable
+venv_python="/usr/src/venvs/app-main/bin/python"
+if [ -x "$venv_python" ]; then
+    python_cmd="$venv_python"
+elif command -v python3 >/dev/null 2>&1; then
+    python_cmd="python3"
+else
+    python_cmd="python"
+fi
+
+django_dir="$workspace_dir/app-main"
+if [ -d "$django_dir" ] && [ -f "$django_dir/manage.py" ]; then
+    echo "Running Django migrations..."
+    cd "$django_dir"
+
+    # Retry loop in case the DB is not yet ready
+    tries=20
+    until "$python_cmd" manage.py migrate --settings app.localhost_debug_true_settings >/dev/null 2>&1; do
+        tries=$((tries-1))
+        if [ $tries -le 0 ]; then
+            echo "Warning: migrate did not complete successfully after retries."
+            break
+        fi
+        echo "Database not ready yet; retrying migrate... ($tries left)"
+        sleep 3
+    done
+
+    echo "Ensuring Django admin user exists..."
+    "$python_cmd" manage.py shell --settings app.localhost_debug_true_settings <<'PYCODE'
+import os
+from django.contrib.auth import get_user_model
+
+username = os.getenv('DJANGO_ADMIN_USERNAME', 'admin')
+password = os.getenv('DJANGO_ADMIN_PASSWORD')
+email = os.getenv('DJANGO_ADMIN_EMAIL', f"{username}@example.com")
+
+User = get_user_model()
+user, created = User.objects.get_or_create(username=username, defaults={"email": email})
+user.is_staff = True
+user.is_superuser = True
+if password:
+    user.set_password(password)
+user.save()
+print(f"Admin user '{username}': {'created' if created else 'updated'}")
+PYCODE
+
+    # Return to original directory
+    cd "$current_pwd"
+else
+    echo "Skipping Django setup: manage.py not found at $django_dir"
+fi
