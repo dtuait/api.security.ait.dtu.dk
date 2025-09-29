@@ -372,6 +372,14 @@ class AccessControlMiddleware(MiddlewareMixin):
         normalized_request_path = self.normalize_path(request.path)
         token = request.META.get('HTTP_AUTHORIZATION')
 
+        # Periodically refresh AD groups + memberships using cache for performance
+        try:
+            from myview.models import ADGroupAssociation
+            ADGroupAssociation.ensure_groups_synced_cached()
+        except Exception:
+            # Non-fatal: continue request handling even if sync fails
+            pass
+
         # Directly proceed with favicon requests
         if normalized_request_path == '/favicon.ico/':
             return self.get_response(request)
@@ -430,4 +438,3 @@ class AccessControlMiddleware(MiddlewareMixin):
         else:
             # For unauthenticated users, redirect to login
             return redirect('/login/')
-

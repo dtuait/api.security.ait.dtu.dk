@@ -60,6 +60,11 @@ try:
 
 
         def get_queryset(self, request):
+            # Keep AD groups in sync (cached to avoid frequent LDAP hits)
+            try:
+                ADGroupAssociation.ensure_groups_synced_cached()
+            except Exception:
+                logger.exception("AD group cached sync in admin failed")
             qs = super().get_queryset(request)
             return qs.prefetch_related('members')
 

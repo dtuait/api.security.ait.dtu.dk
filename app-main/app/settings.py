@@ -73,8 +73,11 @@ else:
 
 # settings.py
 
-# AD group cache timeout (15 minutes)
-AD_GROUP_CACHE_TIMEOUT = 15 * 60  # This
+# AD group cache timeout (seconds). Default: 15 minutes
+try:
+    AD_GROUP_CACHE_TIMEOUT = int(os.getenv('AD_GROUP_CACHE_TIMEOUT', str(15 * 60)))
+except ValueError:
+    AD_GROUP_CACHE_TIMEOUT = 15 * 60
 
 default_group_sync_bases = _split_env_list(os.getenv('AD_GROUP_SYNC_BASE_DNS'))
 if not default_group_sync_bases:
