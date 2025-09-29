@@ -62,10 +62,11 @@ class ADGroupAssociation(BaseModel):
     """
     canonical_name = models.CharField(max_length=255, unique=True, null=False)
     distinguished_name = models.CharField(max_length=255, unique=True, null=False)
+    name = models.CharField(max_length=255, blank=True, default="")
     members = models.ManyToManyField(User, related_name='ad_group_members')
 
     def __str__(self):
-        return self.canonical_name
+        return self.name or self.canonical_name
 
     class Meta:
         verbose_name = "IT Staff API Permission"
@@ -189,6 +190,10 @@ class ADGroupAssociation(BaseModel):
         if not self.canonical_name.startswith('win.dtu.dk/'):
             raise ValidationError("canonical_name must start with 'win.dtu.dk/'")
 
+        derived_name = self._extract_name_from_canonical(self.canonical_name)
+        if not self.name or self.name == self.canonical_name:
+            self.name = derived_name
+
         is_new = self._state.adding
 
         super().save(*args, **kwargs)
@@ -197,6 +202,15 @@ class ADGroupAssociation(BaseModel):
             # Ensure that newly created associations immediately reflect the current
             # membership of the backing AD group inside Django.
             self.sync_ad_group_members()
+
+    @staticmethod
+    def _extract_name_from_canonical(canonical_name):
+        if not canonical_name:
+            return ""
+        segments = [segment for segment in canonical_name.split('/') if segment]
+        if not segments:
+            return canonical_name
+        return segments[-1]
 
     @classmethod
     def ensure_groups_synced_cached(cls, max_age_seconds=None):
