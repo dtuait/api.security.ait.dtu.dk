@@ -71,13 +71,17 @@ class BaseView(View):
 
         # Filter endpoints to include only user-specific group access information
         filtered_endpoints = []
+        available_limiter_types = set()
         for endpoint in user_endpoints:
             filtered_groups = endpoint.ad_groups.filter(members=self.request.user)
+            limiter_label = endpoint.limiter_type.name if endpoint.limiter_type else "None"
+            available_limiter_types.add(limiter_label)
             filtered_endpoints.append({
+                'id': endpoint.id,
                 'method': endpoint.method,
                 'path': endpoint.path,
                 'ad_groups': filtered_groups,
-                'limiter_type': endpoint.limiter_type.name if endpoint.limiter_type else "None",
+                'limiter_type': limiter_label,
                 'no_limit': endpoint.no_limit
             })
 
@@ -116,6 +120,7 @@ class BaseView(View):
             'user_has_mfa_reset_access': self.user_has_mfa_reset_access(),
             'debug': settings.DEBUG,
             'all_limiter_types': associated_limiter_types,
+            'available_limiter_types': sorted(available_limiter_types),
         }
 
         return context

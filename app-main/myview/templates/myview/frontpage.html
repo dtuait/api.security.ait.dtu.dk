@@ -2,7 +2,7 @@
 
 <!-- i18n and static are Django template tags. They are used to load the i18n and static template tags. The i18n template tag is used to mark strings for translation. -->
 <!-- The static is a template tag that is used to load the static template tag library. This library provides a way to reference static files, such as CSS, JavaScript, or image files, which are not tied to a particular instance of a model in your Django app. -->
-{% load i18n static %}
+{% load i18n static json_script %}
 
 
 {# title #}
@@ -29,7 +29,15 @@
     </div>
 
     <div class="container my-4">
-        <h2>My Accessible Endpoints</h2>
+        <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2 mb-3">
+            <h2 class="mb-0">My Accessible Endpoints</h2>
+            <div class="d-flex align-items-center gap-2">
+                <span id="limiterFilterSummary" class="badge bg-info text-dark d-none"></span>
+                <button id="filterLimiterTypeBtn" class="btn btn-outline-primary btn-sm">
+                    Filter limiter types
+                </button>
+            </div>
+        </div>
         <div class="table-responsive">
             <table class="table table-striped">
                 <thead>
@@ -43,7 +51,7 @@
                 </thead>
                 <tbody>
                     {% for endpoint in user_endpoints %}
-                    <tr>
+                    <tr data-endpoint-row data-limiter-type="{{ endpoint.limiter_type }}">
                         <th scope="row">{{ forloop.counter }}</th>
                         <td>{{ endpoint.method }} {{ endpoint.path }}</td>
                         <!-- <td> not working rigth now -->
@@ -92,6 +100,7 @@
     </div>
 
 </div>
+{% json_script available_limiter_types "available-limiter-types-data" %}
     <script src="{% static 'myview/js/frontpage.js' %}" defer></script>
     <link rel="stylesheet" type="text/css" media="all" href="{% static 'myview/css/frontpage.css' %}" />
 {% endblock %}
