@@ -99,12 +99,19 @@ if [ -d ".git" ]; then
     git config pull.rebase true
 fi
 
-# show current pip freeze
-echo "Show current pip freeze into requirements.txt"
+# ensure required Python dependencies are installed
 if [ -x "$venv_pip" ]; then
-    "$venv_pip" freeze > "$requirements_target"
+    if [ -f "$requirements_target" ]; then
+        echo "Installing Python dependencies from requirements.txt"
+        "$venv_pip" install --upgrade pip setuptools wheel
+        "$venv_pip" install -r "$requirements_target"
+        echo "Updating requirements.txt with current environment"
+        "$venv_pip" freeze > "$requirements_target"
+    else
+        echo "Warning: requirements file '$requirements_target' not found; skipping Python dependency install."
+    fi
 else
-    echo "Warning: pip executable '$venv_pip' not found; skipping freeze."
+    echo "Warning: pip executable '$venv_pip' not found; skipping Python dependency install."
 fi
 
 if [ -d ".git" ]; then
