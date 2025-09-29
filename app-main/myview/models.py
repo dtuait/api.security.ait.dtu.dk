@@ -66,15 +66,119 @@ class ADGroupAssociation(BaseModel):
 
     def __str__(self):
         return self.canonical_name
-    
+
+    @staticmethod
+    def _split_distinguished_name(distinguished_name):
+        """Split a distinguished name into domain parts, OU parts and CN."""
+        if not distinguished_name:
+            return [], [], None
+
+        domain_parts = []
+        organizational_units = []
+        common_name = None
+
+        for component in distinguished_name.split(','):
+            key, _, value = component.strip().partition('=')
+            if not key or not value:
+                continue
+
+            key = key.upper()
+            if key == 'DC':
+                domain_parts.append(value)
+            elif key == 'OU':
+                organizational_units.append(value)
+            elif key == 'CN':
+                common_name = value
+
+        return domain_parts, organizational_units, common_name
+
+    @classmethod
+    def _build_canonical_name(cls, domain_parts, organizational_units, common_name=None):
+        domain = '.'.join(domain_parts)
+        path_components = list(reversed(organizational_units))
+
+        canonical_parts = []
+        if domain:
+            canonical_parts.append(domain)
+        canonical_parts.extend(path_components)
+        if common_name:
+            canonical_parts.append(common_name)
+
+        return '/'.join(canonical_parts)
+
+    @classmethod
+    def _dn_to_canonical(cls, distinguished_name):
+        domain_parts, organizational_units, common_name = cls._split_distinguished_name(distinguished_name)
+        return cls._build_canonical_name(domain_parts, organizational_units, common_name)
+
+    @classmethod
+    def _dn_to_canonical_prefix(cls, distinguished_name):
+        domain_parts, organizational_units, _ = cls._split_distinguished_name(distinguished_name)
+        return cls._build_canonical_name(domain_parts, organizational_units, None)
+
+    @staticmethod
+    def _canonical_to_distinguished_name(canonical_name):
+        """Convert a canonical path (domain/OU/...) to a distinguished name."""
+        if not canonical_name:
+            return ''
+
+        components = [component.strip() for component in canonical_name.split('/') if component.strip()]
+        if not components:
+            return ''
+
+        domain = components[0]
+        domain_parts = [f"DC={part}" for part in domain.split('.') if part]
+        ou_parts = [f"OU={part}" for part in reversed(components[1:])]
+
+        return ','.join(ou_parts + domain_parts)
+
+    @classmethod
+    def _normalize_base_dns(cls, base_dns):
+        if base_dns is None:
+            return []
+
+        if isinstance(base_dns, str):
+            candidates = [base_dns]
+        else:
+            candidates = list(base_dns)
+
+        normalized = []
+        for candidate in candidates:
+            if not candidate:
+                continue
+            candidate = candidate.strip()
+            if not candidate:
+                continue
+            if '=' not in candidate:
+                candidate = cls._canonical_to_distinguished_name(candidate)
+            if candidate:
+                normalized.append(candidate)
+
+        return normalized
+
+    @classmethod
+    def _canonical_matches_prefixes(cls, canonical_name, prefixes):
+        if not canonical_name:
+            return False
+
+        sanitized_prefixes = [prefix.rstrip('/') for prefix in prefixes if prefix]
+        if not sanitized_prefixes:
+            return True
+
+        canonical_with_separator = f"{canonical_name.rstrip('/')}/"
+        for prefix in sanitized_prefixes:
+            if canonical_with_separator.startswith(f"{prefix}/"):
+                return True
+
+        return False
+
     def save(self, *args, **kwargs):
         if not self.distinguished_name.startswith('CN=') or not self.distinguished_name.endswith(',DC=win,DC=dtu,DC=dk'):
             raise ValidationError("distinguished_name must start with 'CN=' and end with ',DC=win,DC=dtu,DC=dk'")
 
         # if the canonical_name is empty or None, create it from the distinguished_name
         if not self.canonical_name:
-            from myview.scripts.distinguished_to_canonical import distinguished_to_canonical
-            self.canonical_name = distinguished_to_canonical(self.distinguished_name)
+            self.canonical_name = self._dn_to_canonical(self.distinguished_name)
             # CN=AIT-ADM-employees-29619,OU=SecurityGroups,OU=AIT,OU=DTUBasen,DC=win,DC=dtu,DC=dk
             # >> win.dtu.dk/DTUBasen/AIT/SecurityGroups/AIT-ADM-employees-29619
 
@@ -113,11 +217,35 @@ class ADGroupAssociation(BaseModel):
         groups_to_add = ad_groups - current_associations
         groups_to_remove = current_associations - ad_groups
 
+        configured_base_dns = ADGroupAssociation._normalize_base_dns(getattr(settings, 'AD_GROUP_SYNC_BASE_DNS', ()))
+        canonical_prefixes = [ADGroupAssociation._dn_to_canonical_prefix(dn) for dn in configured_base_dns]
+
         # Add new group associations
         for group_dn in groups_to_add:
-            if ADGroupAssociation.objects.filter(distinguished_name=group_dn).exists():
-                group = ADGroupAssociation.objects.get(distinguished_name=group_dn)
-                ADGroupAssociation.sync_ad_group_members(group)
+            group = ADGroupAssociation.objects.filter(distinguished_name=group_dn).first()
+            if not group:
+                canonical_name = ADGroupAssociation._dn_to_canonical(group_dn)
+                if not ADGroupAssociation._canonical_matches_prefixes(canonical_name, canonical_prefixes):
+                    continue
+
+                try:
+                    with transaction.atomic():
+                        group, _ = ADGroupAssociation.objects.update_or_create(
+                            distinguished_name=group_dn,
+                            defaults={'canonical_name': canonical_name},
+                        )
+                except IntegrityError:
+                    logger.exception('Failed to create AD group association for %s', group_dn)
+                    continue
+
+            try:
+                group.sync_ad_group_members()
+            except Exception:
+                logger.exception(
+                    'Failed to sync members for AD group %s while syncing user %s',
+                    group_dn,
+                    username,
+                )
 
 
         # Remove all groups not associated with any endpoint
@@ -244,39 +372,129 @@ class ADGroupAssociation(BaseModel):
 
     # This function syncs the members of the AD group with the database
     def sync_ad_group_members(self):
-            
-            base_dn = "DC=win,DC=dtu,DC=dk"
-            search_filter = "(&(objectClass=user)(memberOf={}))".format(self._escape_ldap_filter_chars(self.distinguished_name))
-            search_attributes = ['mS-DS-ConsistencyGuid', 'userPrincipalName', 'distinguishedName', 'sAMAccountName', 'givenName', 'sn']
+        base_dn = "DC=win,DC=dtu,DC=dk"
+        search_filter = "(&(objectClass=user)(memberOf={}))".format(self._escape_ldap_filter_chars(self.distinguished_name))
+        search_attributes = ['mS-DS-ConsistencyGuid', 'userPrincipalName', 'distinguishedName', 'sAMAccountName', 'givenName', 'sn']
+
+        try:
+            # Perform the search on LDAP
+            current_members = active_directory_query(
+                base_dn=base_dn,
+                search_filter=search_filter,
+                search_attributes=search_attributes,
+            )
+
+            # This will only add users to django if those AD users are synched with Azure AD
+            self._create_or_update_django_users_if_not_exists(current_members)
+
+            # Remove all members from the group
+            self.members.clear()
+
+            # Fetch the current members of the group
+            for user in current_members:
+                username = user['sAMAccountName'][0].lower()
+                user_instance = User.objects.filter(username=username).first()
+                if user_instance:
+                    self.members.add(user_instance)
+
+            # print("Syncing AD group members finished")
+
+        except Exception as e:
+            print(f"An error occurred during the LDAP operation: {e}")
+
+
+    @classmethod
+    def sync_ad_groups(cls, base_dns=None, *, sync_members=True, delete_missing=None):
+        from active_directory.services import execute_active_directory_query
+
+        if delete_missing is None:
+            delete_missing = getattr(settings, 'AD_GROUP_SYNC_DELETE_MISSING', True)
+
+        if base_dns is None:
+            base_dns = getattr(settings, 'AD_GROUP_SYNC_BASE_DNS', ())
+
+        normalized_base_dns = cls._normalize_base_dns(base_dns)
+        if not normalized_base_dns:
+            logger.warning('No base DNs configured for AD group sync.')
+            return []
+
+        synced_groups = []
+        prefix_to_seen = {}
+        enumerated_prefixes = set()
+
+        for base_dn in normalized_base_dns:
+            canonical_prefix = cls._dn_to_canonical_prefix(base_dn)
+            prefix_to_seen.setdefault(canonical_prefix, set())
 
             try:
-                # Perform the search on LDAP
-                current_members = active_directory_query(base_dn=base_dn, search_filter=search_filter, search_attributes=search_attributes)
+                query_results = execute_active_directory_query(
+                    base_dn=base_dn,
+                    search_filter='(objectClass=group)',
+                    search_attributes=['distinguishedName', 'cn'],
+                )
+            except Exception:
+                logger.exception('Failed to query Active Directory for groups under %s', base_dn)
+                continue
 
-                # This will only add users to django if those AD users are synched with Azure AD
-                self._create_or_update_django_users_if_not_exists(current_members)
+            enumerated_prefixes.add(canonical_prefix)
 
-                # Remove all members from the group
-                self.members.clear()
+            for entry in query_results or []:
+                dn_values = entry.get('distinguishedName') or entry.get('distinguishedname')
+                if isinstance(dn_values, list):
+                    distinguished_name = dn_values[0]
+                else:
+                    distinguished_name = dn_values
 
-                # Fetch the current members of the group
-                for user in current_members:
-                    username = user['sAMAccountName'][0].lower()
-                    user_instance = User.objects.filter(username=username).first()
-                    if user_instance:
-                        self.members.add(user_instance)
-                
+                if not distinguished_name:
+                    continue
 
-                
+                distinguished_name = str(distinguished_name).strip()
+                canonical_name = cls._dn_to_canonical(distinguished_name)
+                if not canonical_name:
+                    continue
 
-                # print("Syncing AD group members finished")
+                if canonical_prefix and not cls._canonical_matches_prefixes(canonical_name, [canonical_prefix]):
+                    continue
 
+                try:
+                    with transaction.atomic():
+                        group, _ = cls.objects.update_or_create(
+                            distinguished_name=distinguished_name,
+                            defaults={'canonical_name': canonical_name},
+                        )
+                except IntegrityError:
+                    logger.exception('Failed to persist AD group association for %s', distinguished_name)
+                    continue
 
-            except Exception as e:
-                print(f"An error occurred during the LDAP operation: {e}")
+                prefix_to_seen[canonical_prefix].add(distinguished_name)
+                synced_groups.append(group)
 
+                if sync_members:
+                    try:
+                        group.sync_ad_group_members()
+                    except Exception:
+                        logger.exception('Failed to sync members for AD group %s', distinguished_name)
 
-    
+        if delete_missing:
+            for canonical_prefix in enumerated_prefixes:
+                if not canonical_prefix:
+                    continue
+
+                seen_dns = prefix_to_seen.get(canonical_prefix, set())
+                queryset = cls.objects.filter(canonical_name__startswith=f"{canonical_prefix.rstrip('/')}/")
+                if seen_dns:
+                    queryset = queryset.exclude(distinguished_name__in=seen_dns)
+
+                removed_count, _ = queryset.delete()
+                if removed_count:
+                    logger.info(
+                        'Removed %s AD groups no longer present under %s',
+                        removed_count,
+                        canonical_prefix,
+                    )
+
+        return synced_groups
+
     def add_member(self, user, admin_user):
         self.members.add(user)
         self.added_manually_by = admin_user
