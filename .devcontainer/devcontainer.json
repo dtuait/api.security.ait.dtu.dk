@@ -10,7 +10,8 @@
                 "python.defaultInterpreterPath": "/usr/src/venvs/app-main/bin/python"
             },
             "extensions": [
-                "ms-python.python"
+                "ms-python.python",
+                "openai.chatgpt"
             ]
         }
     },
