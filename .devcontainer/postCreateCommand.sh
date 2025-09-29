@@ -30,8 +30,8 @@ git config --global core.fileMode false
 
 allow_prompt=${DEVCONTAINER_ALLOW_INTERACTIVE_PROMPT:-0}
 username=${DEVCONTAINER_GIT_USERNAME:-}
-email=${DEVCONTAINER_GIT_EMAIL:-}
-name=${DEVCONTAINER_GIT_NAME:-}
+email=${DEVCONTAINER_GIT_EMAIL:-${DEVCONTAINER_GITHUB_EMAIL:-}}
+name=${DEVCONTAINER_GIT_NAME:-${DEVCONTAINER_GITHUB_NAME:-}}
 
 if [ "$allow_prompt" = "1" ] && [ -t 0 ]; then
     echo "Enter your username:"

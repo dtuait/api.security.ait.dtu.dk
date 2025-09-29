@@ -11,6 +11,14 @@ else
   exit 0
 fi
 
+git_email=${DEVCONTAINER_GIT_EMAIL:-${DEVCONTAINER_GITHUB_EMAIL:-}}
+git_name=${DEVCONTAINER_GIT_NAME:-${DEVCONTAINER_GITHUB_NAME:-}}
+
+if [ -n "$git_email" ] && [ -n "$git_name" ]; then
+  git config --global user.email "$git_email"
+  git config --global user.name "$git_name"
+fi
+
 # Keep the development venv aligned with requirements
 pip install -r "$workspace_dir/app-main/requirements.txt" >/dev/null 2>&1 || true
 
