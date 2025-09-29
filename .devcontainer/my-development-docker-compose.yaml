@@ -58,4 +58,4 @@ networks:
 
 volumes:
   beta-api-security-ait-dtu-dk-postgres-service-volume:
-    external: true
+    driver: local
