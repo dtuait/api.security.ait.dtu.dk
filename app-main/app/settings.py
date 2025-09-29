@@ -332,6 +332,9 @@ SWAGGER_SETTINGS = {
 
 LOGIN_URL='/login/'
 
+LOG_DIR = PROJECT_ROOT / "logs"
+LOG_DIR.mkdir(parents=True, exist_ok=True)
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -350,7 +353,7 @@ LOGGING = {
         'file': {
             'level': 'DEBUG',  # Set to DEBUG to capture everything in the log file
             'class': 'logging.FileHandler',
-            'filename': '/usr/src/project/app-main/django.log',
+            'filename': str(LOG_DIR / 'django.log'),
             'formatter': 'verbose',
         },
     },
