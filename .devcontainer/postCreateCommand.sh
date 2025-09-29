@@ -100,18 +100,44 @@ if [ -d ".git" ]; then
 fi
 
 # ensure required Python dependencies are installed
+pip_candidates=()
 if [ -x "$venv_pip" ]; then
-    if [ -f "$requirements_target" ]; then
-        echo "Installing Python dependencies from requirements.txt"
-        "$venv_pip" install --upgrade pip setuptools wheel
-        "$venv_pip" install -r "$requirements_target"
-        echo "Updating requirements.txt with current environment"
-        "$venv_pip" freeze > "$requirements_target"
-    else
-        echo "Warning: requirements file '$requirements_target' not found; skipping Python dependency install."
-    fi
+    pip_candidates+=("$venv_pip")
+fi
+if command -v python3 >/dev/null 2>&1; then
+    pip_candidates+=("python3 -m pip")
+fi
+if command -v pip3 >/dev/null 2>&1; then
+    pip_candidates+=("pip3")
+fi
+
+if [ ${#pip_candidates[@]} -eq 0 ]; then
+    echo "Warning: no pip executable found; skipping Python dependency install."
+elif [ ! -f "$requirements_target" ]; then
+    echo "Warning: requirements file '$requirements_target' not found; skipping Python dependency install."
 else
-    echo "Warning: pip executable '$venv_pip' not found; skipping Python dependency install."
+    freeze_written=0
+    for pip_cmd in "${pip_candidates[@]}"; do
+        if ! eval "$pip_cmd --version" >/dev/null 2>&1; then
+            echo "Skipping pip command '$pip_cmd'; not available."
+            continue
+        fi
+
+        echo "Installing Python dependencies with '$pip_cmd'"
+        eval "$pip_cmd install --upgrade pip setuptools wheel"
+        eval "$pip_cmd install -r '$requirements_target'"
+
+        if [ $freeze_written -eq 0 ] && [ "$pip_cmd" = "$venv_pip" ]; then
+            echo "Updating requirements.txt with current venv environment"
+            "$venv_pip" freeze > "$requirements_target"
+            freeze_written=1
+        fi
+    done
+
+    if [ $freeze_written -eq 0 ] && [ -x "$venv_pip" ]; then
+        echo "Updating requirements.txt with current venv environment"
+        "$venv_pip" freeze > "$requirements_target"
+    fi
 fi
 
 if [ -d ".git" ]; then
