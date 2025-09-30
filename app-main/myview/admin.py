@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.contrib import messages
 from django.http import HttpRequest
 from django.contrib.admin.widgets import FilteredSelectMultiple
+from django.contrib.admin.helpers import ActionForm
 from django.db import transaction
 from django.db import models
 from myview.models import ADGroupAssociation
@@ -155,17 +156,42 @@ try:
                 model.save()
             return model
 
+    # Action form shown in the admin action bar for Endpoints
+    class EndpointActionForm(ActionForm):
+        limiter_type = forms.ModelChoiceField(
+            queryset=LimiterType.objects.all(),
+            required=True,
+            label="Limiter type",
+            help_text="Select the limiter type to apply to selected endpoints.",
+        )
+
     @admin.register(Endpoint)
     class EndpointAdmin(admin.ModelAdmin):
         list_display = ('path', 'method')
         filter_horizontal = ('ad_groups',) 
         readonly_fields = ('path', 'method')
-        
+        action_form = EndpointActionForm
 
         
         formfield_overrides = {
             models.ManyToManyField: {'widget': FilteredSelectMultiple("Relationships", is_stacked=False)},
         }
+
+        @admin.action(description="Set limiter type for selected endpoints")
+        def bulk_set_limiter_type(self, request, queryset):
+            limiter_type_id = request.POST.get('limiter_type')
+            if not limiter_type_id:
+                self.message_user(request, "Please choose a limiter type from the action form.", level=messages.ERROR)
+                return None
+            try:
+                lt = LimiterType.objects.get(pk=limiter_type_id)
+            except LimiterType.DoesNotExist:
+                self.message_user(request, "Selected limiter type no longer exists.", level=messages.ERROR)
+                return None
+
+            updated = queryset.update(limiter_type=lt)
+            self.message_user(request, _("Updated limiter type for %(count)d endpoint(s).") % {"count": updated}, level=messages.SUCCESS)
+            return None
 
         def save_model(self, request, obj, form, change):
 
@@ -227,6 +253,9 @@ try:
         
         def has_add_permission(self, request):
             return False
+
+        # Register actions at class creation time
+        actions = ['bulk_set_limiter_type']
         
 
 

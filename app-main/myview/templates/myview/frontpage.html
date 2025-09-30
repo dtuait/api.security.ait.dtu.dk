@@ -2,7 +2,7 @@
 
 <!-- i18n and static are Django template tags. They are used to load the i18n and static template tags. The i18n template tag is used to mark strings for translation. -->
 <!-- The static is a template tag that is used to load the static template tag library. This library provides a way to reference static files, such as CSS, JavaScript, or image files, which are not tied to a particular instance of a model in your Django app. -->
-{% load i18n static json_script %}
+{% load i18n static %}
 
 
 {# title #}
@@ -100,9 +100,7 @@
     </div>
 
 </div>
-{% json_script available_limiter_types "available-limiter-types-data" %}
+{{ available_limiter_types|json_script:"available-limiter-types-data" }}
     <script src="{% static 'myview/js/frontpage.js' %}" defer></script>
     <link rel="stylesheet" type="text/css" media="all" href="{% static 'myview/css/frontpage.css' %}" />
 {% endblock %}
-
-
