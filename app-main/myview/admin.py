@@ -160,9 +160,16 @@ try:
     class EndpointActionForm(ActionForm):
         limiter_type = forms.ModelChoiceField(
             queryset=LimiterType.objects.all(),
-            required=True,
+            required=False,
             label="Limiter type",
             help_text="Select the limiter type to apply to selected endpoints.",
+        )
+        ad_groups = forms.ModelMultipleChoiceField(
+            queryset=ADGroupAssociation.objects.all(),
+            required=False,
+            label="AD groups",
+            widget=FilteredSelectMultiple("AD groups", is_stacked=False),
+            help_text="Pick one or more AD groups to add to selected endpoints.",
         )
 
     @admin.register(Endpoint)
@@ -171,6 +178,10 @@ try:
         filter_horizontal = ('ad_groups',) 
         readonly_fields = ('path', 'method')
         action_form = EndpointActionForm
+        class Media:
+            js = (
+                'myview/admin/endpoint_actions.js',
+            )
 
         
         formfield_overrides = {
@@ -255,7 +266,33 @@ try:
             return False
 
         # Register actions at class creation time
-        actions = ['bulk_set_limiter_type']
+        actions = ['bulk_set_limiter_type', 'bulk_add_ad_groups']
+
+        @admin.action(description="Add AD groups to selected endpoints")
+        def bulk_add_ad_groups(self, request, queryset):
+            group_ids = request.POST.getlist('ad_groups')
+            if not group_ids:
+                self.message_user(
+                    request,
+                    "Please select one or more AD groups from the action form.",
+                    level=messages.ERROR,
+                )
+                return None
+
+            groups = ADGroupAssociation.objects.filter(pk__in=group_ids)
+            if not groups.exists():
+                self.message_user(request, "No valid AD groups were selected.", level=messages.ERROR)
+                return None
+
+            for endpoint in queryset:
+                endpoint.ad_groups.add(*groups)
+            self.message_user(
+                request,
+                _("Added %(gcount)d AD group(s) to %(ecount)d endpoint(s).")
+                % {"gcount": groups.count(), "ecount": queryset.count()},
+                level=messages.SUCCESS,
+            )
+            return None
         
 
 
