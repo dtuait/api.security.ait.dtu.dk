@@ -7,6 +7,8 @@ services:
       dockerfile: Dockerfile
     image: ${COOLIFY_IMAGE:-api-security-ait-dtu-dk-web}
     environment:
+      SERVICE_FQDN_WEB: ${SERVICE_FQDN_WEB:-api.security.ait.dtu.dk}
+      SERVICE_URL_WEB: ${SERVICE_URL_WEB:-https://api.security.ait.dtu.dk}
       DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-api.security.ait.dtu.dk}
       DJANGO_CSRF_TRUSTED_ORIGINS: ${DJANGO_CSRF_TRUSTED_ORIGINS:-https://api.security.ait.dtu.dk}
       DJANGO_CSRF_COOKIE_DOMAIN: ${DJANGO_CSRF_COOKIE_DOMAIN:-}
@@ -16,6 +18,10 @@ services:
       DJANGO_SESSION_COOKIE_SECURE: ${DJANGO_SESSION_COOKIE_SECURE:-true}
       DJANGO_CSRF_COOKIE_SECURE: ${DJANGO_CSRF_COOKIE_SECURE:-true}
       DJANGO_SECURE_SSL_REDIRECT: ${DJANGO_SECURE_SSL_REDIRECT:-true}
+      DJANGO_SECRET: ${DJANGO_SECRET:?DJANGO_SECRET must be set}
+      POSTGRES_DB: ${POSTGRES_DB:-app}
+      POSTGRES_USER: ${POSTGRES_USER:-app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
       POSTGRES_HOST: db
       POSTGRES_PORT: 5432
     depends_on:

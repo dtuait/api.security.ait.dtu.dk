@@ -53,6 +53,29 @@ At a minimum you will:
 3. Deploy the stack. Coolify will build the image from `Dockerfile`, run database migrations and `collectstatic` via
    `docker/entrypoint.sh`, and expose the site through Traefik on the hostname configured by `TRAEFIK_HOST`.
 
+Environment keys surfaced in Coolify by default (no secrets committed):
+
+- `SERVICE_FQDN_WEB` (default: `api.security.ait.dtu.dk`)
+- `SERVICE_URL_WEB` (default: `https://api.security.ait.dtu.dk`)
+- `DJANGO_ALLOWED_HOSTS` (default: `api.security.ait.dtu.dk`)
+- `DJANGO_CSRF_TRUSTED_ORIGINS` (default: `https://api.security.ait.dtu.dk`)
+- `DJANGO_CSRF_COOKIE_DOMAIN` (default: empty)
+- `DJANGO_SESSION_COOKIE_SECURE` (default: `true`)
+- `DJANGO_CSRF_COOKIE_SECURE` (default: `true`)
+- `DJANGO_SECURE_SSL_REDIRECT` (default: `true`)
+- `POSTGRES_DB` (default: `app`)
+- `POSTGRES_USER` (default: `app`)
+
+Required at deploy time (Coolify will prompt):
+
+- `DJANGO_SECRET`
+- `POSTGRES_PASSWORD`
+
+Optional routing variables (labels):
+
+- `TRAEFIK_HOST` (the FQDN routed to this service; set to match `SERVICE_FQDN_WEB`)
+- `TRAEFIK_NETWORK`, `TRAEFIK_ENTRYPOINT`, `TRAEFIK_CERTRESOLVER`
+
 To run the same stack locally without Coolify:
 
 ```bash
@@ -65,4 +88,3 @@ docker compose -f docker-compose.coolify.yml up --build
 The web container automatically waits for PostgreSQL, applies migrations, and runs `collectstatic` on startup. Static and
 media files persist across deployments via the named volumes defined in the compose file. If your Traefik network has a
 different name locally, set `TRAEFIK_NETWORK=<your-network>` before starting Compose instead of creating `coolify-network`.
-

@@ -19,9 +19,14 @@ At minimum set the following values:
 
 | Variable | Purpose |
 | --- | --- |
-| `DJANGO_SECRET` | A long random string used for Django's cryptographic signing. |
-| `DJANGO_ALLOWED_HOSTS` / `DJANGO_CSRF_TRUSTED_ORIGINS` | Should match the public hostname you will expose via Traefik. |
-| `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` | Credentials for the bundled PostgreSQL database service. |
+| `SERVICE_FQDN_WEB` | Public hostname (e.g., `api.security.ait.dtu.dk`). |
+| `SERVICE_URL_WEB` | Public URL with scheme (e.g., `https://api.security.ait.dtu.dk`). |
+| `DJANGO_ALLOWED_HOSTS` | Comma-separated hostnames served by Django. |
+| `DJANGO_CSRF_TRUSTED_ORIGINS` | Should include `SERVICE_URL_WEB`. |
+| `DJANGO_CSRF_COOKIE_DOMAIN` | Cookie domain; often same as `SERVICE_FQDN_WEB`. |
+| `DJANGO_SESSION_COOKIE_SECURE`, `DJANGO_CSRF_COOKIE_SECURE`, `DJANGO_SECURE_SSL_REDIRECT` | Production security flags (defaults true). |
+| `DJANGO_SECRET` | A long random string used for Django's cryptographic signing. (required) |
+| `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` | Credentials for PostgreSQL. (required: `POSTGRES_PASSWORD`) |
 | `TRAEFIK_HOST` | FQDN that Traefik should route to this application. |
 | `TRAEFIK_NETWORK`, `TRAEFIK_ENTRYPOINT`, `TRAEFIK_CERTRESOLVER` | Networking metadata; defaults match a standard Coolify install. Override if your Traefik setup differs. |
 | `DJANGO_SUPERUSER_USERNAME`, `DJANGO_SUPERUSER_PASSWORD` | Credentials you will use to create an administrative user after deployment. |
@@ -99,4 +104,3 @@ docker network create coolify-network
 
 If your Traefik installation uses a different network name, set the `TRAEFIK_NETWORK` environment variable in Coolify to that
 name instead of creating `coolify-network`.
-
