@@ -228,6 +228,7 @@ INSTALLED_APPS = [
     'active_directory',
     'misc',
     'chatgpt_app',
+    'graph',
     'defender',
 ]
 
