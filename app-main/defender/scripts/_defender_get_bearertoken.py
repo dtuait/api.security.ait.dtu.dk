@@ -1,12 +1,33 @@
+import logging
 import os
 from datetime import timedelta
 
 import requests
-from django.db import transaction
+from django.db import OperationalError, ProgrammingError, transaction
 from django.utils import timezone
 from dotenv import load_dotenv
 
 from graph.models import ServiceToken
+
+
+logger = logging.getLogger(__name__)
+
+
+class _EphemeralServiceToken:
+    """Fallback token object when the ServiceToken table is unavailable."""
+
+    def __init__(self, *, service: str):
+        self.service = service
+        self.pk = None
+        self.access_token = ""
+        self.expires_at = timezone.now() - timedelta(seconds=1)
+
+    def is_expired(self, *, buffer_seconds: int = 0) -> bool:  # pragma: no cover - simple proxy
+        buffer = timedelta(seconds=max(buffer_seconds, 0))
+        return self.expires_at <= timezone.now() + buffer
+
+    def save(self, *args, **kwargs):  # pragma: no cover - no-op persistence proxy
+        return None
 
 
 TOKEN_REFRESH_BUFFER_SECONDS = int(os.getenv("DEFENDER_ACCESS_BEARER_TOKEN_REFRESH_BUFFER", "120") or 120)
@@ -37,15 +58,23 @@ def _generate_new_token():
 
 
 def _get_token_record():
-    with transaction.atomic():
-        token_obj, _created = ServiceToken.objects.select_for_update().get_or_create(
-            service=ServiceToken.Service.DEFENDER,
-            defaults={
-                "access_token": "",
-                "expires_at": timezone.now() - timedelta(seconds=1),
-            },
+    try:
+        with transaction.atomic():
+            token_obj, _created = ServiceToken.objects.select_for_update().get_or_create(
+                service=ServiceToken.Service.DEFENDER,
+                defaults={
+                    "access_token": "",
+                    "expires_at": timezone.now() - timedelta(seconds=1),
+                },
+            )
+            return token_obj
+    except (OperationalError, ProgrammingError) as exc:
+        logger.warning(
+            "ServiceToken table unavailable while fetching Defender token; "
+            "operating without persistence. Error: %s",
+            exc,
         )
-        return token_obj
+        return _EphemeralServiceToken(service=ServiceToken.Service.DEFENDER)
 
 
 def _refresh_token(token_obj):
@@ -55,7 +84,14 @@ def _refresh_token(token_obj):
 
     token_obj.access_token = new_token
     token_obj.expires_at = timezone.now() + timedelta(seconds=DEFAULT_TOKEN_TTL_SECONDS)
-    token_obj.save(update_fields=["access_token", "expires_at", "updated_at"])
+    if getattr(token_obj, "pk", None) is not None:
+        try:
+            token_obj.save(update_fields=["access_token", "expires_at", "updated_at"])
+        except (OperationalError, ProgrammingError) as exc:
+            logger.warning(
+                "Unable to persist refreshed Defender token; operating in-memory. Error: %s",
+                exc,
+            )
     return token_obj.access_token
 
 
