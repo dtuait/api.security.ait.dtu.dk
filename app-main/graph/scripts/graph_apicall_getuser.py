@@ -1,5 +1,7 @@
 
 import logging
+import os
+import time
 from typing import Optional, Tuple
 
 import requests
@@ -8,6 +10,67 @@ from ._graph_get_bearertoken import _get_bearertoken
 
 
 logger = logging.getLogger(__name__)
+
+
+def _load_throttle_window(default: int = 60) -> int:
+    """Return the configured throttling window for token warnings."""
+
+    raw_value = os.getenv("GRAPH_TOKEN_WARNING_THROTTLE_SECONDS")
+    if raw_value is None:
+        return default
+    try:
+        value = int(raw_value)
+    except (TypeError, ValueError):
+        return default
+    # A non-positive window disables throttling, so guard against negatives
+    return max(0, value)
+
+
+_TOKEN_WARNING_WINDOW = _load_throttle_window()
+_TOKEN_WARNING_STATE = {"last_logged": float("-inf"), "suppressed": 0}
+
+
+def _log_token_failure(user_principal_name: str) -> None:
+    """Log token acquisition failures with basic throttling.
+
+    When Azure AD is temporarily unavailable we can end up attempting to look up
+    hundreds of users in quick succession. Without throttling this would produce
+    one warning per lookup, flooding the logs and obscuring other issues. We
+    therefore limit logging to once per configured window while keeping track of
+    how many similar warnings were suppressed.
+    """
+
+    if _TOKEN_WARNING_WINDOW == 0:
+        logger.warning(
+            "Unable to acquire Microsoft Graph token while requesting user %s",
+            user_principal_name,
+        )
+        _TOKEN_WARNING_STATE["suppressed"] = 0
+        return
+
+    now = time.monotonic()
+    last_logged = _TOKEN_WARNING_STATE["last_logged"]
+
+    if now - last_logged >= _TOKEN_WARNING_WINDOW:
+        suppressed = _TOKEN_WARNING_STATE["suppressed"]
+        if suppressed:
+            logger.warning(
+                "Unable to acquire Microsoft Graph token while requesting user %s "
+                "(suppressed %d similar warnings)",
+                user_principal_name,
+                suppressed,
+            )
+        else:
+            logger.warning(
+                "Unable to acquire Microsoft Graph token while requesting user %s",
+                user_principal_name,
+            )
+
+        _TOKEN_WARNING_STATE["last_logged"] = now
+        _TOKEN_WARNING_STATE["suppressed"] = 0
+        return
+
+    _TOKEN_WARNING_STATE["suppressed"] += 1
 
 
 def _build_graph_endpoint(user_principal_name: str, select_parameters: Optional[str]) -> str:
@@ -32,10 +95,7 @@ def get_user(*, user_principal_name, select_parameters=None) -> Tuple[dict, int]
 
     token = _get_bearertoken()
     if not token:
-        logger.warning(
-            "Unable to acquire Microsoft Graph token while requesting user %s",
-            user_principal_name,
-        )
+        _log_token_failure(user_principal_name)
         return _error_response("Failed to acquire access token", code="AuthTokenUnavailable", status=503)
 
     headers = {
