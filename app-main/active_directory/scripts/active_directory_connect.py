@@ -1,41 +1,63 @@
-# load modules 
+# load modules
 from dotenv import load_dotenv
 import os
-from ldap3 import Server, Connection, SUBTREE, ALL_ATTRIBUTES, ALL
-from ldap3.core.exceptions import LDAPKeyError
-# Load .env file
-# Import load_dotenv
-from dotenv import load_dotenv
+from typing import Optional, Tuple
 
+from ldap3 import ALL, Connection, Server
+
+# Load .env file
 dotenv_path = '/usr/src/project/.devcontainer/.env'
 load_dotenv(dotenv_path=dotenv_path)
 
 
+def _get_clean_env(name: str) -> Optional[str]:
+    """Return the environment variable stripped of whitespace or ``None``."""
+
+    value = os.getenv(name)
+    if value is None:
+        return None
+
+    stripped = value.strip()
+    return stripped or None
 
 
+def _missing_config_message(missing: list[str]) -> str:
+    formatted = ', '.join(sorted(missing))
+    return (
+        "Missing required Active Directory configuration: "
+        f"{formatted}. Update the environment configuration and try again."
+    )
 
-def active_directory_connect():
+
+def active_directory_connect() -> Tuple[Optional[Connection], str]:
     try:
-        ad_username = os.getenv('ACTIVE_DIRECTORY_USERNAME')
-        ad_password = os.getenv('ACTIVE_DIRECTORY_PASSWORD')
-        ad_server = os.getenv('ACTIVE_DIRECTORY_SERVER')
+        ad_username = _get_clean_env('ACTIVE_DIRECTORY_USERNAME')
+        ad_password = _get_clean_env('ACTIVE_DIRECTORY_PASSWORD')
+        ad_server = _get_clean_env('ACTIVE_DIRECTORY_SERVER')
 
-        # Connect to the server
-        bind_dn = ad_username
-    
-        
+        missing_variables = [
+            name
+            for name, value in {
+                'ACTIVE_DIRECTORY_USERNAME': ad_username,
+                'ACTIVE_DIRECTORY_PASSWORD': ad_password,
+                'ACTIVE_DIRECTORY_SERVER': ad_server,
+            }.items()
+            if not value
+        ]
+
+        if missing_variables:
+            return None, _missing_config_message(missing_variables)
+
         server = Server(ad_server, use_ssl=True, get_info=ALL)
-        conn = Connection(server, bind_dn, ad_password)
+        conn = Connection(server, ad_username, ad_password)
 
         # Check if the connection is successful
         if not conn.bind():
             return None, "Failed to connect to Active Directory"
 
-        return conn, "Successfully connected to Active Directory", 
+        return conn, "Successfully connected to Active Directory"
     except Exception as e:
         return None, f"Error connecting to Active Directory: {str(e)}"
-
-
 
 
 def run():
@@ -44,8 +66,6 @@ def run():
         print(message)
 
 
-
-
-# if main 
+# if main
 if __name__ == "__main__":
     run()
