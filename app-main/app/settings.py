@@ -18,6 +18,8 @@ import warnings
 # Load .env file
 from dotenv import load_dotenv
 
+from django.core.exceptions import ImproperlyConfigured
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -46,6 +48,53 @@ def _split_env_list(value: str | None) -> list[str]:
 
 
 PROJECT_ROOT = BASE_DIR.parent
+
+
+def _ensure_storage_dir(
+    env_var_name: str,
+    *,
+    default_path: Path,
+    fallback_path: Path,
+    description: str,
+) -> str:
+    """Return a writable directory for static/media storage.
+
+    The function attempts the environment-provided path (if any) followed by the
+    default path. If neither of those are writable, a project-local fallback is
+    used. This prevents collectstatic from failing in read-only environments.
+    """
+
+    candidate_paths: list[Path] = []
+
+    env_value = os.getenv(env_var_name)
+    if env_value:
+        candidate_paths.append(Path(env_value))
+
+    for path in (default_path, fallback_path):
+        if path not in candidate_paths:
+            candidate_paths.append(path)
+
+    for path in candidate_paths:
+        try:
+            path.mkdir(parents=True, exist_ok=True)
+        except OSError as exc:
+            warnings.warn(
+                f"Unable to use {description} directory '{path}': {exc}",
+                stacklevel=2,
+            )
+            continue
+
+        if os.access(path, os.W_OK):
+            return str(path)
+
+        warnings.warn(
+            f"Unable to use {description} directory '{path}': directory is not writable.",
+            stacklevel=2,
+        )
+
+    raise ImproperlyConfigured(
+        f"No writable {description} directory configured via {env_var_name}."
+    )
 
 custom_env_file = os.getenv("DJANGO_ENV_FILE")
 candidate_env_paths = []
@@ -307,13 +356,23 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
 STATIC_URL = 'static/'
-STATIC_ROOT = os.getenv('DJANGO_STATIC_ROOT', '/mnt/shared-project-data/django/staticfiles')
+STATIC_ROOT = _ensure_storage_dir(
+    'DJANGO_STATIC_ROOT',
+    default_path=Path('/mnt/shared-project-data/django/staticfiles'),
+    fallback_path=BASE_DIR / 'staticfiles',
+    description='static',
+)
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'static'),
 ]
 
 MEDIA_URL = '/media/'
-MEDIA_ROOT = os.getenv('DJANGO_MEDIA_ROOT', '/mnt/shared-project-data/django/mediafiles')
+MEDIA_ROOT = _ensure_storage_dir(
+    'DJANGO_MEDIA_ROOT',
+    default_path=Path('/mnt/shared-project-data/django/mediafiles'),
+    fallback_path=BASE_DIR / 'media',
+    description='media',
+)
 
 # Maybe this will be a fix in the future
 # # At the end of your settings.py
