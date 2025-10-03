@@ -6,10 +6,11 @@ services:
       context: .
       dockerfile: Dockerfile
     image: ${COOLIFY_IMAGE:-api-security-ait-dtu-dk-web}
+    command: gunicorn app.wsgi:application --bind 0.0.0.0:8121
     environment:
       SERVICE_FQDN_WEB: ${SERVICE_FQDN_WEB:-api.security.ait.dtu.dk}
       SERVICE_URL_WEB: ${SERVICE_URL_WEB:-https://api.security.ait.dtu.dk}
-      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-api.security.ait.dtu.dk}
+      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-api.security.ait.dtu.dk,localhost,127.0.0.1}
       DJANGO_CSRF_TRUSTED_ORIGINS: ${DJANGO_CSRF_TRUSTED_ORIGINS:-https://api.security.ait.dtu.dk}
       DJANGO_CSRF_COOKIE_DOMAIN: ${DJANGO_CSRF_COOKIE_DOMAIN:-}
       DJANGO_DEBUG: ${DJANGO_DEBUG:-false}
@@ -37,13 +38,13 @@ services:
       - internal
       - traefik
     labels:
-      - traefik.enable=true
-      - traefik.http.routers.api_security.rule=Host(`${SERVICE_FQDN_WEB:-api.security.ait.dtu.dk}`)
-      - traefik.http.routers.api_security.entrypoints=${TRAEFIK_ENTRYPOINT:-websecure}
-      - traefik.http.routers.api_security.tls=true
-      - traefik.http.routers.api_security.tls.certresolver=${TRAEFIK_CERTRESOLVER:-letsencrypt}
-      - traefik.http.services.api_security.loadbalancer.server.port=8121
-      - traefik.docker.network=${TRAEFIK_NETWORK:-coolify-network}
+      - "traefik.enable=true"
+      - "traefik.http.routers.api_security.rule=Host(`${SERVICE_FQDN_WEB:-api.security.ait.dtu.dk}`)"
+      - "traefik.http.routers.api_security.entrypoints=${TRAEFIK_ENTRYPOINT:-websecure}"
+      - "traefik.http.routers.api_security.tls=true"
+      - "traefik.http.routers.api_security.tls.certresolver=${TRAEFIK_CERTRESOLVER:-letsencrypt}"
+      - "traefik.http.services.api_security.loadbalancer.server.port=8121"
+      - "traefik.docker.network=${TRAEFIK_NETWORK:-coolify-network}"
 
   db:
     image: postgres:16
@@ -71,5 +72,5 @@ networks:
   internal:
     driver: bridge
   traefik:
-    name: ${TRAEFIK_NETWORK:-coolify-network}
     external: true
+    name: ${TRAEFIK_NETWORK:-coolify-network}
