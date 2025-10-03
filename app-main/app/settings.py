@@ -175,6 +175,17 @@ AZURE_AD = {
 
 # 'HOST': os.getenv('MYSQL_HOST'),
 
+# Allow configuring the admin URL slug centrally so it can be reused in
+# middleware and URL configuration without having to duplicate the literal
+# string in multiple places.
+ADMIN_URL_PATH = os.getenv(
+    "DJANGO_ADMIN_URL",
+    "admin/baAT5gt52eCRX7bu58msxF5XQtbY4bye/",
+)
+# Normalise the admin path to always end with a single trailing slash as
+# expected by Django's ``path`` helper.
+ADMIN_URL_PATH = ADMIN_URL_PATH.strip("/") + "/"
+
 default_allowed_hosts = [
     'localhost',
     '127.0.0.1',

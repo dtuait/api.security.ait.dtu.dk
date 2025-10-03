@@ -11,6 +11,9 @@ import re
 from urllib.parse import urlparse
 from .models import Endpoint, IPLimiter, ADOrganizationalUnitLimiter
 
+
+logger = logging.getLogger(__name__)
+
 def get_client_ip(request):
     """Utility function to extract client's IP from request."""
     x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
@@ -29,11 +32,23 @@ class AccessControlMiddleware(MiddlewareMixin):
             '/login/',
             '/logout/',
             '/auth/callback/',
-            '/admin/baAT5gt52eCRX7bu58msxF5XQtbY4bye/',
             '/myview/',
             '/media/',
             '/healthz/',
         ]
+
+        # Always allow the default /admin/ URL so that it can redirect to the
+        # configured admin URL without being blocked by access control.
+        default_admin_prefix = self._normalize_whitelist_prefix('admin/')
+        if default_admin_prefix and default_admin_prefix not in self.whitelist_paths:
+            self.whitelist_paths.append(default_admin_prefix)
+
+        # Honour the configured admin URL path.
+        custom_admin_prefix = self._normalize_whitelist_prefix(
+            getattr(settings, 'ADMIN_URL_PATH', 'admin/')
+        )
+        if custom_admin_prefix and custom_admin_prefix not in self.whitelist_paths:
+            self.whitelist_paths.append(custom_admin_prefix)
 
         self._extend_whitelist_with_static_paths()
         super().__init__(get_response)
@@ -74,25 +89,25 @@ class AccessControlMiddleware(MiddlewareMixin):
     
     def compare_paths(self, endpoint_path, request_path):
         """Compare endpoint path with placeholders against the actual request path."""
-        print(f"Original endpoint path: {endpoint_path}")
-        print(f"Original request path: {request_path}")
-
-        # if the path starts 
-        
         # Replace placeholders in endpoint path with regex pattern
         pattern = re.sub(r'\{[^}]*\}', '[^/]+', endpoint_path)
-        print(f"Pattern after placeholder replacement: {pattern}")
-        
+
         # Add regex for start and optional trailing slash
         pattern = '^' + pattern + '/?$'
-        print(f"Final regex pattern: {pattern}")
-        
+
         # Compile the pattern
         compiled_pattern = re.compile(pattern)
-        
+
         # Check if request path matches the pattern
         match = compiled_pattern.match(request_path) is not None
-        print(f"Does the request path match the pattern? {'Yes' if match else 'No'}")
+
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug(
+                "Endpoint path '%s' %s request path '%s'",
+                endpoint_path,
+                'matches' if match else 'does not match',
+                request_path,
+            )
         
         # if endpoint_path and request_path both stars with /openapi/v1.0/documentation/ then return True
         if endpoint_path.startswith('/openapi/v1.0/documentation/') and request_path.startswith('/openapi/v1.0/documentation/'):
@@ -248,7 +263,7 @@ class AccessControlMiddleware(MiddlewareMixin):
     def handle_iplimiter(self, limiters, user_groups, request):
         for limiter in limiters:
             if limiter.ad_groups.filter(id__in=user_groups).exists():
-                print("IPLimiter")
+                logger.debug("Authorised by IPLimiter for request %s", request.path)
                 return False  # Grant access if user is part of any related AD group
         return False
 
@@ -271,7 +286,11 @@ class AccessControlMiddleware(MiddlewareMixin):
 
                 for ado_ou_limiter in ad_organizational_unit_limiters:
                     # perform ldap query ado_ou_limiters
-                    print(ado_ou_limiter.distinguished_name)
+                    logger.debug(
+                        "Checking AD OU limiter '%s' for principal '%s'",
+                        ado_ou_limiter.distinguished_name,
+                        user_principal_name,
+                    )
 
                     # base_dn = "DC=win,DC=dtu,DC=dk"
                     base_dn = ado_ou_limiter.distinguished_name
