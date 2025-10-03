@@ -26,7 +26,7 @@ At minimum set the following values:
 | `DJANGO_CSRF_COOKIE_DOMAIN` | Cookie domain; often same as `SERVICE_FQDN_WEB`. |
 | `DJANGO_SESSION_COOKIE_SECURE`, `DJANGO_CSRF_COOKIE_SECURE`, `DJANGO_SECURE_SSL_REDIRECT` | Production security flags (defaults true). |
 | `DJANGO_SECRET` | A long random string used for Django's cryptographic signing. (required) |
-| `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` | Credentials for PostgreSQL. (required: `POSTGRES_PASSWORD`) |
+| `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` | Credentials for PostgreSQL. (required: `POSTGRES_PASSWORD`). The default password in `.env.example` is `please-change-me`; keep the same value for both the web and database services. |
 | `TRAEFIK_HOST` | FQDN that Traefik should route to this application. |
 | `TRAEFIK_NETWORK`, `TRAEFIK_ENTRYPOINT`, `TRAEFIK_CERTRESOLVER` | Networking metadata; defaults match a standard Coolify install. Override if your Traefik setup differs. |
 | `DJANGO_SUPERUSER_USERNAME`, `DJANGO_SUPERUSER_PASSWORD` | Credentials you will use to create an administrative user after deployment. |
@@ -104,3 +104,11 @@ docker network create coolify-network
 
 If your Traefik installation uses a different network name, set the `TRAEFIK_NETWORK` environment variable in Coolify to that
 name instead of creating `coolify-network`.
+
+### `django.db.utils.OperationalError: password authentication failed`
+
+This indicates Django cannot authenticate to PostgreSQL. Confirm that:
+
+1. The value of `POSTGRES_PASSWORD` is identical for the `web` and `db` services.
+2. The password matches the credentials already stored in the PostgreSQL data volume. If you change the password, update the database user inside PostgreSQL or recreate the volume so the new credentials take effect.
+3. Environment variables are not defined as empty strings in Coolify or your `.env` file. Remove unused keys rather than leaving them blank so Docker Compose can fall back to the defaults documented in `.env.example`.

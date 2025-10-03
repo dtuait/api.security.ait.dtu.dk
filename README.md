@@ -71,6 +71,7 @@ Environment keys surfaced in Coolify by default (no secrets committed):
 - `DJANGO_SECURE_SSL_REDIRECT` (default: `true`)
 - `POSTGRES_DB` (default: `app`)
 - `POSTGRES_USER` (default: `app`)
+- `POSTGRES_PASSWORD` (default: `please-change-me`; update both the app and database if you change it)
 
 Required at deploy time (Coolify will prompt):
 
@@ -86,6 +87,8 @@ To run the same stack locally without Coolify:
 
 ```bash
 cp .env.example .env
+# Update POSTGRES_PASSWORD if you do not want to use the default `please-change-me`
+# and ensure the value matches the password stored in the PostgreSQL volume.
 # Create the external Traefik network expected by the compose file (run once)
 docker network create coolify-network
 docker compose -f docker-compose.coolify.yml up --build
