@@ -59,7 +59,7 @@ USER root
 ENV PATH="/home/django/.local/bin:${PATH}" \
     PYTHONPATH=/app \
     DJANGO_SETTINGS_MODULE=app.settings \
-    GUNICORN_CMD_ARGS="--workers 3 --timeout 120 --graceful-timeout 30"
+    GUNICORN_CMD_ARGS="--workers 3 --timeout 120 --graceful-timeout 30 --access-logfile - --error-logfile - --capture-output --log-level info"
 
 WORKDIR /app/app-main
 

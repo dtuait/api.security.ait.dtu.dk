@@ -112,3 +112,17 @@ This indicates Django cannot authenticate to PostgreSQL. Confirm that:
 1. The value of `POSTGRES_PASSWORD` is identical for the `web` and `db` services.
 2. The password matches the credentials already stored in the PostgreSQL data volume. If you change the password, update the database user inside PostgreSQL or recreate the volume so the new credentials take effect.
 3. Environment variables are not defined as empty strings in Coolify or your `.env` file. Remove unused keys rather than leaving them blank so Docker Compose can fall back to the defaults documented in `.env.example`.
+
+### Requests time out at the gateway
+
+Traefik will return a 504 timeout if it cannot reach Gunicorn inside the Django container. To confirm whether requests actually
+arrive at the application, tail the **Server → web** logs in Coolify while making a request to your domain. Each request now
+emits a Gunicorn access log entry such as:
+
+```
+[2023-09-14 08:31:26 +0000] [17] [INFO] 172.20.0.5 - - "GET /healthz/ HTTP/1.1" 200 17 "-" "curl/8.4.0"
+```
+
+If you see entries like this, Traefik successfully routed the call to Django and the response code in the log will indicate the
+outcome. If no entries appear, the request likely never left Traefik—double-check the `TRAEFIK_*` environment variables, that the
+service is listening on port `8121`, and that the container is healthy in Coolify.

@@ -181,6 +181,12 @@ def msal_callback(request):
     else:
         # Handle failure or show an error message to the user
         return HttpResponse("Error: failed to retrieve access token.", status=400)
+
+
+def health_check(request):
+    """Lightweight endpoint used for upstream health probes."""
+
+    return JsonResponse({"status": "ok"})
     
 
 

@@ -20,7 +20,7 @@ from django.views.generic import RedirectView
 from django.conf import settings
 from django.conf.urls.static import static
 from django.views.generic.base import RedirectView
-from .views import msal_callback, msal_login, msal_director, msal_logout
+from .views import msal_callback, msal_login, msal_director, msal_logout, health_check
 from dotenv import load_dotenv
 from django.views.static import serve
 from django.urls import re_path
@@ -35,6 +35,7 @@ urlpatterns = [
     path('auth/callback/', msal_callback, name='msal_callback'),
     path("login-redirector/", msal_director, name="msal_login_redirector"),
     path("logout/", msal_logout, name="msal_logout"),
+    path("healthz/", health_check, name="health_check"),
 
     #  favicon.ico
     re_path(r'^favicon\.ico$', serve, {
