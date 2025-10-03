@@ -114,6 +114,23 @@ This indicates Django cannot authenticate to PostgreSQL. Confirm that:
 
 ### Requests time out at the gateway
 
+### Traefik log: `invalid value for HostSNI matcher`
+
+If the Coolify proxy logs show entries similar to:
+
+```
+Error while adding rule HostSNI(`${service_fqdn_web:-api.security.ait.dtu.dk}`): invalid value for HostSNI matcher
+```
+
+it means Traefik never received a fully expanded hostname for the router. Coolify
+injects both upper- and lower-case variants of the `SERVICE_FQDN_WEB` environment
+variable into the Docker labels, so leaving the value empty results in a literal
+`${service_fqdn_web:-...}` string reaching Traefik. Define `SERVICE_FQDN_WEB` (and
+optionally `SERVICE_URL_WEB`) in Coolify's **Environment Variables** tab or your
+`.env` file before deploying so the compose file can propagate the hostname to both
+case variants. After saving the variables, redeploy the stack; the router will be
+created with the concrete hostname and the error disappears.
+
 Traefik will return a 504 timeout if it cannot reach Gunicorn inside the Django container. To confirm whether requests actually
 arrive at the application, tail the **Server → web** logs in Coolify while making a request to your domain. Each request now
 emits a Gunicorn access log entry such as:
