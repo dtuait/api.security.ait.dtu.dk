@@ -47,7 +47,7 @@ services:
       - traefik
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.api_security.rule=Host(`${SERVICE_FQDN_WEB:-api.security.ait.dtu.dk}`)"
+      - "traefik.http.routers.api_security.rule=Host(`${SERVICE_FQDN_WEB}`)"
       - "traefik.http.routers.api_security.entrypoints=https"
       - "traefik.http.routers.api_security.tls=true"
       - "traefik.http.services.api_security.loadbalancer.server.port=8121"
