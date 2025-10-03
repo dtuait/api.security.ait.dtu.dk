@@ -251,6 +251,7 @@ MIGRATION_MODULES = {
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -367,7 +368,7 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
 STATIC_ROOT = _ensure_storage_dir(
     'DJANGO_STATIC_ROOT',
     default_path=Path('/mnt/shared-project-data/django/staticfiles'),
@@ -377,6 +378,8 @@ STATIC_ROOT = _ensure_storage_dir(
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'static'),
 ]
+
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = _ensure_storage_dir(
