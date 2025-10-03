@@ -46,19 +46,28 @@ class BaseView(View):
         return super().dispatch(request, *args, **kwargs)
 
     def get_git_info(self):
+        branch = "unknown"
+        commit = "unknown"
+        last_updated_formatted = "unknown"
+        last_updated_raw = None
+
         try:
             branch = subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD']).decode('utf-8').strip()
             commit = subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode('utf-8').strip()
-            last_updated = subprocess.check_output(['git', 'log', '-1', '--format=%cd']).decode('utf-8').strip()
+            last_updated_raw = subprocess.check_output(['git', 'log', '-1', '--format=%cd']).decode('utf-8').strip()
 
             # Parse the last_updated date string and reformat it
-            last_updated_dt = datetime.strptime(last_updated, '%a %b %d %H:%M:%S %Y %z')
+            last_updated_dt = datetime.strptime(last_updated_raw, '%a %b %d %H:%M:%S %Y %z')
             last_updated_formatted = last_updated_dt.strftime('%H:%M %d-%m-%Y')
-        except subprocess.CalledProcessError:
-            # Default values if git commands fail
-            branch = "unknown"
-            commit = "unknown"
-            last_updated = "unknown"
+        except (subprocess.CalledProcessError, FileNotFoundError) as exc:
+            logger.warning("Unable to read git metadata for template footer: %s", exc)
+            if last_updated_raw:
+                last_updated_formatted = last_updated_raw
+        except ValueError as exc:
+            logger.warning("Unable to parse git commit timestamp '%s': %s", last_updated_raw, exc)
+            if last_updated_raw:
+                last_updated_formatted = last_updated_raw
+
         return branch, commit, last_updated_formatted
 
     def get_context_data(self, **kwargs):
