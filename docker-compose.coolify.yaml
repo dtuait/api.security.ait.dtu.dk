@@ -40,11 +40,11 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.api_security.rule=Host(`${SERVICE_FQDN_WEB:-api.security.ait.dtu.dk}`)"
-      - "traefik.http.routers.api_security.entrypoints=${TRAEFIK_ENTRYPOINT:-websecure}"
+      - "traefik.http.routers.api_security.entrypoints=https"
       - "traefik.http.routers.api_security.tls=true"
-      - "traefik.http.routers.api_security.tls.certresolver=${TRAEFIK_CERTRESOLVER:-letsencrypt}"
       - "traefik.http.services.api_security.loadbalancer.server.port=8121"
       - "traefik.docker.network=${TRAEFIK_NETWORK:-coolify-network}"
+
 
   db:
     image: postgres:16
