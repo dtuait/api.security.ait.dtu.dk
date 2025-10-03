@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 from pathlib import Path
 
 import os
+import sys
 import warnings
 
 # Load .env file
@@ -151,6 +152,9 @@ AD_OU_LIMITER_DELETE_MISSING = _as_bool(os.getenv('AD_OU_LIMITER_DELETE_MISSING'
 # SECURITY WARNING: keep the secret key used in production secret!
 # Get secret key from .env file
 SECRET_KEY = os.getenv('DJANGO_SECRET')
+
+if not SECRET_KEY and 'test' in sys.argv:
+    SECRET_KEY = 'test-secret-key'
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = _as_bool(os.getenv("DJANGO_DEBUG"), False)

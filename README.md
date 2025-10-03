@@ -50,14 +50,14 @@ static and media assets.
 At a minimum you will:
 
 1. Copy `.env.example` to `.env` (or paste the same key/value pairs into Coolify) and provide values for `DJANGO_SECRET`, the
-   `POSTGRES_*` credentials, `TRAEFIK_*` routing metadata, and any integration secrets you require.
+   `POSTGRES_*` credentials, the optional `TRAEFIK_NETWORK` override, and any integration secrets you require.
 2. Create a Coolify **Docker Compose** application that points to this repository and select `docker-compose.coolify.yml` as the
-   compose file. The default Traefik labels expect the external network to be called `coolify-network` with a `websecure`
-   entrypoint—override the variables if your installation differs. If your Coolify host does not already have that network, SSH
-   into the host once and run `docker network create coolify-network` (or set `TRAEFIK_NETWORK` to the Traefik network name you
-   actually use) before triggering a deployment.
+   compose file. The default Traefik labels expect the external network to be called `coolify-network` and will bind the router
+   to the standard `https` entrypoint. If your Coolify host does not already have that network, SSH into the host once and run
+   `docker network create coolify-network` (or set `TRAEFIK_NETWORK` to the Traefik network name you actually use) before
+   triggering a deployment.
 3. Deploy the stack. Coolify will build the image from `Dockerfile`, run database migrations and `collectstatic` via
-   `docker/entrypoint.sh`, and expose the site through Traefik on the hostname configured by `TRAEFIK_HOST`.
+   `docker/entrypoint.sh`, and expose the site through Traefik on the hostname configured by `SERVICE_FQDN_WEB`.
 
 Environment keys surfaced in Coolify by default (no secrets committed):
 
@@ -80,8 +80,37 @@ Required at deploy time (Coolify will prompt):
 
 Optional routing variables (labels):
 
-- `TRAEFIK_HOST` (the FQDN routed to this service; set to match `SERVICE_FQDN_WEB`)
-- `TRAEFIK_NETWORK`, `TRAEFIK_ENTRYPOINT`, `TRAEFIK_CERTRESOLVER`
+- `TRAEFIK_NETWORK` (override if your Traefik network is not `coolify-network`)
+
+### Using a custom TLS certificate with Coolify's Traefik
+
+If you rely on an internal or wildcard certificate instead of Traefik's Let’s Encrypt integration, copy the certificate bundle
+and private key to the host so that the Traefik container can read them:
+
+1. SSH to the Coolify host and create a directory under `/data/coolify/proxy/certs/` (this path is mounted as `/traefik/certs`
+   inside the proxy container). For example:
+
+   ```bash
+   sudo mkdir -p /data/coolify/proxy/certs/star_api_security_ait_dtu_dk
+   sudo cp /data/coolify/certs/star_api_security_ait_dtu_dk/star_security_ait_dtu_dk_cert.pem \
+     /data/coolify/proxy/certs/star_api_security_ait_dtu_dk/
+   sudo cp /data/coolify/certs/star_api_security_ait_dtu_dk/star_security_ait_dtu_dk.key \
+     /data/coolify/proxy/certs/star_api_security_ait_dtu_dk/
+   sudo chmod 600 /data/coolify/proxy/certs/star_api_security_ait_dtu_dk/*.key
+   ```
+
+2. Declare the certificate in `/data/coolify/proxy/dynamic/certs.yaml` so Traefik loads it at runtime:
+
+   ```yaml
+   tls:
+     certificates:
+       - certFile: /traefik/certs/star_api_security_ait_dtu_dk/star_security_ait_dtu_dk_cert.pem
+         keyFile: /traefik/certs/star_api_security_ait_dtu_dk/star_security_ait_dtu_dk.key
+   ```
+
+3. Restart the proxy with `docker restart coolify-proxy`. Once Traefik reloads, HTTPS requests to
+   `https://api.security.ait.dtu.dk` will present your uploaded certificate while still routing to the Django container defined
+   in `docker-compose.coolify.yml`.
 
 To run the same stack locally without Coolify:
 

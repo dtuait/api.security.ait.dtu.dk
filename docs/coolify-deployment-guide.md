@@ -27,8 +27,7 @@ At minimum set the following values:
 | `DJANGO_SESSION_COOKIE_SECURE`, `DJANGO_CSRF_COOKIE_SECURE`, `DJANGO_SECURE_SSL_REDIRECT` | Production security flags (defaults true). |
 | `DJANGO_SECRET` | A long random string used for Django's cryptographic signing. (required) |
 | `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` | Credentials for PostgreSQL. (required: `POSTGRES_PASSWORD`). The default password in `.env.example` is `please-change-me`; keep the same value for both the web and database services. |
-| `TRAEFIK_HOST` | FQDN that Traefik should route to this application. |
-| `TRAEFIK_NETWORK`, `TRAEFIK_ENTRYPOINT`, `TRAEFIK_CERTRESOLVER` | Networking metadata; defaults match a standard Coolify install. Override if your Traefik setup differs. |
+| `TRAEFIK_NETWORK` | Override if your Traefik network is not named `coolify-network`. |
 | `DJANGO_SUPERUSER_USERNAME`, `DJANGO_SUPERUSER_PASSWORD` | Credentials you will use to create an administrative user after deployment. |
 
 All of the other entries in `.env.example` are optional or relate to integrations (Azure AD, SCCM, Microsoft Defender, OpenAI, etc.). Populate them as needed for your environment.
@@ -124,5 +123,24 @@ emits a Gunicorn access log entry such as:
 ```
 
 If you see entries like this, Traefik successfully routed the call to Django and the response code in the log will indicate the
-outcome. If no entries appear, the request likely never left Traefik—double-check the `TRAEFIK_*` environment variables, that the
+outcome. If no entries appear, the request likely never left Traefik—double-check the `TRAEFIK_NETWORK` environment variable, that the
 service is listening on port `8121`, and that the container is healthy in Coolify.
+
+### Serve a custom TLS certificate through Traefik
+
+Coolify mounts `/data/coolify/proxy` from the host into the Traefik container at `/traefik`. If you are using a wildcard or
+internal CA certificate instead of Traefik's ACME resolver, add the files there and declare them in a dynamic configuration file:
+
+1. Copy the certificate and private key into `/data/coolify/proxy/certs/<your-folder>/` on the host. The PEM file should contain
+   the full chain.
+2. Create or update `/data/coolify/proxy/dynamic/certs.yaml` with:
+
+   ```yaml
+   tls:
+     certificates:
+       - certFile: /traefik/certs/<your-folder>/<certificate>.pem
+         keyFile: /traefik/certs/<your-folder>/<certificate>.key
+   ```
+
+3. Restart Traefik (`docker restart coolify-proxy`). The router defined in `docker-compose.coolify.yml` will now serve your
+   uploaded certificate on the `https` entrypoint while forwarding requests to Gunicorn.
