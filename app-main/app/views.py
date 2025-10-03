@@ -15,7 +15,8 @@ dotenv_path = '/usr/src/project/.devcontainer/.env'
 load_dotenv(dotenv_path=dotenv_path)
 from django.utils.decorators import method_decorator
 from django.http import JsonResponse
-from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_GET
+from django.views.decorators.cache import cache_control
 
 
 
@@ -183,10 +184,15 @@ def msal_callback(request):
         return HttpResponse("Error: failed to retrieve access token.", status=400)
 
 
+@require_GET
+@cache_control(no_cache=True, must_revalidate=True, no_store=True)
 def health_check(request):
     """Lightweight endpoint used for upstream health probes."""
 
-    return JsonResponse({"status": "ok"})
+    response = JsonResponse({"status": "ok"})
+    response["Pragma"] = "no-cache"
+    response["Expires"] = "0"
+    return response
     
 
 
