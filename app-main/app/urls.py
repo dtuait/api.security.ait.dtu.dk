@@ -16,10 +16,9 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
-from django.views.generic import RedirectView
+from django.views.generic.base import RedirectView
 from django.conf import settings
 from django.conf.urls.static import static
-from django.views.generic.base import RedirectView
 from .views import msal_callback, msal_login, msal_director, msal_logout, health_check
 from dotenv import load_dotenv
 from django.views.static import serve
@@ -27,6 +26,7 @@ from django.urls import re_path
 dotenv_path = '/usr/src/project/.devcontainer/.env'
 load_dotenv(dotenv_path=dotenv_path)
 
+admin_path = settings.ADMIN_URL_PATH
 
 
 
@@ -43,7 +43,8 @@ urlpatterns = [
     'document_root': settings.STATIC_ROOT,
     }),
 
-    path('admin/baAT5gt52eCRX7bu58msxF5XQtbY4bye/', admin.site.urls, name='admin-panel'),
+    path(admin_path, admin.site.urls, name='admin-panel'),
+    path('admin/', RedirectView.as_view(pattern_name='admin-panel', permanent=False)),
     
     # myview
     path('', RedirectView.as_view(url="myview/frontpage/", permanent=True)),
