@@ -55,6 +55,133 @@ class ADOrganizationalUnitLimiter(BaseModel):
     def __str__(self):
         return self.canonical_name
 
+    @classmethod
+    def _normalize_canonical_prefixes(cls, prefixes):
+        if not prefixes:
+            return []
+
+        normalized = []
+        for prefix in prefixes:
+            if not prefix:
+                continue
+            prefix = str(prefix).strip()
+            if not prefix:
+                continue
+            normalized.append(prefix.rstrip('/'))
+
+        # Preserve order while removing duplicates
+        return list(dict.fromkeys(normalized))
+
+    @classmethod
+    def sync_default_limiters(cls, canonical_prefixes=None, *, delete_missing=None):
+        """Synchronise OU limiters from Active Directory.
+
+        - Enumerates all organizational units beneath the configured canonical prefixes.
+        - Ensures each OU has a corresponding limiter entry.
+        - Optionally removes database entries that no longer exist in AD.
+        """
+
+        if delete_missing is None:
+            delete_missing = getattr(settings, 'AD_OU_LIMITER_DELETE_MISSING', True)
+
+        if canonical_prefixes is None:
+            canonical_prefixes = getattr(settings, 'AD_OU_LIMITER_BASES', ())
+
+        canonical_prefixes = cls._normalize_canonical_prefixes(canonical_prefixes)
+        if not canonical_prefixes:
+            logger.info('No canonical prefixes configured for AD OU limiter sync.')
+            return []
+
+        from active_directory.services import execute_active_directory_query
+
+        synced_limiters = []
+
+        for canonical_prefix in canonical_prefixes:
+            if not canonical_prefix:
+                continue
+
+            try:
+                base_dn = ADGroupAssociation._canonical_to_distinguished_name(canonical_prefix)
+            except Exception:
+                logger.exception('Failed to convert canonical prefix %s to distinguished name', canonical_prefix)
+                continue
+
+            if not base_dn:
+                logger.warning('Unable to derive distinguished name for canonical prefix %s', canonical_prefix)
+                continue
+
+            seen_dns = set()
+
+            # Ensure the base OU itself is represented.
+            try:
+                with transaction.atomic():
+                    limiter, _ = cls.objects.update_or_create(
+                        distinguished_name=base_dn,
+                        defaults={'canonical_name': canonical_prefix},
+                    )
+                synced_limiters.append(limiter)
+                seen_dns.add(base_dn)
+            except Exception:
+                logger.exception('Failed to persist base OU limiter for %s', canonical_prefix)
+
+            try:
+                query_results = execute_active_directory_query(
+                    base_dn=base_dn,
+                    search_filter='(objectClass=organizationalUnit)',
+                    search_attributes=['distinguishedName'],
+                )
+            except Exception:
+                logger.exception('Failed to query Active Directory for OUs under %s', base_dn)
+                continue
+
+            for entry in query_results or []:
+                dn_values = entry.get('distinguishedName') or entry.get('distinguishedname')
+                if isinstance(dn_values, list):
+                    distinguished_name = dn_values[0]
+                else:
+                    distinguished_name = dn_values
+
+                if not distinguished_name:
+                    continue
+
+                distinguished_name = str(distinguished_name).strip()
+                if not distinguished_name:
+                    continue
+
+                try:
+                    canonical_name = ADGroupAssociation._dn_to_canonical(distinguished_name)
+                except Exception:
+                    logger.exception('Failed to convert distinguished name %s to canonical form', distinguished_name)
+                    continue
+
+                if not canonical_name or not canonical_name.startswith(f'{canonical_prefix}'):
+                    continue
+
+                try:
+                    with transaction.atomic():
+                        limiter, _ = cls.objects.update_or_create(
+                            distinguished_name=distinguished_name,
+                            defaults={'canonical_name': canonical_name},
+                        )
+                    synced_limiters.append(limiter)
+                    seen_dns.add(distinguished_name)
+                except IntegrityError:
+                    logger.exception('Failed to persist OU limiter for %s', distinguished_name)
+                except Exception:
+                    logger.exception('Unexpected error while persisting OU limiter for %s', distinguished_name)
+
+            if delete_missing:
+                prefix_with_sep = f'{canonical_prefix}/'
+                queryset = cls.objects.filter(canonical_name__startswith=prefix_with_sep)
+                if seen_dns:
+                    queryset = queryset.exclude(distinguished_name__in=seen_dns)
+
+                removed_count, _ = queryset.delete()
+                if removed_count:
+                    logger.info('Removed %s OU limiters no longer present under %s', removed_count, canonical_prefix)
+
+        return synced_limiters
+
 # This model is used to associate AD groups with Django users
 class ADGroupAssociation(BaseModel):
     """

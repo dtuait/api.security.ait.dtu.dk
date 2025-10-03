@@ -1,4 +1,7 @@
 from django.test import TestCase
+from unittest.mock import patch
+
+from .models import ADOrganizationalUnitLimiter
 
 
 class LimiterTypeSyncTests(TestCase):
@@ -135,3 +138,45 @@ class LimiterTypeSyncTests(TestCase):
 ##################ADMIN PANEL (AJAX View)##################
 ##################ADMIN PANEL (AJAX View)##################
 ##################ADMIN PANEL (AJAX View)##################
+
+
+class ADOrganizationalUnitLimiterSyncTests(TestCase):
+    def setUp(self):
+        self.prefix = 'win.dtu.dk/DTUBaseUsers'
+
+    @patch('active_directory.services.execute_active_directory_query')
+    def test_sync_default_limiters_creates_entries(self, mock_query):
+        mock_query.return_value = [
+            {
+                'distinguishedName': ['OU=ChildOne,OU=DTUBaseUsers,DC=win,DC=dtu,DC=dk'],
+            },
+            {
+                'distinguishedName': ['OU=ChildTwo,OU=DTUBaseUsers,DC=win,DC=dtu,DC=dk'],
+            },
+        ]
+
+        ADOrganizationalUnitLimiter.sync_default_limiters(canonical_prefixes=[self.prefix])
+
+        canonical_names = list(
+            ADOrganizationalUnitLimiter.objects.order_by('canonical_name').values_list('canonical_name', flat=True)
+        )
+
+        self.assertEqual(
+            canonical_names,
+            [
+                'win.dtu.dk/DTUBaseUsers',
+                'win.dtu.dk/DTUBaseUsers/ChildOne',
+                'win.dtu.dk/DTUBaseUsers/ChildTwo',
+            ],
+        )
+
+        mock_query.return_value = []
+
+        ADOrganizationalUnitLimiter.sync_default_limiters(canonical_prefixes=[self.prefix])
+
+        canonical_names = list(
+            ADOrganizationalUnitLimiter.objects.order_by('canonical_name').values_list('canonical_name', flat=True)
+        )
+
+        self.assertEqual(canonical_names, ['win.dtu.dk/DTUBaseUsers'])
+
