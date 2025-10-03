@@ -47,6 +47,22 @@ def _generate_new_token():
     grant_type = os.getenv("GRAPH_GRANT_TYPE", "client_credentials")
     graph_resource = os.getenv("GRAPH_RESOURCE", "https://graph.microsoft.com").rstrip("/")
 
+    missing = [
+        name
+        for name, value in (
+            ("AZURE_TENANT_ID", tenant_id),
+            ("GRAPH_CLIENT_ID", client_id),
+            ("GRAPH_CLIENT_SECRET", client_secret),
+        )
+        if not value
+    ]
+    if missing:
+        logger.error(
+            "Graph token request aborted; missing environment variables: %s",
+            ", ".join(missing),
+        )
+        return None
+
     url = f"https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token"
     data = {
         "client_id": client_id,
@@ -58,7 +74,17 @@ def _generate_new_token():
     try:
         response = requests.post(url, data=data, timeout=20)
         if response.status_code == 200:
-            return response.json().get("access_token")
+            payload = response.json()
+            token = payload.get("access_token")
+            if not token:
+                logger.error("Graph v2 token response missing access_token field")
+            return token
+
+        logger.error(
+            "Graph v2 token endpoint returned %s: %s",
+            response.status_code,
+            response.text,
+        )
 
         url_v1 = f"https://login.microsoftonline.com/{tenant_id}/oauth2/token"
         data_v1 = {
@@ -69,8 +95,22 @@ def _generate_new_token():
         }
         resp_v1 = requests.post(url_v1, data=data_v1, timeout=20)
         if resp_v1.status_code == 200:
-            return resp_v1.json().get("access_token")
-    except Exception:
+            payload_v1 = resp_v1.json()
+            token_v1 = payload_v1.get("access_token")
+            if not token_v1:
+                logger.error("Graph v1 token response missing access_token field")
+            return token_v1
+
+        logger.error(
+            "Graph v1 token endpoint returned %s: %s",
+            resp_v1.status_code,
+            resp_v1.text,
+        )
+    except requests.exceptions.RequestException as exc:
+        logger.warning("Graph token request failed: %s", exc)
+        return None
+    except ValueError as exc:
+        logger.error("Graph token response was not valid JSON: %s", exc)
         return None
 
     return None
