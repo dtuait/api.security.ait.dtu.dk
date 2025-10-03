@@ -2,12 +2,47 @@
 set -e
 
 # Allow overriding the manage.py path if needed
+APP_USER=${APP_USER:-django}
+APP_GROUP=${APP_GROUP:-$APP_USER}
 APP_DIR=${APP_DIR:-/app/app-main}
 MANAGE_PY="${APP_DIR}/manage.py"
+
+run_as_app_user() {
+  if [ "$(id -u)" = "0" ]; then
+    if command -v runuser >/dev/null 2>&1; then
+      runuser -u "$APP_USER" -- "$@"
+    else
+      su -m "$APP_USER" -c "$*"
+    fi
+  else
+    "$@"
+  fi
+}
+
+ensure_storage_dir() {
+  dir="$1"
+
+  if [ -z "$dir" ]; then
+    return
+  fi
+
+  if [ "$(id -u)" = "0" ]; then
+    if mkdir -p "$dir" 2>/dev/null; then
+      chown "$APP_USER":"$APP_GROUP" "$dir" 2>/dev/null || true
+    else
+      echo "Warning: Unable to create storage directory $dir" >&2
+    fi
+  fi
+}
 
 if [ ! -f "$MANAGE_PY" ]; then
   echo "Could not locate manage.py at $MANAGE_PY" >&2
   exit 1
+fi
+
+if [ "$(id -u)" = "0" ]; then
+  ensure_storage_dir "${DJANGO_STATIC_ROOT}"
+  ensure_storage_dir "${DJANGO_MEDIA_ROOT}"
 fi
 
 # Wait for the database to become available if POSTGRES_HOST is defined
@@ -31,11 +66,19 @@ fi
 cd "$APP_DIR"
 
 if [ "${DJANGO_MIGRATE:-true}" = "true" ]; then
-  python manage.py migrate --noinput
+  run_as_app_user python manage.py migrate --noinput
 fi
 
 if [ "${DJANGO_COLLECTSTATIC:-true}" = "true" ]; then
-  python manage.py collectstatic --noinput
+  run_as_app_user python manage.py collectstatic --noinput
+fi
+
+if [ "$(id -u)" = "0" ]; then
+  if command -v runuser >/dev/null 2>&1; then
+    exec runuser -u "$APP_USER" -- "$@"
+  else
+    exec su -m "$APP_USER" -c "$*"
+  fi
 fi
 
 exec "$@"
