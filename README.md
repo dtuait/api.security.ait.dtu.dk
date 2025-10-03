@@ -50,7 +50,8 @@ static and media assets.
 At a minimum you will:
 
 1. Copy `.env.example` to `.env` (or paste the same key/value pairs into Coolify) and provide values for `DJANGO_SECRET`, the
-   `POSTGRES_*` credentials, the optional `TRAEFIK_NETWORK` override, and any integration secrets you require.
+   `POSTGRES_*` credentials, admin bootstrap credentials (`DJANGO_ADMIN_USERNAME` and `DJANGO_ADMIN_PASSWORD`), the optional
+   `TRAEFIK_NETWORK` override, and any integration secrets you require.
 2. Create a Coolify **Docker Compose** application that points to this repository and select `docker-compose.coolify.yml` as the
    compose file. The default Traefik labels expect the external network to be called `coolify-network` and will bind the router
    to the standard `https` entrypoint. If your Coolify host does not already have that network, SSH into the host once and run
@@ -69,6 +70,7 @@ Environment keys surfaced in Coolify by default (no secrets committed):
 - `DJANGO_SESSION_COOKIE_SECURE` (default: `true`)
 - `DJANGO_CSRF_COOKIE_SECURE` (default: `true`)
 - `DJANGO_SECURE_SSL_REDIRECT` (default: `true`)
+- `DJANGO_ADMIN_USERNAME`/`DJANGO_ADMIN_PASSWORD` (no defaults; used to seed the Django admin account on startup)
 - `POSTGRES_DB` (default: `app`)
 - `POSTGRES_USER` (default: `app`)
 - `POSTGRES_PASSWORD` (default: `please-change-me`; update both the app and database if you change it)

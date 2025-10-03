@@ -29,6 +29,7 @@ At minimum set the following values:
 | `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` | Credentials for PostgreSQL. (required: `POSTGRES_PASSWORD`). The default password in `.env.example` is `please-change-me`; keep the same value for both the web and database services. |
 | `TRAEFIK_NETWORK` | Override if your Traefik network is not named `coolify-network`. |
 | `DJANGO_SUPERUSER_USERNAME`, `DJANGO_SUPERUSER_PASSWORD` | Credentials you will use to create an administrative user after deployment. |
+| `DJANGO_ADMIN_USERNAME`, `DJANGO_ADMIN_PASSWORD` | Username and password used to seed a Django admin account automatically on startup. |
 
 All of the other entries in `.env.example` are optional or relate to integrations (Azure AD, SCCM, Microsoft Defender, OpenAI, etc.). Populate them as needed for your environment.
 
@@ -63,7 +64,7 @@ If no superuser exists yet, open the Coolify application page, go to the **Actio
 python manage.py createsuperuser --username "$DJANGO_SUPERUSER_USERNAME" --email you@example.com
 ```
 
-Provide the same password you configured in the environment variables when prompted. You can now log in to the admin interface and configure integrations.
+Provide the same password you configured in the environment variables when prompted. You can now log in to the admin interface and configure integrations. If you defined `DJANGO_ADMIN_USERNAME` and `DJANGO_ADMIN_PASSWORD`, the deployment process will also ensure that account exists and retains the supplied password on each startup.
 
 ## 6. Ongoing management
 

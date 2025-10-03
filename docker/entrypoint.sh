@@ -73,6 +73,11 @@ if [ "${DJANGO_COLLECTSTATIC:-true}" = "true" ]; then
   run_as_app_user python manage.py collectstatic --noinput
 fi
 
+# Optionally bootstrap an administrative account when credentials are provided.
+if [ -n "${DJANGO_ADMIN_USERNAME}" ] && [ -n "${DJANGO_ADMIN_PASSWORD}" ]; then
+  run_as_app_user python manage.py ensure_admin_user || true
+fi
+
 if [ "$(id -u)" = "0" ]; then
   if command -v runuser >/dev/null 2>&1; then
     exec runuser -u "$APP_USER" -- "$@"
