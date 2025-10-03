@@ -54,7 +54,7 @@ RUN groupadd --system django \
     && mkdir -p /home/django \
     && chown -R django:django /home/django /app
 
-USER django
+USER root
 
 ENV PATH="/home/django/.local/bin:${PATH}" \
     PYTHONPATH=/app \
