@@ -8,6 +8,7 @@ from django.utils.deprecation import MiddlewareMixin
 from rest_framework.authtoken.models import Token
 import logging
 import re
+from urllib.parse import urlparse
 from .models import Endpoint, IPLimiter, ADOrganizationalUnitLimiter
 
 def get_client_ip(request):
@@ -25,7 +26,7 @@ class AccessControlMiddleware(MiddlewareMixin):
         # Define paths that do not require access control
         self.whitelist_paths = [
             '/favicon.ico',
-            '/login/', 
+            '/login/',
             '/logout/',
             '/auth/callback/',
             '/admin/baAT5gt52eCRX7bu58msxF5XQtbY4bye/',
@@ -33,6 +34,8 @@ class AccessControlMiddleware(MiddlewareMixin):
             '/media/',
             '/healthz/',
         ]
+
+        self._extend_whitelist_with_static_paths()
         super().__init__(get_response)
 
     def normalize_path(self, path):
@@ -42,6 +45,32 @@ class AccessControlMiddleware(MiddlewareMixin):
         if not path.endswith('/'):
             path += '/'
         return path
+
+    def _normalize_whitelist_prefix(self, url):
+        """Ensure whitelist prefixes start and end with a slash."""
+        if not url:
+            return None
+
+        parsed = urlparse(url)
+        path = parsed.path if parsed.scheme else url
+
+        if not path.startswith('/'):
+            path = '/' + path
+        if not path.endswith('/'):
+            path += '/'
+
+        return path
+
+    def _extend_whitelist_with_static_paths(self):
+        """Add STATIC_URL (and similar) prefixes to the whitelist."""
+        static_candidates = {
+            self._normalize_whitelist_prefix(getattr(settings, 'STATIC_URL', '')),
+            self._normalize_whitelist_prefix(getattr(settings, 'STATICFILES_URL', '')),
+        }
+
+        for path in filter(None, static_candidates):
+            if path not in self.whitelist_paths:
+                self.whitelist_paths.append(path)
     
     def compare_paths(self, endpoint_path, request_path):
         """Compare endpoint path with placeholders against the actual request path."""
