@@ -1,5 +1,6 @@
 import logging
 import os
+import time
 from datetime import timedelta
 
 import requests
@@ -32,6 +33,24 @@ class _EphemeralServiceToken:
 
 TOKEN_REFRESH_BUFFER_SECONDS = int(os.getenv("GRAPH_ACCESS_BEARER_TOKEN_REFRESH_BUFFER", "120") or 120)
 DEFAULT_TOKEN_TTL_SECONDS = int(os.getenv("GRAPH_ACCESS_BEARER_TOKEN_TTL", "3600") or 3600)
+
+
+def _load_refresh_backoff(default: int = 30) -> int:
+    """Return the cooldown window after a failed token refresh attempt."""
+
+    raw_value = os.getenv("GRAPH_TOKEN_REFRESH_BACKOFF_SECONDS")
+    if raw_value is None:
+        return default
+    try:
+        value = int(raw_value)
+    except (TypeError, ValueError):
+        return default
+
+    return max(0, value)
+
+
+TOKEN_REFRESH_BACKOFF_SECONDS = _load_refresh_backoff()
+_LAST_REFRESH_FAILURE_STATE = {"timestamp": float("-inf")}
 
 
 def _generate_new_token():
@@ -101,10 +120,25 @@ def _get_token_record():
 def _refresh_token(token_obj):
     """Refresh the database token when the stored value is expired."""
 
+    now = time.monotonic()
+
+    if TOKEN_REFRESH_BACKOFF_SECONDS:
+        last_failure = _LAST_REFRESH_FAILURE_STATE["timestamp"]
+        if now - last_failure < TOKEN_REFRESH_BACKOFF_SECONDS:
+            logger.debug(
+                "Skipping Microsoft Graph token refresh: last failure %.2fs ago (backoff=%ss)",
+                now - last_failure,
+                TOKEN_REFRESH_BACKOFF_SECONDS,
+            )
+            return None
+
     new_token = _generate_new_token()
     if not new_token:
+        if TOKEN_REFRESH_BACKOFF_SECONDS:
+            _LAST_REFRESH_FAILURE_STATE["timestamp"] = now
         return None
 
+    _LAST_REFRESH_FAILURE_STATE["timestamp"] = float("-inf")
     token_obj.access_token = new_token
     token_obj.expires_at = timezone.now() + timedelta(seconds=DEFAULT_TOKEN_TTL_SECONDS)
 
