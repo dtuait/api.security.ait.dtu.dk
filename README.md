@@ -33,6 +33,12 @@ process idle so you can run management commands directly from your IDE. Copy `.d
 `.devcontainer/.env`, supply the required secrets, and open the folder with the "Dev Containers" VS Code extension to start
 developing.
 
+## Token Storage and Microsoft APIs
+
+- Microsoft Graph and Defender bearer tokens are generated using client credentials from environment variables and are persisted in the database (`graph.ServiceToken`).
+- Do not provide bearer tokens via environment variables anymore; any legacy `*_ACCESS_BEARER_TOKEN` values are ignored except for a one-time bootstrap into the database at startup.
+- You can proactively generate and persist tokens by running: `python app-main/manage.py refresh_service_tokens` (optionally pass `--service graph` or `--service defender`).
+
 ## Deploying with Coolify + Traefik
 
 A detailed, step-by-step deployment walkthrough is available in
