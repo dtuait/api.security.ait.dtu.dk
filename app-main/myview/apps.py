@@ -16,6 +16,7 @@ class MyviewConfig(AppConfig):
         self._register_endpoint_refresh()
         self._refresh_api_endpoints()
         self._register_limiter_type_sync()
+        self._register_ou_limiter_sync()
 
     def _register_ad_group_sync(self):
         """Ensure AD groups are synced at startup and after migrations."""
@@ -234,3 +235,45 @@ class MyviewConfig(AppConfig):
 
             if updated:
                 limiter_type.save()
+
+    def _register_ou_limiter_sync(self):
+        """Ensure AD OU limiters reflect Active Directory on startup and after migrations."""
+
+        try:
+            from django.db.models.signals import post_migrate
+            from .models import ADOrganizationalUnitLimiter
+
+            def _tables_ready():
+                try:
+                    with connection.cursor() as cursor:
+                        tables = set(connection.introspection.table_names(cursor))
+                except (ProgrammingError, OperationalError):
+                    return False
+
+                return 'myview_adorganizationalunitlimiter' in tables
+
+            if _tables_ready():
+                try:
+                    ADOrganizationalUnitLimiter.sync_default_limiters()
+                except Exception:
+                    logger.exception("Initial AD OU limiter sync in AppConfig.ready() failed")
+            else:
+                logger.info("Skipping initial AD OU limiter sync until migrations are applied")
+
+            def _post_migrate_sync(sender, **kwargs):
+                try:
+                    if not _tables_ready():
+                        logger.info("Skipping post-migrate AD OU limiter sync; tables not ready")
+                        return
+
+                    ADOrganizationalUnitLimiter.sync_default_limiters()
+                except Exception:
+                    logger.exception("Post-migrate AD OU limiter sync failed")
+
+            post_migrate.connect(
+                _post_migrate_sync,
+                sender=self,
+                dispatch_uid="myview_post_migrate_ou_limiter_sync",
+            )
+        except Exception:
+            logger.exception("Failed to register AD OU limiter sync hooks in AppConfig.ready()")

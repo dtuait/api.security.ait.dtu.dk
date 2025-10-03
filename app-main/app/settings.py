@@ -137,6 +137,13 @@ if not default_group_sync_bases:
 AD_GROUP_SYNC_BASE_DNS = tuple(default_group_sync_bases)
 AD_GROUP_SYNC_DELETE_MISSING = _as_bool(os.getenv('AD_GROUP_SYNC_DELETE_MISSING'), True)
 
+default_ou_limiter_bases = _split_env_list(os.getenv('AD_OU_LIMITER_BASES'))
+if not default_ou_limiter_bases:
+    default_ou_limiter_bases = ['win.dtu.dk/DTUBaseUsers']
+
+AD_OU_LIMITER_BASES = tuple(default_ou_limiter_bases)
+AD_OU_LIMITER_DELETE_MISSING = _as_bool(os.getenv('AD_OU_LIMITER_DELETE_MISSING'), True)
+
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
