@@ -9,6 +9,7 @@ from django.utils import timezone
 from dotenv import load_dotenv
 
 from ..models import ServiceToken
+from ._http import graph_request
 
 
 logger = logging.getLogger(__name__)
@@ -91,7 +92,7 @@ def _generate_new_token():
     }
 
     try:
-        response = requests.post(url, data=data, timeout=20)
+        response = graph_request("POST", url, data=data, timeout=20)
         if response.status_code == 200:
             payload = response.json()
             token = payload.get("access_token")
@@ -112,7 +113,7 @@ def _generate_new_token():
             "client_secret": client_secret,
             "grant_type": grant_type,
         }
-        resp_v1 = requests.post(url_v1, data=data_v1, timeout=20)
+        resp_v1 = graph_request("POST", url_v1, data=data_v1, timeout=20)
         if resp_v1.status_code == 200:
             payload_v1 = resp_v1.json()
             token_v1 = payload_v1.get("access_token")

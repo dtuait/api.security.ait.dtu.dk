@@ -1,6 +1,6 @@
 
-import requests
 from ._graph_get_bearertoken import _get_bearertoken
+from ._http import graph_request
 # from ._graph_get_user_authentication_methods import get_user_authentication_methods
 
 
@@ -25,7 +25,7 @@ def phone_authentication_method(azure_user_principal_id ,authentication_method_i
     api_endpoint = f"https://graph.microsoft.com/v1.0/users/{azure_user_principal_id}/authentication/phoneMethods/{authentication_method_id}"
     
 
-    response = requests.delete(api_endpoint, headers=headers)
+    response = graph_request("DELETE", api_endpoint, headers=headers, timeout=20)
 
     # response.status_code = 204
      

@@ -1,5 +1,5 @@
-import requests
 from ._graph_get_bearertoken import _get_bearertoken
+from ._http import graph_request
 # from ._graph_get_user_authentication_methods import get_user_authentication_methods
 
 def delete_software_mfa_method(azure_user_principal_id, authentication_method_id):
@@ -26,7 +26,7 @@ def delete_software_mfa_method(azure_user_principal_id, authentication_method_id
     api_endpoint = f"https://graph.microsoft.com/v1.0/users/{azure_user_principal_id}/authentication/softwareOathMethods/{authentication_method_id}"
 
     # Make the DELETE request to the API endpoint
-    response = requests.delete(api_endpoint, headers=headers)
+    response = graph_request("DELETE", api_endpoint, headers=headers, timeout=20)
 
     # Return the response and status code
     return response, response.status_code

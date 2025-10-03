@@ -7,6 +7,7 @@ from typing import Optional, Tuple
 import requests
 
 from ._graph_get_bearertoken import _get_bearertoken
+from ._http import graph_request
 
 
 logger = logging.getLogger(__name__)
@@ -106,7 +107,7 @@ def get_user(*, user_principal_name, select_parameters=None) -> Tuple[dict, int]
     api_endpoint = _build_graph_endpoint(user_principal_name, select_parameters)
 
     try:
-        response = requests.get(api_endpoint, headers=headers, timeout=20)
+        response = graph_request("GET", api_endpoint, headers=headers, timeout=20)
     except requests.exceptions.RequestException as exc:
         logger.warning(
             "Microsoft Graph request for %s failed: %s",

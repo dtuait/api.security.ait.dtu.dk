@@ -2,9 +2,9 @@ import pyodbc
 import os
 import json
 import time
-import requests
 from dotenv import load_dotenv
 from ._graph_get_bearertoken import _get_bearertoken
+from ._http import graph_request
 
 # # Function to generate a new token
 # def _generate_new_token():
@@ -51,7 +51,7 @@ def run_hunting_query(query):
     api_endpoint = "https://graph.microsoft.com/v1.0/security/runHuntingQuery"  # Replace with your actual endpoint
 
     # Make the request
-    response = requests.post(api_endpoint, headers=headers, json={"Query": query})
+    response = graph_request("POST", api_endpoint, headers=headers, json={"Query": query}, timeout=20)
 
     return response, response.status_code
 
