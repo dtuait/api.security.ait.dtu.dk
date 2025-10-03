@@ -38,7 +38,7 @@ services:
       - traefik
     labels:
       - traefik.enable=true
-      - traefik.http.routers.api_security.rule=Host(`${TRAEFIK_HOST:-api.example.com}`)
+      - traefik.http.routers.api_security.rule=Host(`${SERVICE_FQDN_WEB:-api.security.ait.dtu.dk}`)
       - traefik.http.routers.api_security.entrypoints=${TRAEFIK_ENTRYPOINT:-websecure}
       - traefik.http.routers.api_security.tls=true
       - traefik.http.routers.api_security.tls.certresolver=${TRAEFIK_CERTRESOLVER:-letsencrypt}
@@ -72,4 +72,4 @@ networks:
     driver: bridge
   traefik:
     name: ${TRAEFIK_NETWORK:-coolify-network}
-    driver: bridge
+    external: true
