@@ -18,7 +18,7 @@ services:
       retries: 3
       start_period: 30s
     environment:
-      SERVICE_FQDN_WEB: ${SERVICE_FQDN_WEB:-api.security.ait.dtu.dk}
+      SERVICE_FQDN_WEB: ${SERVICE_FQDN_WEB: -api.security.ait.dtu.dk}
       SERVICE_URL_WEB: ${SERVICE_URL_WEB:-https://api.security.ait.dtu.dk}
       DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-api.security.ait.dtu.dk,localhost,127.0.0.1}
       DJANGO_CSRF_TRUSTED_ORIGINS: ${DJANGO_CSRF_TRUSTED_ORIGINS:-https://api.security.ait.dtu.dk}
@@ -40,11 +40,20 @@ services:
     networks:
       - internal
       - coolify
+    # labels:
+    #   - "traefik.enable=true"
+    #   - "traefik.http.routers.api_security.rule=Host(`api.security.ait.dtu.dk`)"
+    #   - "traefik.http.routers.api_security.entrypoints=https"
+    #   - "traefik.http.routers.api_security.tls=true"
+    #   - "traefik.http.services.api_security.loadbalancer.server.port=8121"
+    #   - "traefik.docker.network=coolify-network"
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.api_security.rule=Host(`api.security.ait.dtu.dk`)"
       - "traefik.http.routers.api_security.entrypoints=https"
       - "traefik.http.routers.api_security.tls=true"
+      - "traefik.http.routers.api_security.tls.domains[0].main=api.security.ait.dtu.dk"
+      - "traefik.http.routers.api_security.tls.certresolver="
       - "traefik.http.services.api_security.loadbalancer.server.port=8121"
       - "traefik.docker.network=coolify-network"
 
