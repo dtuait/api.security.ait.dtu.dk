@@ -57,12 +57,13 @@ RUN groupadd --system django \
 WORKDIR /app
 
 # Python dependencies for the 3.12 + Django 5.1.1 toolchain archived here
-COPY requirements.txt /tmp/requirements.txt
+# When building with the repository root as context, copy from the archive path
+COPY .devcontainer/.docker-image-builder-archive/__owner__dtuait__project__api-security-ait-dtu-dk__image__app-main__tag__python-3.12-bookworm-django-5.1.1-postgres-16-04-10-2025/requirements.txt /tmp/requirements.txt
 RUN python -m pip install --upgrade pip \
     && pip install --no-cache-dir -r /tmp/requirements.txt
 
 # Entrypoint
-COPY entrypoint.sh /entrypoint.sh
+COPY .devcontainer/.docker-image-builder-archive/__owner__dtuait__project__api-security-ait-dtu-dk__image__app-main__tag__python-3.12-bookworm-django-5.1.1-postgres-16-04-10-2025/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
 # Copy the full project source into the image so manage.py exists at runtime
@@ -87,4 +88,3 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=5 \
 
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["gunicorn", "app.wsgi:application", "--bind", "0.0.0.0:8121"]
-
