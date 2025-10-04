@@ -2,7 +2,7 @@ import logging
 import threading
 
 from django.apps import AppConfig
-from django.db import DEFAULT_DB_ALIAS, connection, connections, transaction
+from django.db import DEFAULT_DB_ALIAS, connections, transaction
 from django.db.utils import OperationalError, ProgrammingError
 
 
@@ -155,11 +155,13 @@ class MyviewConfig(AppConfig):
 
             def _post_migrate_sync(sender, **kwargs):
                 try:
+                    using = kwargs.get("using") or DEFAULT_DB_ALIAS
+
                     if not self._has_migration_plan(kwargs):
-                        self._record_startup_alias(kwargs.get("using"))
+                        self._record_startup_alias(using)
                         return
 
-                    self._ensure_limiter_types()
+                    self._ensure_limiter_types(using=using)
                     self._mark_startup_complete()
                 except Exception:
                     logger.exception("Post-migrate limiter type sync failed")
@@ -172,7 +174,7 @@ class MyviewConfig(AppConfig):
         except Exception:
             logger.exception("Failed to register limiter type sync hook")
 
-    def _ensure_limiter_types(self):
+    def _ensure_limiter_types(self, *, using=None):
         """Create or update limiter type entries for known limiter models."""
 
         from django.apps import apps as django_apps
@@ -182,9 +184,18 @@ class MyviewConfig(AppConfig):
             logger.info("Skipping limiter type sync until migrations are applied")
             return
 
+        if using is None:
+            using = DEFAULT_DB_ALIAS
+
         try:
-            with connection.cursor():
-                table_names = set(connection.introspection.table_names())
+            try:
+                db = connections[using]
+            except KeyError:
+                logger.info("Skipping limiter type sync; unknown database alias %s", using)
+                return
+
+            with db.cursor() as cursor:
+                table_names = set(db.introspection.table_names(cursor))
         except (OperationalError, ProgrammingError):
             logger.info("Skipping limiter type sync; database not ready")
             return
@@ -337,7 +348,7 @@ class MyviewConfig(AppConfig):
                     ADGroupAssociation.ensure_groups_synced_cached()
 
                 self._refresh_api_endpoints(using=alias)
-                self._ensure_limiter_types()
+                self._ensure_limiter_types(using=alias)
 
                 if self._ou_limiter_tables_ready(alias):
                     ADOrganizationalUnitLimiter.sync_default_limiters()
