@@ -2,7 +2,7 @@ import logging
 import threading
 
 from django.apps import AppConfig
-from django.db import DEFAULT_DB_ALIAS, connections
+from django.db import DEFAULT_DB_ALIAS, connections, transaction
 from django.db.utils import OperationalError, ProgrammingError
 
 
@@ -155,7 +155,8 @@ class MyviewConfig(AppConfig):
                         self._record_startup_alias(using)
                         return
 
-                    self._record_startup_alias(using, force=True)
+                    self._ensure_limiter_types(using=using)
+                    self._mark_startup_complete()
                 except Exception:
                     logger.exception("Post-migrate limiter type sync failed")
 
