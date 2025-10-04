@@ -7,6 +7,20 @@ APP_GROUP=${APP_GROUP:-$APP_USER}
 APP_DIR=${APP_DIR:-/app/app-main}
 MANAGE_PY="${APP_DIR}/manage.py"
 
+# Attempt to discover manage.py automatically when the default location is missing.
+if [ ! -f "$MANAGE_PY" ]; then
+  for candidate in "$APP_DIR" /app/app-main /app/app_main /app; do
+    if [ -n "$candidate" ] && [ -f "$candidate/manage.py" ]; then
+      if [ "$candidate" != "$APP_DIR" ]; then
+        echo "Detected manage.py at $candidate/manage.py; using that path instead of $MANAGE_PY."
+      fi
+      APP_DIR="$candidate"
+      MANAGE_PY="$candidate/manage.py"
+      break
+    fi
+  done
+fi
+
 run_as_app_user() {
   if [ "$(id -u)" = "0" ]; then
     if command -v runuser >/dev/null 2>&1; then
