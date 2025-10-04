@@ -3,9 +3,9 @@ version: "3.9"
 services:
   web:
     image: dtuait/api-security-ait-dtu-dk-app-main:python-3.12-bookworm-django-5.1.1-postgres-16-29-09-2025
-    command: gunicorn app.wsgi:application --bind 0.0.0.0:8121
+    command: gunicorn app_main.wsgi:application --bind 0.0.0.0:8121
     restart: unless-stopped
-    working_dir: /app/app_main
+    working_dir: /app/app-main
     expose:
       - "8121"
     depends_on:
@@ -39,7 +39,7 @@ services:
       - media_data:/data/media
     networks:
       - internal
-      - coolify  # best-practice Coolify proxy network
+      - coolify
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.api_security.rule=Host(`${SERVICE_FQDN_WEB}`)"
@@ -73,6 +73,6 @@ volumes:
 networks:
   internal:
     driver: bridge
-  coolify:               # attach to Coolify's proxy
+  coolify:
     external: true
     name: coolify-network
