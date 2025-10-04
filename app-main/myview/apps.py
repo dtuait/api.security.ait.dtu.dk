@@ -1,5 +1,5 @@
 from django.apps import AppConfig
-from django.db import connection
+from django.db import DEFAULT_DB_ALIAS, connection, connections, transaction
 from django.db.utils import OperationalError, ProgrammingError
 import logging
 
@@ -25,11 +25,16 @@ class MyviewConfig(AppConfig):
             from django.db.models.signals import post_migrate
             from .models import ADGroupAssociation
 
-            def _tables_ready():
+            def _tables_ready(using):
                 """Check whether our key tables exist before attempting sync."""
                 try:
-                    with connection.cursor() as cursor:
-                        tables = connection.introspection.table_names(cursor)
+                    db = connections[using]
+                except KeyError:
+                    logger.info("Skipping AD group sync; unknown database alias %s", using)
+                    return False
+                try:
+                    with db.cursor() as cursor:
+                        tables = db.introspection.table_names(cursor)
                 except (ProgrammingError, OperationalError):
                     return False
                 return 'myview_adgroupassociation' in tables
@@ -37,7 +42,8 @@ class MyviewConfig(AppConfig):
             # Ensure sync after migrations to reflect new schema
             def _post_migrate_sync(sender, **kwargs):
                 try:
-                    if not _tables_ready():
+                    using = kwargs.get("using") or DEFAULT_DB_ALIAS
+                    if not _tables_ready(using):
                         logger.info("Skipping post-migrate AD group sync; tables not ready")
                         return
 
@@ -60,7 +66,11 @@ class MyviewConfig(AppConfig):
             from django.db.models.signals import post_migrate
 
             def _post_migrate_refresh(sender, **kwargs):
-                self._refresh_api_endpoints()
+                using = kwargs.get("using") or DEFAULT_DB_ALIAS
+                transaction.on_commit(
+                    lambda: self._refresh_api_endpoints(using=using),
+                    using=using,
+                )
 
             post_migrate.connect(
                 _post_migrate_refresh,
@@ -70,7 +80,7 @@ class MyviewConfig(AppConfig):
         except Exception:
             logger.exception("Failed to register endpoint refresh hook")
 
-    def _refresh_api_endpoints(self):
+    def _refresh_api_endpoints(self, *, using=None):
         """Populate the Endpoint table from the current OpenAPI schema."""
 
         try:
@@ -80,7 +90,6 @@ class MyviewConfig(AppConfig):
             return
 
         from django.apps import apps as django_apps
-        from django.db import connection
         from django.db.utils import OperationalError, ProgrammingError
 
         try:
@@ -89,10 +98,22 @@ class MyviewConfig(AppConfig):
             logger.info("Endpoint model not available; skipping endpoint refresh")
             return
 
+        if not django_apps.ready:
+            logger.info("Skipping endpoint refresh; Django app registry not ready")
+            return
+
+        if using is None:
+            using = DEFAULT_DB_ALIAS
+
         # Ensure the table exists before attempting to update.
         try:
-            with connection.cursor():
-                table_names = set(connection.introspection.table_names())
+            try:
+                db = connections[using]
+            except KeyError:
+                logger.info("Skipping endpoint refresh; unknown database alias %s", using)
+                return
+            with db.cursor() as cursor:
+                table_names = set(db.introspection.table_names(cursor))
             if Endpoint._meta.db_table not in table_names:
                 return
         except (OperationalError, ProgrammingError):
@@ -103,7 +124,7 @@ class MyviewConfig(AppConfig):
             return
 
         try:
-            updateEndpoints()
+            updateEndpoints(using=using, logger=logger)
         except Exception:
             logger.exception("Automatic endpoint refresh failed")
 
@@ -229,10 +250,15 @@ class MyviewConfig(AppConfig):
             from django.db.models.signals import post_migrate
             from .models import ADOrganizationalUnitLimiter
 
-            def _tables_ready():
+            def _tables_ready(using):
                 try:
-                    with connection.cursor() as cursor:
-                        tables = set(connection.introspection.table_names(cursor))
+                    db = connections[using]
+                except KeyError:
+                    logger.info("Skipping AD OU limiter sync; unknown database alias %s", using)
+                    return False
+                try:
+                    with db.cursor() as cursor:
+                        tables = set(db.introspection.table_names(cursor))
                 except (ProgrammingError, OperationalError):
                     return False
 
@@ -240,7 +266,8 @@ class MyviewConfig(AppConfig):
 
             def _post_migrate_sync(sender, **kwargs):
                 try:
-                    if not _tables_ready():
+                    using = kwargs.get("using") or DEFAULT_DB_ALIAS
+                    if not _tables_ready(using):
                         logger.info("Skipping post-migrate AD OU limiter sync; tables not ready")
                         return
 
