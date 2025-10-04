@@ -2,7 +2,7 @@ import logging
 import threading
 
 from django.apps import AppConfig
-from django.db import DEFAULT_DB_ALIAS, connection, connections, transaction
+from django.db import DEFAULT_DB_ALIAS, connections
 from django.db.utils import OperationalError, ProgrammingError
 
 
@@ -16,8 +16,9 @@ class MyviewConfig(AppConfig):
     def ready(self):
         # Register hooks only; avoid touching the database during app initialization.
         self._startup_lock = threading.Lock()
-        self._startup_sync_triggered = False
+        self._startup_sync_in_progress = False
         self._startup_pending_aliases = set()
+        self._startup_completed_aliases = set()
 
         from django.core.signals import request_started
 
@@ -51,17 +52,13 @@ class MyviewConfig(AppConfig):
             # Ensure sync after migrations to reflect new schema
             def _post_migrate_sync(sender, **kwargs):
                 try:
-                    if not self._has_migration_plan(kwargs):
-                        self._record_startup_alias(kwargs.get("using"))
-                        return
-
                     using = kwargs.get("using") or DEFAULT_DB_ALIAS
-                    if not self._ad_group_tables_ready(using):
-                        logger.info("Skipping post-migrate AD group sync; tables not ready")
+
+                    if not self._has_migration_plan(kwargs):
+                        self._record_startup_alias(using)
                         return
 
-                    ADGroupAssociation.ensure_groups_synced_cached()
-                    self._mark_startup_complete()
+                    self._record_startup_alias(using, force=True)
                 except Exception:
                     logger.exception("Post-migrate cached AD group sync failed")
 
@@ -86,10 +83,7 @@ class MyviewConfig(AppConfig):
                     self._record_startup_alias(using)
                     return
 
-                transaction.on_commit(
-                    lambda: self._refresh_endpoints_and_mark_complete(using),
-                    using=using,
-                )
+                self._record_startup_alias(using, force=True)
 
             post_migrate.connect(
                 _post_migrate_refresh,
@@ -155,12 +149,13 @@ class MyviewConfig(AppConfig):
 
             def _post_migrate_sync(sender, **kwargs):
                 try:
+                    using = kwargs.get("using") or DEFAULT_DB_ALIAS
+
                     if not self._has_migration_plan(kwargs):
-                        self._record_startup_alias(kwargs.get("using"))
+                        self._record_startup_alias(using)
                         return
 
-                    self._ensure_limiter_types()
-                    self._mark_startup_complete()
+                    self._record_startup_alias(using, force=True)
                 except Exception:
                     logger.exception("Post-migrate limiter type sync failed")
 
@@ -172,7 +167,7 @@ class MyviewConfig(AppConfig):
         except Exception:
             logger.exception("Failed to register limiter type sync hook")
 
-    def _ensure_limiter_types(self):
+    def _ensure_limiter_types(self, *, using=None):
         """Create or update limiter type entries for known limiter models."""
 
         from django.apps import apps as django_apps
@@ -182,9 +177,18 @@ class MyviewConfig(AppConfig):
             logger.info("Skipping limiter type sync until migrations are applied")
             return
 
+        if using is None:
+            using = DEFAULT_DB_ALIAS
+
         try:
-            with connection.cursor():
-                table_names = set(connection.introspection.table_names())
+            try:
+                db = connections[using]
+            except KeyError:
+                logger.info("Skipping limiter type sync; unknown database alias %s", using)
+                return
+
+            with db.cursor() as cursor:
+                table_names = set(db.introspection.table_names(cursor))
         except (OperationalError, ProgrammingError):
             logger.info("Skipping limiter type sync; database not ready")
             return
@@ -280,17 +284,13 @@ class MyviewConfig(AppConfig):
 
             def _post_migrate_sync(sender, **kwargs):
                 try:
-                    if not self._has_migration_plan(kwargs):
-                        self._record_startup_alias(kwargs.get("using"))
-                        return
-
                     using = kwargs.get("using") or DEFAULT_DB_ALIAS
-                    if not self._ou_limiter_tables_ready(using):
-                        logger.info("Skipping post-migrate AD OU limiter sync; tables not ready")
+
+                    if not self._has_migration_plan(kwargs):
+                        self._record_startup_alias(using)
                         return
 
-                    ADOrganizationalUnitLimiter.sync_default_limiters()
-                    self._mark_startup_complete()
+                    self._record_startup_alias(using, force=True)
                 except Exception:
                     logger.exception("Post-migrate AD OU limiter sync failed")
 
@@ -308,49 +308,68 @@ class MyviewConfig(AppConfig):
             return True
         return bool(plan)
 
-    def _record_startup_alias(self, using):
+    def _record_startup_alias(self, using, *, force=False):
         if using is None:
             using = DEFAULT_DB_ALIAS
+
         if not hasattr(self, "_startup_lock"):
             return
+
         with self._startup_lock:
-            if self._startup_sync_triggered:
+            if force:
+                self._startup_completed_aliases.discard(using)
+            elif using in self._startup_completed_aliases:
                 return
-            self._startup_pending_aliases.add(using)
+
+            if using not in self._startup_pending_aliases:
+                self._startup_pending_aliases.add(using)
 
     def _run_startup_sync_if_needed(self):
         if not hasattr(self, "_startup_lock"):
             return
 
-        with self._startup_lock:
-            if self._startup_sync_triggered or not self._startup_pending_aliases:
-                return
-            aliases = tuple(self._startup_pending_aliases)
-            self._startup_pending_aliases.clear()
-            self._startup_sync_triggered = True
+        while True:
+            with self._startup_lock:
+                if self._startup_sync_in_progress or not self._startup_pending_aliases:
+                    return
+                aliases = tuple(self._startup_pending_aliases)
+                self._startup_pending_aliases.clear()
+                self._startup_sync_in_progress = True
 
-        for alias in aliases:
-            try:
-                from .models import ADGroupAssociation, ADOrganizationalUnitLimiter
+            for alias in aliases:
+                success = False
+                try:
+                    success = self._perform_startup_tasks(alias)
+                except Exception:
+                    logger.exception(
+                        "Deferred startup synchronisation step failed for alias %s",
+                        alias,
+                    )
+                finally:
+                    with self._startup_lock:
+                        if success:
+                            self._startup_completed_aliases.add(alias)
+                        else:
+                            self._startup_pending_aliases.add(alias)
 
-                if self._ad_group_tables_ready(alias):
-                    ADGroupAssociation.ensure_groups_synced_cached()
+            with self._startup_lock:
+                self._startup_sync_in_progress = False
+                if not self._startup_pending_aliases:
+                    break
 
-                self._refresh_api_endpoints(using=alias)
-                self._ensure_limiter_types()
+    def _perform_startup_tasks(self, alias):
+        from .models import ADGroupAssociation, ADOrganizationalUnitLimiter
 
-                if self._ou_limiter_tables_ready(alias):
-                    ADOrganizationalUnitLimiter.sync_default_limiters()
-            except Exception:
-                logger.exception(
-                    "Deferred startup synchronisation step failed for alias %s", alias
-                )
+        if self._ad_group_tables_ready(alias):
+            ADGroupAssociation.ensure_groups_synced_cached()
 
-    def _refresh_endpoints_and_mark_complete(self, using):
-        try:
-            self._refresh_api_endpoints(using=using)
-        finally:
-            self._mark_startup_complete()
+        self._refresh_api_endpoints(using=alias)
+        self._ensure_limiter_types(using=alias)
+
+        if self._ou_limiter_tables_ready(alias):
+            ADOrganizationalUnitLimiter.sync_default_limiters()
+
+        return True
 
     def _ad_group_tables_ready(self, using):
         from django.apps import apps as django_apps
@@ -396,9 +415,3 @@ class MyviewConfig(AppConfig):
             return False
         return 'myview_adorganizationalunitlimiter' in tables
 
-    def _mark_startup_complete(self):
-        if not hasattr(self, "_startup_lock"):
-            return
-        with self._startup_lock:
-            self._startup_sync_triggered = True
-            self._startup_pending_aliases.clear()
