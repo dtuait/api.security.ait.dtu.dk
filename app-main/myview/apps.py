@@ -178,6 +178,10 @@ class MyviewConfig(AppConfig):
         from django.apps import apps as django_apps
         from django.contrib.contenttypes.models import ContentType
 
+        if not django_apps.ready:
+            logger.info("Skipping limiter type sync until migrations are applied")
+            return
+
         try:
             with connection.cursor():
                 table_names = set(connection.introspection.table_names())
@@ -349,6 +353,12 @@ class MyviewConfig(AppConfig):
             self._mark_startup_complete()
 
     def _ad_group_tables_ready(self, using):
+        from django.apps import apps as django_apps
+
+        if not django_apps.ready:
+            logger.info("Skipping initial AD group sync until migrations are applied")
+            return False
+
         try:
             db = connections[using]
         except KeyError:
@@ -365,6 +375,12 @@ class MyviewConfig(AppConfig):
         return 'myview_adgroupassociation' in tables
 
     def _ou_limiter_tables_ready(self, using):
+        from django.apps import apps as django_apps
+
+        if not django_apps.ready:
+            logger.info("Skipping initial AD OU limiter sync until migrations are applied")
+            return False
+
         try:
             db = connections[using]
         except KeyError:
