@@ -92,6 +92,11 @@ if [ -n "${DJANGO_ADMIN_USERNAME}" ] && [ -n "${DJANGO_ADMIN_PASSWORD}" ]; then
   run_as_app_user python manage.py ensure_admin_user || true
 fi
 
+if [ "$1" = "gunicorn" ] && ! command -v gunicorn >/dev/null 2>&1; then
+  echo "gunicorn command not found; falling back to python -m gunicorn" >&2
+  set -- python -m gunicorn "${@:2}"
+fi
+
 if [ "$(id -u)" = "0" ]; then
   if command -v runuser >/dev/null 2>&1; then
     exec runuser --preserve-environment -u "$APP_USER" -- "$@"
