@@ -1,7 +1,9 @@
+import logging
+import threading
+
 from django.apps import AppConfig
 from django.db import DEFAULT_DB_ALIAS, connection, connections, transaction
 from django.db.utils import OperationalError, ProgrammingError
-import logging
 
 
 logger = logging.getLogger(__name__)
@@ -13,10 +15,31 @@ class MyviewConfig(AppConfig):
 
     def ready(self):
         # Register hooks only; avoid touching the database during app initialization.
+        self._startup_lock = threading.Lock()
+        self._startup_sync_triggered = False
+        self._startup_pending_aliases = set()
+
+        from django.core.signals import request_started
+
+        request_started.connect(
+            self._handle_request_started,
+            dispatch_uid="myview_request_started_startup_sync",
+        )
+
+        self._record_startup_alias(DEFAULT_DB_ALIAS)
+
         self._register_ad_group_sync()
         self._register_endpoint_refresh()
         self._register_limiter_type_sync()
         self._register_ou_limiter_sync()
+
+    def _handle_request_started(self, **_kwargs):
+        """Kick off deferred startup tasks once the application handles traffic."""
+
+        try:
+            self._run_startup_sync_if_needed()
+        except Exception:
+            logger.exception("Deferred startup synchronisation failed")
 
     def _register_ad_group_sync(self):
         """Ensure AD groups are synced at startup and after migrations."""
@@ -25,29 +48,20 @@ class MyviewConfig(AppConfig):
             from django.db.models.signals import post_migrate
             from .models import ADGroupAssociation
 
-            def _tables_ready(using):
-                """Check whether our key tables exist before attempting sync."""
-                try:
-                    db = connections[using]
-                except KeyError:
-                    logger.info("Skipping AD group sync; unknown database alias %s", using)
-                    return False
-                try:
-                    with db.cursor() as cursor:
-                        tables = db.introspection.table_names(cursor)
-                except (ProgrammingError, OperationalError):
-                    return False
-                return 'myview_adgroupassociation' in tables
-
             # Ensure sync after migrations to reflect new schema
             def _post_migrate_sync(sender, **kwargs):
                 try:
+                    if not self._has_migration_plan(kwargs):
+                        self._record_startup_alias(kwargs.get("using"))
+                        return
+
                     using = kwargs.get("using") or DEFAULT_DB_ALIAS
-                    if not _tables_ready(using):
+                    if not self._ad_group_tables_ready(using):
                         logger.info("Skipping post-migrate AD group sync; tables not ready")
                         return
 
                     ADGroupAssociation.ensure_groups_synced_cached()
+                    self._mark_startup_complete()
                 except Exception:
                     logger.exception("Post-migrate cached AD group sync failed")
 
@@ -67,8 +81,13 @@ class MyviewConfig(AppConfig):
 
             def _post_migrate_refresh(sender, **kwargs):
                 using = kwargs.get("using") or DEFAULT_DB_ALIAS
+
+                if not self._has_migration_plan(kwargs):
+                    self._record_startup_alias(using)
+                    return
+
                 transaction.on_commit(
-                    lambda: self._refresh_api_endpoints(using=using),
+                    lambda: self._refresh_endpoints_and_mark_complete(using),
                     using=using,
                 )
 
@@ -136,7 +155,12 @@ class MyviewConfig(AppConfig):
 
             def _post_migrate_sync(sender, **kwargs):
                 try:
+                    if not self._has_migration_plan(kwargs):
+                        self._record_startup_alias(kwargs.get("using"))
+                        return
+
                     self._ensure_limiter_types()
+                    self._mark_startup_complete()
                 except Exception:
                     logger.exception("Post-migrate limiter type sync failed")
 
@@ -250,28 +274,19 @@ class MyviewConfig(AppConfig):
             from django.db.models.signals import post_migrate
             from .models import ADOrganizationalUnitLimiter
 
-            def _tables_ready(using):
-                try:
-                    db = connections[using]
-                except KeyError:
-                    logger.info("Skipping AD OU limiter sync; unknown database alias %s", using)
-                    return False
-                try:
-                    with db.cursor() as cursor:
-                        tables = set(db.introspection.table_names(cursor))
-                except (ProgrammingError, OperationalError):
-                    return False
-
-                return 'myview_adorganizationalunitlimiter' in tables
-
             def _post_migrate_sync(sender, **kwargs):
                 try:
+                    if not self._has_migration_plan(kwargs):
+                        self._record_startup_alias(kwargs.get("using"))
+                        return
+
                     using = kwargs.get("using") or DEFAULT_DB_ALIAS
-                    if not _tables_ready(using):
+                    if not self._ou_limiter_tables_ready(using):
                         logger.info("Skipping post-migrate AD OU limiter sync; tables not ready")
                         return
 
                     ADOrganizationalUnitLimiter.sync_default_limiters()
+                    self._mark_startup_complete()
                 except Exception:
                     logger.exception("Post-migrate AD OU limiter sync failed")
 
@@ -282,3 +297,92 @@ class MyviewConfig(AppConfig):
             )
         except Exception:
             logger.exception("Failed to register AD OU limiter sync hooks in AppConfig.ready()")
+
+    def _has_migration_plan(self, kwargs):
+        plan = kwargs.get("plan")
+        if plan is None:
+            return True
+        return bool(plan)
+
+    def _record_startup_alias(self, using):
+        if using is None:
+            using = DEFAULT_DB_ALIAS
+        if not hasattr(self, "_startup_lock"):
+            return
+        with self._startup_lock:
+            if self._startup_sync_triggered:
+                return
+            self._startup_pending_aliases.add(using)
+
+    def _run_startup_sync_if_needed(self):
+        if not hasattr(self, "_startup_lock"):
+            return
+
+        with self._startup_lock:
+            if self._startup_sync_triggered or not self._startup_pending_aliases:
+                return
+            aliases = tuple(self._startup_pending_aliases)
+            self._startup_pending_aliases.clear()
+            self._startup_sync_triggered = True
+
+        for alias in aliases:
+            try:
+                from .models import ADGroupAssociation, ADOrganizationalUnitLimiter
+
+                if self._ad_group_tables_ready(alias):
+                    ADGroupAssociation.ensure_groups_synced_cached()
+
+                self._refresh_api_endpoints(using=alias)
+                self._ensure_limiter_types()
+
+                if self._ou_limiter_tables_ready(alias):
+                    ADOrganizationalUnitLimiter.sync_default_limiters()
+            except Exception:
+                logger.exception(
+                    "Deferred startup synchronisation step failed for alias %s", alias
+                )
+
+    def _refresh_endpoints_and_mark_complete(self, using):
+        try:
+            self._refresh_api_endpoints(using=using)
+        finally:
+            self._mark_startup_complete()
+
+    def _ad_group_tables_ready(self, using):
+        try:
+            db = connections[using]
+        except KeyError:
+            logger.info("Skipping AD group sync; unknown database alias %s", using)
+            return False
+        try:
+            with db.cursor() as cursor:
+                tables = set(db.introspection.table_names(cursor))
+        except (ProgrammingError, OperationalError):
+            return False
+        except Exception:
+            logger.exception("Failed introspecting tables for alias %s", using)
+            return False
+        return 'myview_adgroupassociation' in tables
+
+    def _ou_limiter_tables_ready(self, using):
+        try:
+            db = connections[using]
+        except KeyError:
+            logger.info("Skipping AD OU limiter sync; unknown database alias %s", using)
+            return False
+        try:
+            with db.cursor() as cursor:
+                tables = set(db.introspection.table_names(cursor))
+        except (ProgrammingError, OperationalError):
+            return False
+        except Exception:
+            logger.exception("Failed introspecting OU limiter tables for alias %s", using)
+            return False
+        return 'myview_adorganizationalunitlimiter' in tables
+
+    def _mark_startup_complete(self):
+        if not hasattr(self, "_startup_lock"):
+            return
+        with self._startup_lock:
+            self._startup_sync_triggered = True
+            self._startup_pending_aliases.clear()
