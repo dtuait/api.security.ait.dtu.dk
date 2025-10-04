@@ -133,7 +133,7 @@ try:
             fields = '__all__'
 
         limiter_content_type = forms.ModelChoiceField(
-            queryset=ContentType.objects.filter(model__in=['iplimiter']),
+            queryset=ContentType.objects.none(),
             required=False,
             label="Type of Limiter"
         )
@@ -144,6 +144,7 @@ try:
 
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
+            self.fields['limiter_content_type'].queryset = ContentType.objects.filter(model__in=['iplimiter'])
             if self.instance and self.instance.limiter:
                 self.fields['limiter_content_type'].initial = self.instance.limiter_type
                 self.fields['limiter_object_id'].initial = self.instance.limiter_id
@@ -159,18 +160,23 @@ try:
     # Action form shown in the admin action bar for Endpoints
     class EndpointActionForm(ActionForm):
         limiter_type = forms.ModelChoiceField(
-            queryset=LimiterType.objects.all(),
+            queryset=LimiterType.objects.none(),
             required=False,
             label="Limiter type",
             help_text="Select the limiter type to apply to selected endpoints.",
         )
         ad_groups = forms.ModelMultipleChoiceField(
-            queryset=ADGroupAssociation.objects.all(),
+            queryset=ADGroupAssociation.objects.none(),
             required=False,
             label="AD groups",
             widget=FilteredSelectMultiple("AD groups", is_stacked=False),
             help_text="Pick one or more AD groups to add to selected endpoints.",
         )
+
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.fields['limiter_type'].queryset = LimiterType.objects.all()
+            self.fields['ad_groups'].queryset = ADGroupAssociation.objects.all()
 
     @admin.register(Endpoint)
     class EndpointAdmin(admin.ModelAdmin):
