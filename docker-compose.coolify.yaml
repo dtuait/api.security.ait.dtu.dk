@@ -40,22 +40,22 @@ services:
     networks:
       - internal
       - coolify
-    # labels:
-    #   - "traefik.enable=true"
-    #   - "traefik.http.routers.api_security.rule=Host(`api.security.ait.dtu.dk`)"
-    #   - "traefik.http.routers.api_security.entrypoints=https"
-    #   - "traefik.http.routers.api_security.tls=true"
-    #   - "traefik.http.services.api_security.loadbalancer.server.port=8121"
-    #   - "traefik.docker.network=coolify-network"
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.api_security.rule=Host(`api.security.ait.dtu.dk`)"
       - "traefik.http.routers.api_security.entrypoints=https"
       - "traefik.http.routers.api_security.tls=true"
-      - "traefik.http.routers.api_security.tls.domains[0].main=api.security.ait.dtu.dk"
-      - "traefik.http.routers.api_security.tls.certresolver="
       - "traefik.http.services.api_security.loadbalancer.server.port=8121"
       - "traefik.docker.network=coolify-network"
+    # labels:
+    #   - "traefik.enable=true"
+    #   - "traefik.http.routers.api_security.rule=Host(`api.security.ait.dtu.dk`)"
+    #   - "traefik.http.routers.api_security.entrypoints=https"
+    #   - "traefik.http.routers.api_security.tls=true"
+    #   - "traefik.http.routers.api_security.tls.domains[0].main=api.security.ait.dtu.dk"
+    #   - "traefik.http.routers.api_security.tls.certresolver="
+    #   - "traefik.http.services.api_security.loadbalancer.server.port=8121"
+    #   - "traefik.docker.network=coolify-network"
 
   db:
     image: postgres:16
