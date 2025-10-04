@@ -70,7 +70,9 @@ RUN chmod +x /entrypoint.sh
 COPY . /app
 RUN chown -R django:django /app
 
-USER django
+# Run as root for entrypoint to prepare volumes (creates/chowns static/media),
+# the entrypoint will drop privileges to the django user for Gunicorn.
+USER root
 
 ENV PATH="/home/django/.local/bin:${PATH}" \
     PYTHONPATH=/app \
