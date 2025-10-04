@@ -34,40 +34,45 @@ class GraphConfig(AppConfig):
     name = 'graph'
 
     def ready(self) -> None:  # noqa: C901 (complexity not critical here)
-        # Lazy import to avoid model initialization during app config import
-        from .models import ServiceToken
+        # Defer any database writes to post_migrate to avoid touching the DB during app initialization.
+        from django.db.models.signals import post_migrate
 
-        seeds = (
-            (
-                ServiceToken.Service.GRAPH,
-                os.getenv("GRAPH_ACCESS_BEARER_TOKEN"),
-                os.getenv("GRAPH_ACCESS_BEARER_TOKEN_EXPIRES_ON"),
-            ),
-            (
-                ServiceToken.Service.DEFENDER,
-                os.getenv("DEFENDER_ACCESS_BEARER_TOKEN"),
-                os.getenv("DEFENDER_ACCESS_BEARER_TOKEN_EXPIRES_ON"),
-            ),
-        )
+        def _seed_tokens(sender, **kwargs):
+            # Lazy import inside the signal handler
+            from .models import ServiceToken
 
-        for service, token, expires_raw in seeds:
-            if not token:
-                continue
+            seeds = (
+                (
+                    ServiceToken.Service.GRAPH,
+                    os.getenv("GRAPH_ACCESS_BEARER_TOKEN"),
+                    os.getenv("GRAPH_ACCESS_BEARER_TOKEN_EXPIRES_ON"),
+                ),
+                (
+                    ServiceToken.Service.DEFENDER,
+                    os.getenv("DEFENDER_ACCESS_BEARER_TOKEN"),
+                    os.getenv("DEFENDER_ACCESS_BEARER_TOKEN_EXPIRES_ON"),
+                ),
+            )
 
-            try:
-                with transaction.atomic():
-                    obj, _created = ServiceToken.objects.select_for_update().get_or_create(
-                        service=service,
-                        defaults={
-                            "access_token": token,
-                            "expires_at": _parse_expiry(expires_raw),
-                        },
-                    )
-                    # Only set if the DB does not already have a token value
-                    if not obj.access_token:
-                        obj.access_token = token
-                        obj.expires_at = _parse_expiry(expires_raw)
-                        obj.save(update_fields=["access_token", "expires_at", "updated_at"])
-            except (OperationalError, ProgrammingError):
-                # Database not ready (e.g., before migrations) — skip silently
-                return
+            for service, token, expires_raw in seeds:
+                if not token:
+                    continue
+
+                try:
+                    with transaction.atomic():
+                        obj, _created = ServiceToken.objects.select_for_update().get_or_create(
+                            service=service,
+                            defaults={
+                                "access_token": token,
+                                "expires_at": _parse_expiry(expires_raw),
+                            },
+                        )
+                        if not obj.access_token:
+                            obj.access_token = token
+                            obj.expires_at = _parse_expiry(expires_raw)
+                            obj.save(update_fields=["access_token", "expires_at", "updated_at"])
+                except (OperationalError, ProgrammingError):
+                    # Database may not be ready; skip silently
+                    return
+
+        post_migrate.connect(_seed_tokens, sender=self, dispatch_uid="graph_post_migrate_seed_tokens")

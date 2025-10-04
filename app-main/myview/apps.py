@@ -12,9 +12,9 @@ class MyviewConfig(AppConfig):
     name = 'myview'
 
     def ready(self):
+        # Register hooks only; avoid touching the database during app initialization.
         self._register_ad_group_sync()
         self._register_endpoint_refresh()
-        self._refresh_api_endpoints()
         self._register_limiter_type_sync()
         self._register_ou_limiter_sync()
 
@@ -33,15 +33,6 @@ class MyviewConfig(AppConfig):
                 except (ProgrammingError, OperationalError):
                     return False
                 return 'myview_adgroupassociation' in tables
-
-            # Ensure initial sync on app startup (cached/throttled)
-            if _tables_ready():
-                try:
-                    ADGroupAssociation.ensure_groups_synced_cached()
-                except Exception:
-                    logger.exception("Initial cached AD group sync in AppConfig.ready() failed")
-            else:
-                logger.info("Skipping initial AD group sync until migrations are applied")
 
             # Ensure sync after migrations to reflect new schema
             def _post_migrate_sync(sender, **kwargs):
@@ -118,11 +109,6 @@ class MyviewConfig(AppConfig):
 
     def _register_limiter_type_sync(self):
         """Ensure limiter types exist both at startup and after migrations."""
-
-        try:
-            self._ensure_limiter_types()
-        except Exception:
-            logger.exception("Initial limiter type sync failed")
 
         try:
             from django.db.models.signals import post_migrate
@@ -251,14 +237,6 @@ class MyviewConfig(AppConfig):
                     return False
 
                 return 'myview_adorganizationalunitlimiter' in tables
-
-            if _tables_ready():
-                try:
-                    ADOrganizationalUnitLimiter.sync_default_limiters()
-                except Exception:
-                    logger.exception("Initial AD OU limiter sync in AppConfig.ready() failed")
-            else:
-                logger.info("Skipping initial AD OU limiter sync until migrations are applied")
 
             def _post_migrate_sync(sender, **kwargs):
                 try:
