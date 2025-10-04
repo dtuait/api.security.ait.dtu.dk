@@ -2,6 +2,7 @@ version: "3.9"
 
 services:
   web:
+    container_name: api-security-web
     image: dtuait/api-security-ait-dtu-dk-app-main:python-3.12-bookworm-django-5.1.1-postgres-16-04-10-2025
     # Use Dockerfile's default CMD: gunicorn app.wsgi:application --bind 0.0.0.0:8121
     restart: unless-stopped
