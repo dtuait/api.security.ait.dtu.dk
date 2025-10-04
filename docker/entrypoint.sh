@@ -24,7 +24,7 @@ fi
 run_as_app_user() {
   if [ "$(id -u)" = "0" ]; then
     if command -v runuser >/dev/null 2>&1; then
-      runuser -u "$APP_USER" -- "$@"
+      runuser --preserve-environment -u "$APP_USER" -- "$@"
     else
       su -m "$APP_USER" -c "$*"
     fi
@@ -94,7 +94,7 @@ fi
 
 if [ "$(id -u)" = "0" ]; then
   if command -v runuser >/dev/null 2>&1; then
-    exec runuser -u "$APP_USER" -- "$@"
+    exec runuser --preserve-environment -u "$APP_USER" -- "$@"
   else
     exec su -m "$APP_USER" -c "$*"
   fi
