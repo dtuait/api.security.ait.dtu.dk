@@ -4,14 +4,23 @@ services:
   web:
     image: dtuait/api-security-ait-dtu-dk-app-main:python-3.12-bookworm-django-5.1.1-postgres-16-29-09-2025
     command: gunicorn app.wsgi:application --bind 0.0.0.0:8121
+    restart: unless-stopped
+    expose:
+      - "8121"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8121/healthz/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     environment:
       SERVICE_FQDN_WEB: ${SERVICE_FQDN_WEB:-api.security.ait.dtu.dk}
       SERVICE_URL_WEB: ${SERVICE_URL_WEB:-https://api.security.ait.dtu.dk}
-      service_fqdn_web: ${SERVICE_FQDN_WEB:-api.security.ait.dtu.dk}
-      service_url_web: ${SERVICE_URL_WEB:-https://api.security.ait.dtu.dk}
       DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-api.security.ait.dtu.dk,localhost,127.0.0.1}
       DJANGO_CSRF_TRUSTED_ORIGINS: ${DJANGO_CSRF_TRUSTED_ORIGINS:-https://api.security.ait.dtu.dk}
-      DJANGO_CSRF_COOKIE_DOMAIN: ${DJANGO_CSRF_COOKIE_DOMAIN:-}
       DJANGO_DEBUG: ${DJANGO_DEBUG:-false}
       DJANGO_STATIC_ROOT: /data/static
       DJANGO_MEDIA_ROOT: /data/media
@@ -24,32 +33,19 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
       POSTGRES_HOST: db
       POSTGRES_PORT: 5432
-    depends_on:
-      db:
-        condition: service_healthy
     volumes:
       - static_data:/data/static
       - media_data:/data/media
-    expose:
-      - "8121"
-    healthcheck:
-      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8121/healthz/ || exit 1"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 30s
-    restart: unless-stopped
     networks:
       - internal
-      - traefik
+      - coolify  # best-practice Coolify proxy network
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.api_security.rule=Host(`${SERVICE_FQDN_WEB}`)"
       - "traefik.http.routers.api_security.entrypoints=https"
       - "traefik.http.routers.api_security.tls=true"
       - "traefik.http.services.api_security.loadbalancer.server.port=8121"
-      - "traefik.docker.network=${TRAEFIK_NETWORK:-coolify-network}"
-
+      - "traefik.docker.network=coolify-network"
 
   db:
     image: postgres:16
@@ -76,6 +72,6 @@ volumes:
 networks:
   internal:
     driver: bridge
-  traefik:
+  coolify:               # attach to Coolify's proxy
     external: true
-    name: ${TRAEFIK_NETWORK:-coolify-network}
+    name: coolify-network
