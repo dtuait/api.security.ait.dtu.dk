@@ -43,7 +43,7 @@ services:
       - media_data:/data/media
     networks:
       - internal
-      - coolify
+      - proxy
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.api_security.rule=Host(`api.security.ait.dtu.dk`)"
@@ -52,7 +52,7 @@ services:
       - "traefik.http.routers.api_security.tls.domains[0].main=api.security.ait.dtu.dk"
       - "traefik.http.routers.api_security.tls.certresolver="
       - "traefik.http.services.api_security.loadbalancer.server.port=8121"
-      - "traefik.docker.network=coolify-network"
+      - "traefik.docker.network=${TRAEFIK_NETWORK:-coolify}"
 
   db:
     image: postgres:16
@@ -79,6 +79,6 @@ volumes:
 networks:
   internal:
     driver: bridge
-  coolify:
+  proxy:
     external: true
-    name: coolify-network
+    name: ${TRAEFIK_NETWORK:-coolify}
