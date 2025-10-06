@@ -24,6 +24,8 @@ services:
       DJANGO_SESSION_COOKIE_SECURE: "false"
       DJANGO_CSRF_COOKIE_SECURE: "false"
       DJANGO_SECURE_SSL_REDIRECT: "false"
+      # OAuth redirect for local testing (must be allowed in Azure app)
+      AZURE_REDIRECT_URI: "http://localhost:8121/auth/callback"
       # Database
       POSTGRES_DB: app
       POSTGRES_USER: app
@@ -31,6 +33,8 @@ services:
       POSTGRES_HOST: db
       POSTGRES_PORT: 5432
     volumes:
+      # Mount local source to override image code for test runs
+      - ./app-main:/app/app-main
       - static_data:/data/static
       - media_data:/data/media
     healthcheck:

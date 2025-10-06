@@ -164,11 +164,15 @@ DEBUG = _as_bool(os.getenv("DJANGO_DEBUG"), False)
 # CAS_VERSION = '2'
 # CAS_REDIRECT_URL = '/login-redirector/'
 
+_service_url_web = os.getenv('SERVICE_URL_WEB', 'http://localhost:8121').rstrip('/')
+_redirect_uri_default = f"{_service_url_web}/auth/callback"
+
 AZURE_AD = {
     'TENANT_ID': os.getenv('AZURE_TENANT_ID'),
     'CLIENT_ID': os.getenv('AIT_SOC_MSAL_VICRE_CLIENT_ID'),
     'CLIENT_SECRET': os.getenv('AIT_SOC_MSAL_VICRE_MSAL_SECRET_VALUE'),
-    'REDIRECT_URI': os.getenv('AZURE_REDIRECT_URI'),  # Update with actual redirect URI
+    # Prefer explicit override, fall back to SERVICE_URL_WEB + /auth/callback
+    'REDIRECT_URI': os.getenv('AZURE_REDIRECT_URI', _redirect_uri_default),
     'AUTHORITY': f'https://login.microsoftonline.com/{os.getenv("AZURE_TENANT_ID")}',
     'SCOPE': ['User.Read']  # Add other scopes if needed
 }
