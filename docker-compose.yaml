@@ -6,7 +6,6 @@ services:
     image: dtuait/api-security-ait-dtu-dk-app-main:python-3.12-bookworm-django-5.1.1-postgres-16-04-10-2025
     restart: unless-stopped
     working_dir: /app/app-main
-    # Use the image's default entrypoint so database migrations and collectstatic run automatically.
     command: gunicorn app.wsgi:application --bind 0.0.0.0:8121
     ports:
       - "8121:8121"
