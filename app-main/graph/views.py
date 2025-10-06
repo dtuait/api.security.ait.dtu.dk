@@ -3,6 +3,7 @@ from django.http import JsonResponse
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 import json
+import logging
 
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework.authentication import TokenAuthentication
@@ -15,6 +16,35 @@ from .services import execute_hunting_query, execute_get_user, execute_list_user
 
 from rest_framework.decorators import action
 from rest_framework.authentication import SessionAuthentication, TokenAuthentication
+
+logger = logging.getLogger(__name__)
+
+
+def _extract_graph_error(response):
+    if response is None:
+        return 'No response received from Microsoft Graph.'
+
+    try:
+        data = response.json()
+    except ValueError:
+        text = getattr(response, 'text', '')
+        return text or 'Microsoft Graph returned an error without a body.'
+
+    if not isinstance(data, dict):
+        return data
+
+    error = data.get('error')
+    if isinstance(error, dict):
+        message = error.get('message')
+        code = error.get('code')
+        if message and code:
+            return f"{code}: {message}"
+        if message:
+            return message
+        if code:
+            return code
+
+    return data
 
 
 
@@ -310,15 +340,36 @@ class DeleteSoftwareMfaViewSet(APIAuthBaseViewSet):
     @action(detail=False, methods=['delete'], url_path='delete_software_mfa')
     def delete_software_mfa(self, request, user_id__or__user_principalname, software_oath_method_id):
         try:
-            response, status_code = execute_delete_software_mfa_method(user_id__or__user_principalname, software_oath_method_id)
+            response, status_code = execute_delete_software_mfa_method(
+                user_id__or__user_principalname,
+                software_oath_method_id,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.exception('Failed to delete software MFA for %s', user_id__or__user_principalname)
+            return JsonResponse(
+                {
+                    'status': 'error',
+                    'message': 'Failed to delete software MFA.',
+                    'details': str(exc),
+                },
+                status=500,
+            )
 
-            if status_code == 204:
-                return JsonResponse({'status': 'success', 'message': 'Successfully deleted software MFA method.'}, status=204)
-            else:
-                return JsonResponse({'status': 'error', 'message': 'Failed to delete software MFA method.'}, status=status_code)
+        if status_code == 204:
+            return JsonResponse(
+                {'status': 'success', 'message': 'Successfully deleted software MFA method.'},
+                status=204,
+            )
 
-        except Exception as e:
-            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+        detail = _extract_graph_error(response)
+        return JsonResponse(
+            {
+                'status': 'error',
+                'message': 'Microsoft Graph did not confirm deletion.',
+                'details': detail,
+            },
+            status=status_code or 502,
+        )
 
 
 
@@ -420,20 +471,36 @@ class DeleteMfaViewSet(APIAuthBaseViewSet):
         from .services import execute_microsoft_authentication_method as delete_authentication_method
 
         try:
-            response, status_code = delete_authentication_method(user_id__or__user_principalname, microsoft_authenticator_method_id)
+            response, status_code = delete_authentication_method(
+                user_id__or__user_principalname,
+                microsoft_authenticator_method_id,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.exception('Failed to delete Microsoft authenticator method for %s', user_id__or__user_principalname)
+            return JsonResponse(
+                {
+                    'status': 'error',
+                    'message': 'Failed to delete authentication method.',
+                    'details': str(exc),
+                },
+                status=500,
+            )
 
+        if status_code == 204:
+            return JsonResponse(
+                {'status': 'success', 'message': 'Successfully deleted authentication method.'},
+                status=204,
+            )
 
-            # if response.status_code == 204:
-            if status_code == 204:
-                return JsonResponse({'status': 'success', 'message': 'Successfully deleted authentication method.'}, status=204)
-
-
-
-            
-
-        except Exception as e:
-            return JsonResponse({'status': 'error', 'message': 'Failed to delete authentication method.'}, status=403)
-            # return Response({'status': 'error', 'message': 'You do not have permission to delete methods on this user'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        detail = _extract_graph_error(response)
+        return JsonResponse(
+            {
+                'status': 'error',
+                'message': 'Microsoft Graph did not confirm deletion.',
+                'details': detail,
+            },
+            status=status_code or 502,
+        )
 
         
 
@@ -522,18 +589,36 @@ class DeletePhoneViewSet(APIAuthBaseViewSet):
         from .services import execute_phone_authentication_method as phone_authentication_method
 
         try:
-            response, status_code = phone_authentication_method(user_id__or__user_principalname, phone_authenticator_method_id)
+            response, status_code = phone_authentication_method(
+                user_id__or__user_principalname,
+                phone_authenticator_method_id,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.exception('Failed to delete phone authentication method for %s', user_id__or__user_principalname)
+            return JsonResponse(
+                {
+                    'status': 'error',
+                    'message': 'Failed to delete phone authentication method.',
+                    'details': str(exc),
+                },
+                status=500,
+            )
 
+        if status_code == 204:
+            return JsonResponse(
+                {'status': 'success', 'message': 'Successfully deleted phone authentication method.'},
+                status=204,
+            )
 
-            if status_code == 204:
-                return JsonResponse({'status': 'success', 'message': 'Successfully deleted authentication method.'}, status=204)
-
-
-            
-
-        except Exception as e:
-            return JsonResponse({'status': 'error', 'message': 'Failed to delete phone authentication method.'}, status=403)
-            # return Response({'status': 'error', 'message': 'You do not have permission to delete methods on this user'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        detail = _extract_graph_error(response)
+        return JsonResponse(
+            {
+                'status': 'error',
+                'message': 'Microsoft Graph did not confirm deletion.',
+                'details': detail,
+            },
+            status=status_code or 502,
+        )
 
         
 
@@ -660,4 +745,3 @@ class HuntingQueryViewSet(APIAuthBaseViewSet):
         except Exception as e:
             # Handle other unforeseen exceptions
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
