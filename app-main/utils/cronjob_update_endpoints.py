@@ -35,36 +35,61 @@ def updateEndpoints(*, using=None, logger: logging.Logger | None = None):
 
     schema = generator.get_schema(request=None, public=True)
 
-    # Create a set of all endpoint paths in the Django model
-    existing_endpoints = set(manager.values_list('path', flat=True))
+    if isinstance(schema, dict):
+        paths = schema.get('paths', {})
+    else:
+        paths = getattr(schema, 'paths', {}) or {}
 
-    # Ensure the special 'any' path and method exists
-    # Endpoint.objects.get_or_create(path='any', method='any')
+    common_http_methods = {
+        'get', 'post', 'put', 'patch', 'delete', 'head', 'options', 'trace'
+    }
 
-    # Loop through the paths in the schema
-    for path, path_data in schema['paths'].items():
-        for method in path_data.keys():
-            # Normalize method to uppercase
-            common_http_methods = ['get', 'post', 'put', 'patch', 'delete', 'head', 'options', 'trace']
-            method = method.lower()
-            method = path_data.operations[0][0] if path_data.operations[0][0] in common_http_methods else None
-            # Check if the endpoint (with method) already exists
-            endpoint, created = manager.get_or_create(
-                path=path,
-                method=method,
-                defaults={'path': path, 'method': method}
-            )
-            if created:
-                log.info("Added new endpoint: %s %s", method, path)
-            else:
-                # Remove the endpoint from the set of existing endpoints if it still exists in the schema
-                existing_endpoints.discard(path)
+    existing_endpoints = {
+        (path, method)
+        for path, method in manager.values_list('path', 'method')
+    }
+    seen_paths = set()
 
-    # Delete any endpoints that were not found in the schema
-    if existing_endpoints:
-        manager.filter(path__in=existing_endpoints).delete()
+    for path, path_item in (paths.items() if hasattr(paths, 'items') else []):
+        operations = []
+        if hasattr(path_item, 'operations') and path_item.operations:
+            operations = path_item.operations
+        elif isinstance(path_item, dict):
+            operations = [
+                (method, op)
+                for method, op in path_item.items()
+                if method.lower() in common_http_methods
+            ]
 
-    log.info("Completed updating endpoints.")
+        if not operations:
+            continue
+
+        seen_paths.add(path)
+
+        # Endpoint model enforces unique paths, so take the first HTTP method
+        method = operations[0][0].lower()
+        if method not in common_http_methods:
+            method = 'get'
+
+        endpoint, created = manager.update_or_create(
+            path=path,
+            defaults={'method': method},
+        )
+
+        if created:
+            log.info("Added new endpoint: %s %s", method, path)
+        else:
+            existing_endpoints.discard((endpoint.path, endpoint.method))
+
+    # Delete any endpoints that were not touched this run
+    to_remove = {
+        path for path, method in existing_endpoints if path not in seen_paths
+    }
+    if to_remove:
+        manager.filter(path__in=to_remove).delete()
+        log.info("Removed %s endpoints no longer present", len(to_remove))
+
+    log.info("Completed updating endpoints. total=%s", manager.count())
 
 
 def run():

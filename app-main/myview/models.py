@@ -351,7 +351,6 @@ class ADGroupAssociation(BaseModel):
         """
         from django.core.cache import cache
         from django.conf import settings
-        import time
         import threading
 
         if max_age_seconds is None:
