@@ -15,6 +15,8 @@ dotenv_path = '/usr/src/project/.devcontainer/.env'
 load_dotenv(dotenv_path=dotenv_path)
 from django.utils.decorators import method_decorator
 import urllib.parse
+import time
+import logging
 from django.http import JsonResponse
 from django.views.decorators.http import require_GET
 from django.views.decorators.cache import cache_control
@@ -338,21 +340,38 @@ def msal_director(request):
 
 
 def msal_login(request):
-    # Initialize the MSAL Confidential Client Application with the settings from your configuration
-    # print("Client Secret from env:", os.getenv('AIT_SOC_MSAL_VICRE_CLIENT_SECRET'))
-    client_app = ConfidentialClientApplication(
+    logger = logging.getLogger(__name__)
+    start_time = time.monotonic()
+    logger.info(
+        "MSAL login start client_id=%s redirect_uri=%s scope=%s",
         settings.AZURE_AD['CLIENT_ID'],
-        authority=settings.AZURE_AD['AUTHORITY'],
-        client_credential=settings.AZURE_AD['CLIENT_SECRET'],
+        settings.AZURE_AD['REDIRECT_URI'],
+        settings.AZURE_AD['SCOPE'],
     )
 
-    # Get the URL of the Microsoft login page
-    auth_url = client_app.get_authorization_request_url(
-        scopes=settings.AZURE_AD['SCOPE'],
-        redirect_uri=settings.AZURE_AD['REDIRECT_URI']
-    )
-    
-    # Redirect to the Microsoft login page
+    try:
+        client_app = ConfidentialClientApplication(
+            settings.AZURE_AD['CLIENT_ID'],
+            authority=settings.AZURE_AD['AUTHORITY'],
+            client_credential=settings.AZURE_AD['CLIENT_SECRET'],
+        )
+        logger.debug("MSAL client init OK in %.1fms", (time.monotonic() - start_time) * 1000)
+
+        # Get the URL of the Microsoft login page
+        auth_started = time.monotonic()
+        auth_url = client_app.get_authorization_request_url(
+            scopes=settings.AZURE_AD['SCOPE'],
+            redirect_uri=settings.AZURE_AD['REDIRECT_URI']
+        )
+        logger.info(
+            "MSAL auth URL generated in %.1fms total_elapsed=%.1fms",
+            (time.monotonic() - auth_started) * 1000,
+            (time.monotonic() - start_time) * 1000,
+        )
+    except Exception:
+        logger.exception("MSAL login failed")
+        raise
+
     return redirect(auth_url)
 
 
@@ -423,7 +442,6 @@ def msal_logout(request):
     response = redirect(logout_url)
     response.delete_cookie('csrftoken')
     return response
-
 
 
 
