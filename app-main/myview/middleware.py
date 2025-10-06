@@ -434,20 +434,24 @@ class AccessControlMiddleware(MiddlewareMixin):
 
         # Periodically refresh AD groups + memberships using cache for performance
         sync_started = time.monotonic()
+        sync_attempted = False
         try:
-            from myview.models import ADGroupAssociation
-            block_sync = request.user.is_authenticated or bool(token)
-            sync_triggered = ADGroupAssociation.ensure_groups_synced_cached(block=block_sync)
+            if getattr(settings, 'AD_GROUP_AUTO_SYNC_ENABLED', False):
+                from myview.models import ADGroupAssociation
+                block_sync = request.user.is_authenticated or bool(token)
+                sync_triggered = ADGroupAssociation.ensure_groups_synced_cached(block=block_sync)
+                sync_attempted = True
         except Exception:
             logger.warning('AccessControl AD group sync failed', exc_info=True)
         else:
-            logger.debug(
-                'AccessControl AD group sync %s in %.1fms',
-                'ran inline' if block_sync and sync_triggered else (
-                    'scheduled async' if (not block_sync and sync_triggered) else 'skipped (fresh cache)'
-                ),
-                (time.monotonic() - sync_started) * 1000,
-            )
+            if sync_attempted:
+                logger.debug(
+                    'AccessControl AD group sync %s in %.1fms',
+                    'ran inline' if block_sync and sync_triggered else (
+                        'scheduled async' if (not block_sync and sync_triggered) else 'skipped (fresh cache)'
+                    ),
+                    (time.monotonic() - sync_started) * 1000,
+                )
 
         if normalized_request_path == '/favicon.ico/':
             action = 'favicon'

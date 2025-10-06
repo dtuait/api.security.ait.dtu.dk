@@ -29,10 +29,8 @@ class MyviewConfig(AppConfig):
 
         self._record_startup_alias(DEFAULT_DB_ALIAS)
 
-        self._register_ad_group_sync()
         self._register_endpoint_refresh()
         self._register_limiter_type_sync()
-        self._register_ou_limiter_sync()
 
     def _handle_request_started(self, **_kwargs):
         """Kick off deferred startup tasks once the application handles traffic."""
@@ -359,16 +357,8 @@ class MyviewConfig(AppConfig):
                     break
 
     def _perform_startup_tasks(self, alias):
-        from .models import ADGroupAssociation, ADOrganizationalUnitLimiter
-
-        if self._ad_group_tables_ready(alias):
-            ADGroupAssociation.ensure_groups_synced_cached()
-
         self._refresh_api_endpoints(using=alias)
         self._ensure_limiter_types(using=alias)
-
-        if self._ou_limiter_tables_ready(alias):
-            ADOrganizationalUnitLimiter.sync_default_limiters()
 
         return True
 
@@ -415,4 +405,3 @@ class MyviewConfig(AppConfig):
             logger.exception("Failed introspecting OU limiter tables for alias %s", using)
             return False
         return 'myview_adorganizationalunitlimiter' in tables
-
