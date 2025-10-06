@@ -10,6 +10,7 @@ from django.utils.translation import gettext_lazy as _
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -362,6 +363,10 @@ class ADGroupAssociation(BaseModel):
 
         now = time.time()
         last = cache.get(last_key)
+        if not getattr(settings, 'AD_GROUP_AUTO_SYNC_ENABLED', False):
+            logger.debug('AD group auto-sync disabled via AD_GROUP_AUTO_SYNC_ENABLED')
+            return False
+
         if last and (now - float(last)) < max_age_seconds:
             return False  # Fresh enough
 
@@ -371,8 +376,24 @@ class ADGroupAssociation(BaseModel):
 
         def _run_sync():
             try:
-                cls.sync_ad_groups(None)
+                logger.info(
+                    'AD group sync starting block=%s refresh_members=%s bases=%s',
+                    block,
+                    getattr(settings, 'AD_GROUP_SYNC_REFRESH_MEMBERS', False),
+                    ','.join(getattr(settings, 'AD_GROUP_SYNC_BASE_DNS', ())) or 'unset',
+                )
+                start = time.monotonic()
+                groups = cls.sync_ad_groups(
+                    None,
+                    sync_members=getattr(settings, 'AD_GROUP_SYNC_REFRESH_MEMBERS', False),
+                )
+                duration = time.monotonic() - start
                 cache.set(last_key, time.time(), timeout=max_age_seconds)
+                logger.info(
+                    'AD group sync finished groups=%s duration=%.1fs',
+                    len(groups) if groups is not None else 0,
+                    duration,
+                )
             except Exception:
                 logger.exception('Periodic AD group sync failed')
             finally:
@@ -390,6 +411,9 @@ class ADGroupAssociation(BaseModel):
     def sync_user_ad_groups(username, remove_groups_that_are_not_used_by_any_endpoint=False):
         from active_directory.services import execute_active_directory_query
         from django.contrib.auth import get_user_model
+
+        sync_started = time.monotonic()
+        logger.info('User AD group sync starting user=%s', username)
 
         User = get_user_model()
         user = User.objects.get(username=username)
@@ -447,6 +471,15 @@ class ADGroupAssociation(BaseModel):
 
         user.save()
         user.refresh_from_db()
+
+        logger.info(
+            'User AD group sync finished user=%s total=%s added=%s removed=%s duration=%.1fs',
+            username,
+            len(ad_groups),
+            len(groups_to_add),
+            len(groups_to_remove),
+            time.monotonic() - sync_started,
+        )
 
     @staticmethod
     def delete_unused_groups():
@@ -612,11 +645,16 @@ class ADGroupAssociation(BaseModel):
         synced_groups = []
         prefix_to_seen = {}
         enumerated_prefixes = set()
+        total_groups = 0
+        member_refreshes = 0
+        started = time.monotonic()
 
         for base_dn in normalized_base_dns:
             canonical_prefix = cls._dn_to_canonical_prefix(base_dn)
             prefix_to_seen.setdefault(canonical_prefix, set())
 
+            base_started = time.monotonic()
+            base_count = 0
             try:
                 query_results = execute_active_directory_query(
                     base_dn=base_dn,
@@ -659,12 +697,22 @@ class ADGroupAssociation(BaseModel):
 
                 prefix_to_seen[canonical_prefix].add(distinguished_name)
                 synced_groups.append(group)
+                base_count += 1
+                total_groups += 1
 
                 if sync_members:
                     try:
                         group.sync_ad_group_members()
+                        member_refreshes += 1
                     except Exception:
                         logger.exception('Failed to sync members for AD group %s', distinguished_name)
+
+            logger.info(
+                'Enumerated %s groups under %s in %.1fs',
+                base_count,
+                canonical_prefix or base_dn,
+                time.monotonic() - base_started,
+            )
 
         if delete_missing:
             for canonical_prefix in enumerated_prefixes:
@@ -683,6 +731,13 @@ class ADGroupAssociation(BaseModel):
                         removed_count,
                         canonical_prefix,
                     )
+
+        logger.info(
+            'AD group sync summary groups=%s member_refreshes=%s duration=%.1fs',
+            total_groups,
+            member_refreshes,
+            time.monotonic() - started,
+        )
 
         return synced_groups
 

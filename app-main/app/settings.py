@@ -137,6 +137,8 @@ if not default_group_sync_bases:
 
 AD_GROUP_SYNC_BASE_DNS = tuple(default_group_sync_bases)
 AD_GROUP_SYNC_DELETE_MISSING = _as_bool(os.getenv('AD_GROUP_SYNC_DELETE_MISSING'), True)
+AD_GROUP_AUTO_SYNC_ENABLED = _as_bool(os.getenv('AD_GROUP_AUTO_SYNC_ENABLED'), False)
+AD_GROUP_SYNC_REFRESH_MEMBERS = _as_bool(os.getenv('AD_GROUP_SYNC_REFRESH_MEMBERS'), False)
 
 default_ou_limiter_bases = _split_env_list(os.getenv('AD_OU_LIMITER_BASES'))
 if not default_ou_limiter_bases:
