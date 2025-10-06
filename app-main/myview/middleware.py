@@ -436,12 +436,16 @@ class AccessControlMiddleware(MiddlewareMixin):
         sync_started = time.monotonic()
         try:
             from myview.models import ADGroupAssociation
-            ADGroupAssociation.ensure_groups_synced_cached()
+            block_sync = request.user.is_authenticated or bool(token)
+            sync_triggered = ADGroupAssociation.ensure_groups_synced_cached(block=block_sync)
         except Exception:
             logger.warning('AccessControl AD group sync failed', exc_info=True)
         else:
             logger.debug(
-                'AccessControl AD group sync completed in %.1fms',
+                'AccessControl AD group sync %s in %.1fms',
+                'ran inline' if block_sync and sync_triggered else (
+                    'scheduled async' if (not block_sync and sync_triggered) else 'skipped (fresh cache)'
+                ),
                 (time.monotonic() - sync_started) * 1000,
             )
 

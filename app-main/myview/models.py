@@ -340,15 +340,18 @@ class ADGroupAssociation(BaseModel):
         return segments[-1]
 
     @classmethod
-    def ensure_groups_synced_cached(cls, max_age_seconds=None):
+    def ensure_groups_synced_cached(cls, max_age_seconds=None, *, block: bool = True):
         """Ensure AD groups under configured bases are synced, with caching.
 
         - Uses Django cache to throttle sync frequency.
         - Employs a simple lock to avoid concurrent syncs.
+        - When ``block`` is False the sync is executed in a background thread so the
+          caller is not held up by the network roundtrip against Active Directory.
         """
         from django.core.cache import cache
         from django.conf import settings
         import time
+        import threading
 
         if max_age_seconds is None:
             # Reuse user-group cache timeout for simplicity unless overridden
@@ -365,15 +368,22 @@ class ADGroupAssociation(BaseModel):
         # Acquire a short-lived lock to prevent stampede
         if not cache.add(lock_key, '1', timeout=60):
             return False
-        try:
-            cls.sync_ad_groups(None)
-            cache.set(last_key, now, timeout=max_age_seconds)
+
+        def _run_sync():
+            try:
+                cls.sync_ad_groups(None)
+                cache.set(last_key, time.time(), timeout=max_age_seconds)
+            except Exception:
+                logger.exception('Periodic AD group sync failed')
+            finally:
+                cache.delete(lock_key)
+
+        if block:
+            _run_sync()
             return True
-        except Exception:
-            logger.exception('Periodic AD group sync failed')
-            return False
-        finally:
-            cache.delete(lock_key)
+
+        threading.Thread(target=_run_sync, daemon=True).start()
+        return True
 
 
     # This function should only sync with already existing groups in the django db.
