@@ -45,21 +45,28 @@ def _first_level_children(base_canonical: str) -> list[str]:
     return sorted(children)
 
 
-def run():  # pragma: no cover - invoked from admin utility runner
-    base_prefixes = getattr(
-        settings,
-        'AD_OU_LIMITER_BASES',
-        ('win.dtu.dk/DTUBaseUsers',),
-    )
+def list_dtu_baseusers_ous(base_prefixes=None) -> list[tuple[str, list[str]]]:
+    if base_prefixes is None:
+        base_prefixes = getattr(
+            settings,
+            'AD_OU_LIMITER_BASES',
+            ('win.dtu.dk/DTUBaseUsers',),
+        )
 
+    results: list[tuple[str, list[str]]] = []
     for base in base_prefixes:
-        print(f"Base OU: {base}")
         try:
             children = _first_level_children(base)
         except Exception as exc:  # noqa: BLE001
-            print(f"  Error: {exc}")
+            results.append((base, [f"Error: {exc}"]))
             continue
+        results.append((base, children))
+    return results
 
+
+def run():  # pragma: no cover - invoked from admin utility runner
+    for base, children in list_dtu_baseusers_ous():
+        print(f"Base OU: {base}")
         if not children:
             print("  (no child OUs discovered)")
         else:

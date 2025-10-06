@@ -408,6 +408,7 @@ try:
         filter_horizontal = ('ad_groups',)  
         list_per_page = 10  # Display 10 objects per page
         readonly_fields = ('canonical_name', 'distinguished_name')  # Make these fields read-only
+        change_list_template = "admin/myview/adorganizationalunitlimiter/change_list.html"
 
         def has_delete_permission(self, request, obj=None):
             return True
@@ -415,6 +416,70 @@ try:
         def has_add_permission(self, request, obj=None):
             return False
         
+        def get_urls(self):
+            urls = super().get_urls()
+            custom = [
+                path(
+                    'discover/',
+                    self.admin_site.admin_view(self.discover_ous),
+                    name='myview_adorganizationalunitlimiter_discover',
+                ),
+            ]
+            return custom + urls
+
+        def changelist_view(self, request, extra_context=None):
+            extra_context = extra_context or {}
+            try:
+                extra_context['discover_url'] = reverse(f"{self.admin_site.name}:myview_adorganizationalunitlimiter_discover")
+            except Exception:
+                extra_context['discover_url'] = None
+            return super().changelist_view(request, extra_context=extra_context)
+
+        def discover_ous(self, request):
+            from utils.list_dtu_baseusers_ous import list_dtu_baseusers_ous
+            created = 0
+            errors = []
+
+            for base, children in list_dtu_baseusers_ous():
+                if children and children[0].startswith('Error:'):
+                    errors.append(f"{base}: {children[0]}")
+                    continue
+
+                # Ensure the base OU exists as a limiter
+                base_dn = ADGroupAssociation._canonical_to_distinguished_name(base)
+                if base_dn:
+                    ADOrganizationalUnitLimiter.objects.update_or_create(
+                        canonical_name=base,
+                        defaults={'distinguished_name': base_dn},
+                    )
+
+                for child in children:
+                    dn = ADGroupAssociation._canonical_to_distinguished_name(child)
+                    if not dn:
+                        errors.append(f"Failed to derive DN for {child}")
+                        continue
+                    _, created_flag = ADOrganizationalUnitLimiter.objects.update_or_create(
+                        canonical_name=child,
+                        defaults={'distinguished_name': dn},
+                    )
+                    if created_flag:
+                        created += 1
+
+            if errors:
+                self.message_user(
+                    request,
+                    _('Completed with errors: %(details)s') % {'details': '; '.join(errors)},
+                    level=messages.WARNING,
+                )
+            if created or not errors:
+                self.message_user(
+                    request,
+                    _('OU limiters refreshed. %(count)d new entries created.') % {'count': created},
+                    level=messages.SUCCESS,
+                )
+
+            return redirect(reverse(f"{self.admin_site.name}:myview_adorganizationalunitlimiter_changelist"))
+
         def member_count(self, obj):
             return sum(group.members.count() for group in obj.ad_groups.all())  # Correctly counts the members in all ad_groups
         member_count.short_description = 'Member Count'
