@@ -9,6 +9,7 @@ from rest_framework.authtoken.models import Token
 import logging
 import re
 from urllib.parse import urlparse
+import time
 from .models import Endpoint, IPLimiter, ADOrganizationalUnitLimiter
 
 
@@ -417,73 +418,91 @@ class AccessControlMiddleware(MiddlewareMixin):
 
 
     def __call__(self, request):
-        # Normalize request path for consistent handling
+        start_time = time.monotonic()
         normalized_request_path = self.normalize_path(request.path)
         token = request.META.get('HTTP_AUTHORIZATION')
+        action = 'init'
+        response = None
+
+        logger.debug(
+            "AccessControl start path=%s method=%s authenticated=%s token_present=%s",
+            request.path,
+            request.method,
+            getattr(request.user, 'is_authenticated', False),
+            bool(token),
+        )
 
         # Periodically refresh AD groups + memberships using cache for performance
+        sync_started = time.monotonic()
         try:
             from myview.models import ADGroupAssociation
             ADGroupAssociation.ensure_groups_synced_cached()
         except Exception:
-            # Non-fatal: continue request handling even if sync fails
-            pass
-
-        # Directly proceed with favicon requests
-        if normalized_request_path == '/favicon.ico/':
-            return self.get_response(request)
-
-
-        # DEBUG mode: Mock authentication for testing without actual credentials
-        if settings.DEBUG and not token:
-            self.handle_debug_mode(request, normalized_request_path)    
-
-
-        # Authenticate user based on token, if provided
-        if token and not token.startswith('<token>'):
-            if not self.authenticate_by_token(request, token):
-                return JsonResponse({'error': 'Invalid API token.'}, status=403)
-
-
-
-        # Initialize a flag to indicate whether the user is authorized
-        is_authorized = False
-
-        # Handle whitelist paths to bypass access control
-        if any(normalized_request_path.startswith(whitelist_path) for whitelist_path in self.whitelist_paths):
-
-            # If the user is authenticated, update the cache
-            if request.user.is_authenticated:
-                from myview.middleware import AccessControlMiddleware
-                from django.core.cache import cache
-
-                # Define a unique cache key for each user
-                cache_key = f"user_ad_groups_{request.user.id}"
-
-                # Try to get cached data
-                user_ad_groups = cache.get(cache_key)
-                if user_ad_groups is None:
-                    # No cache found, sync and set the cache
-                    AccessControlMiddleware.set_user_ad_groups_cache(self, request.user)
-
-            is_authorized = True
-        elif request.user.is_authenticated:
-            # Check for endpoint access
-            is_user_authorized_for_endpoint, endpoint = self.is_user_authorized_for_endpoint(request, normalized_request_path)
-            if not is_user_authorized_for_endpoint:
-                return JsonResponse({'message': 'Access denied. You are not authorized to access this endpoint.'}, status=403)
-
-            is_user_authorized_for_resource = self.is_user_authorized_for_resource(endpoint, request)
-
-                
-            if is_user_authorized_for_endpoint and is_user_authorized_for_resource:
-                is_authorized = True
-            else:
-                return JsonResponse({'message': 'Access denied. You are not authorized to access this ressource.'}, status=403)
-
-
-        if is_authorized:
-            return self.get_response(request)
+            logger.warning('AccessControl AD group sync failed', exc_info=True)
         else:
-            # For unauthenticated users, redirect to login
-            return redirect('/login/')
+            logger.debug(
+                'AccessControl AD group sync completed in %.1fms',
+                (time.monotonic() - sync_started) * 1000,
+            )
+
+        if normalized_request_path == '/favicon.ico/':
+            action = 'favicon'
+            response = self.get_response(request)
+        else:
+            # DEBUG mode: Mock authentication for testing without actual credentials
+            if settings.DEBUG and not token:
+                self.handle_debug_mode(request, normalized_request_path)
+
+            if token and not token.startswith('<token>'):
+                if not self.authenticate_by_token(request, token):
+                    action = 'invalid_token'
+                    response = JsonResponse({'error': 'Invalid API token.'}, status=403)
+
+            is_authorized = False
+
+            if response is None:
+                if any(normalized_request_path.startswith(whitelist_path) for whitelist_path in self.whitelist_paths):
+                    action = 'whitelist'
+                    if request.user.is_authenticated:
+                        from myview.middleware import AccessControlMiddleware
+                        from django.core.cache import cache
+
+                        cache_key = f"user_ad_groups_{request.user.id}"
+                        user_ad_groups = cache.get(cache_key)
+                        if user_ad_groups is None:
+                            AccessControlMiddleware.set_user_ad_groups_cache(self, request.user)
+                    is_authorized = True
+                elif request.user.is_authenticated:
+                    is_user_authorized_for_endpoint, endpoint = self.is_user_authorized_for_endpoint(request, normalized_request_path)
+                    if not is_user_authorized_for_endpoint:
+                        action = 'endpoint_forbidden'
+                        response = JsonResponse({'message': 'Access denied. You are not authorized to access this endpoint.'}, status=403)
+                    else:
+                        is_user_authorized_for_resource = self.is_user_authorized_for_resource(endpoint, request)
+                        if is_user_authorized_for_endpoint and is_user_authorized_for_resource:
+                            action = 'authorized'
+                            is_authorized = True
+                        else:
+                            action = 'resource_forbidden'
+                            response = JsonResponse({'message': 'Access denied. You are not authorized to access this ressource.'}, status=403)
+
+            if response is None:
+                if is_authorized:
+                    response = self.get_response(request)
+                else:
+                    action = 'redirect_login'
+                    response = redirect('/login/')
+
+        duration_ms = (time.monotonic() - start_time) * 1000
+        logger.info(
+            "AccessControl done path=%s method=%s action=%s status=%s duration_ms=%.1f user=%s token_present=%s",
+            request.path,
+            request.method,
+            action,
+            getattr(response, 'status_code', 'unknown'),
+            duration_ms,
+            getattr(request.user, 'username', 'anonymous'),
+            bool(token),
+        )
+
+        return response
