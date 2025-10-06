@@ -1,0 +1,21 @@
+services:
+  web:
+    # Local HTTP overrides for convenient development
+    environment:
+      # Run with production-like DEBUG settings
+      DJANGO_DEBUG: "false"
+      # Allow cookies over HTTP during local development
+      DJANGO_SESSION_COOKIE_SECURE: "false"
+      DJANGO_CSRF_COOKIE_SECURE: "false"
+      # Explicitly avoid forcing HTTPS redirects (proxy terminates TLS)
+      DJANGO_SECURE_SSL_REDIRECT: "false"
+      # Disable HSTS locally to avoid HTTPS-only policy on localhost
+      DJANGO_SECURE_HSTS_SECONDS: "0"
+      # Trust local origins (both http and https) on the mapped port
+      DJANGO_CSRF_TRUSTED_ORIGINS: "http://localhost:8121,http://127.0.0.1:8121,https://localhost:8121,https://127.0.0.1:8121"
+      # Ensure cookie domain isn't pinned to the production hostname
+      DJANGO_CSRF_COOKIE_DOMAIN: ""
+      # Ensure localhost hosts are accepted (keeps prod hostname too)
+      DJANGO_ALLOWED_HOSTS: "localhost,127.0.0.1,api.security.ait.dtu.dk"
+      # Local MSAL callback URI for sign-in flow
+      AZURE_REDIRECT_URI: "http://localhost:8121/auth/callback"

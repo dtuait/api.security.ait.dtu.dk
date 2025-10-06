@@ -14,6 +14,7 @@ from django.contrib.auth import login, logout
 dotenv_path = '/usr/src/project/.devcontainer/.env'
 load_dotenv(dotenv_path=dotenv_path)
 from django.utils.decorators import method_decorator
+import urllib.parse
 from django.http import JsonResponse
 from django.views.decorators.http import require_GET
 from django.views.decorators.cache import cache_control
@@ -79,7 +80,8 @@ def msal_callback(request):
     authority_url = f'https://login.microsoftonline.com/{tenant_id}'
     client_id = os.getenv('AIT_SOC_MSAL_VICRE_CLIENT_ID')
     client_secret = os.getenv('AIT_SOC_MSAL_VICRE_MSAL_SECRET_VALUE')
-    redirect_uri = 'https://api.security.ait.dtu.dk/auth/callback'  # Updated
+    # Use configured redirect URI (supports local HTTP or production HTTPS)
+    redirect_uri = settings.AZURE_AD['REDIRECT_URI']
 
     # Initialize the MSAL confidential client
     client_app = msal.ConfidentialClientApplication(
@@ -411,10 +413,16 @@ def msal_login(request):
 def msal_logout(request):
     
     logout(request)
-    response = redirect('https://login.microsoftonline.com/common/oauth2/v2.0/logout?post_logout_redirect_uri=https://api.security.ait.dtu.dk/myview/frontpage/')
+    # Send users to Azure logout then back to our frontpage.
+    base_url = os.getenv('SERVICE_URL_WEB', 'http://localhost:8121').rstrip('/')
+    post_logout_redirect = f"{base_url}/myview/frontpage/"
+    logout_url = (
+        "https://login.microsoftonline.com/common/oauth2/v2.0/logout?post_logout_redirect_uri="
+        + urllib.parse.quote(post_logout_redirect, safe="")
+    )
+    response = redirect(logout_url)
     response.delete_cookie('csrftoken')
     return response
-
 
 
 

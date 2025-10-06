@@ -168,7 +168,7 @@ AZURE_AD = {
     'TENANT_ID': os.getenv('AZURE_TENANT_ID'),
     'CLIENT_ID': os.getenv('AIT_SOC_MSAL_VICRE_CLIENT_ID'),
     'CLIENT_SECRET': os.getenv('AIT_SOC_MSAL_VICRE_MSAL_SECRET_VALUE'),
-    'REDIRECT_URI': os.getenv('AZURE_REDIRECT_URI', 'https://api.security.ait.dtu.dk/auth/callback'),  # Update with actual redirect URI
+    'REDIRECT_URI': os.getenv('AZURE_REDIRECT_URI'),  # Update with actual redirect URI
     'AUTHORITY': f'https://login.microsoftonline.com/{os.getenv("AZURE_TENANT_ID")}',
     'SCOPE': ['User.Read']  # Add other scopes if needed
 }
