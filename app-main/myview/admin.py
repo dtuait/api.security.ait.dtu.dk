@@ -225,10 +225,12 @@ try:
 
         def changelist_view(self, request, extra_context=None):
             extra_context = extra_context or {}
+            refresh_url = None
             try:
-                extra_context['refresh_url'] = reverse('admin:myview_endpoint_refresh')
+                refresh_url = reverse(f"{self.admin_site.name}:myview_endpoint_refresh")
             except Exception:
-                extra_context['refresh_url'] = None
+                refresh_url = None
+            extra_context['refresh_url'] = refresh_url
             return super().changelist_view(request, extra_context=extra_context)
 
         def refresh_endpoints(self, request):
@@ -247,7 +249,7 @@ try:
                     _('Endpoints refreshed from OpenAPI schema.'),
                     level=messages.SUCCESS,
                 )
-            return redirect('admin:myview_endpoint_changelist')
+            return redirect(reverse(f"{self.admin_site.name}:myview_endpoint_changelist"))
 
         def save_model(self, request, obj, form, change):
 
