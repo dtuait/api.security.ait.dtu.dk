@@ -9,7 +9,7 @@ from myview.models import ADGroupAssociation
 from django.contrib.contenttypes.admin import GenericTabularInline
 from django.contrib.contenttypes.models import ContentType
 from django.template.response import TemplateResponse
-from django.urls import path
+from django.urls import path, reverse
 from django.utils.html import format_html
 from django.utils.text import slugify
 from django.utils.translation import gettext_lazy as _
@@ -125,6 +125,7 @@ except ImportError:
 # Attempt to import the Endpoint model
 try:
     from .models import Endpoint
+    from utils.cronjob_update_endpoints import updateEndpoints
 
 
     class EndpointAdminForm(forms.ModelForm):
@@ -184,6 +185,7 @@ try:
         filter_horizontal = ('ad_groups',) 
         readonly_fields = ('path', 'method')
         action_form = EndpointActionForm
+        change_list_template = "admin/myview/endpoint/change_list.html"
         class Media:
             js = (
                 'myview/admin/endpoint_actions.js',
@@ -209,6 +211,43 @@ try:
             updated = queryset.update(limiter_type=lt)
             self.message_user(request, _("Updated limiter type for %(count)d endpoint(s).") % {"count": updated}, level=messages.SUCCESS)
             return None
+
+        def get_urls(self):
+            urls = super().get_urls()
+            custom_urls = [
+                path(
+                    'refresh/',
+                    self.admin_site.admin_view(self.refresh_endpoints),
+                    name='myview_endpoint_refresh',
+                ),
+            ]
+            return custom_urls + urls
+
+        def changelist_view(self, request, extra_context=None):
+            extra_context = extra_context or {}
+            try:
+                extra_context['refresh_url'] = reverse('admin:myview_endpoint_refresh')
+            except Exception:
+                extra_context['refresh_url'] = None
+            return super().changelist_view(request, extra_context=extra_context)
+
+        def refresh_endpoints(self, request):
+            try:
+                updateEndpoints(using=self.model._default_manager.db, logger=logger)
+            except Exception as exc:
+                logger.exception('Endpoint refresh via admin failed')
+                self.message_user(
+                    request,
+                    _('Failed to refresh endpoints: %(error)s') % {'error': exc},
+                    level=messages.ERROR,
+                )
+            else:
+                self.message_user(
+                    request,
+                    _('Endpoints refreshed from OpenAPI schema.'),
+                    level=messages.SUCCESS,
+                )
+            return redirect('admin:myview_endpoint_changelist')
 
         def save_model(self, request, obj, form, change):
 
