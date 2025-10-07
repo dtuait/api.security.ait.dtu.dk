@@ -21,6 +21,8 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_GET
 from django.views.decorators.cache import cache_control
 
+logger = logging.getLogger(__name__)
+
 
 
 
@@ -70,6 +72,18 @@ from django.views.decorators.cache import cache_control
 def msal_callback(request):
     # The state should be passed to the authorization request and validated in the response.
     if 'code' not in request.GET:
+        try:
+            from myview.models import UserActivityLog
+
+            UserActivityLog.log_login(
+                username=request.GET.get('login_hint', ''),
+                request=request,
+                was_successful=False,
+                message='Authorization code missing from callback request.',
+            )
+        except Exception:
+            logger.exception('Failed to log missing authorization code during login callback')
+
         return HttpResponse("Error: code not received.", status=400)
 
     code = request.GET['code']
@@ -129,7 +143,8 @@ def msal_callback(request):
         
         # Make the GET request to the Graph API to get user details
         graph_response = requests.get(graph_api_endpoint, headers=headers)
-        
+        activity_username = None
+
         if graph_response.status_code == 200:
             # Successful request to the Graph API
             user_data = graph_response.json()
@@ -139,6 +154,7 @@ def msal_callback(request):
             user_principal_name = user_data.get('userPrincipalName')
             on_premises_immutable_id = user_data.get('onPremisesImmutableId')
             username = user_data.get('userPrincipalName').rsplit('@')[0] # vicre@dtu.dk
+            activity_username = user_principal_name or username
             first_name = user_data.get('givenName')
             last_name = user_data.get('surname')
             email = user_data.get('mail')
@@ -148,8 +164,19 @@ def msal_callback(request):
 
             from app.scripts.azure_user_is_synced_with_on_premise_users import azure_user_is_synced_with_on_premise_users
             if not azure_user_is_synced_with_on_premise_users(sam_accountname=username, on_premises_immutable_id=on_premises_immutable_id):
+                try:
+                    from myview.models import UserActivityLog
+
+                    UserActivityLog.log_login(
+                        username=activity_username or username,
+                        request=request,
+                        was_successful=False,
+                        message="Azure AD account is not synchronised with on-premises users.",
+                    )
+                except Exception:
+                    logger.exception('Failed to log unsuccessful login due to unsynchronised Azure AD account')
+
                 raise ValueError(f"The account you logged in with ({user_principal_name}) is not synched with on-premise users, which is a requirement.")
-        
 
 
             from .scripts.user_have_onpremises_adm_account import user_have_onpremises_adm_account
@@ -157,10 +184,25 @@ def msal_callback(request):
             if not user_have_onpremises_adm_account:
                 # Construct the dynamic part of the message based on user's principal name.
                 adm_account_suffix = user_principal_name.split('@')[0]
-                return HttpResponse(
-                    f"You are not authenticated because the Azure user with which you have logged in does not have an on-premises admin account. The account adm-{adm_account_suffix}* does not appear to exist in Active Directory. This restriction is in place to allow only IT staff to access this application. If you believe this is an error or need access, please contact vicre@dtu.dk.",
-                    status=403
+                denial_message = (
+                    "You are not authenticated because the Azure user with which you have logged in does not have an on-premises admin account. "
+                    f"The account adm-{adm_account_suffix}* does not appear to exist in Active Directory. This restriction is in place to allow only IT staff to access this application. "
+                    "If you believe this is an error or need access, please contact vicre@dtu.dk."
                 )
+
+                try:
+                    from myview.models import UserActivityLog
+
+                    UserActivityLog.log_login(
+                        username=activity_username or username,
+                        request=request,
+                        was_successful=False,
+                        message="Login denied because no matching on-premises admin account was found.",
+                    )
+                except Exception:
+                    logger.exception('Failed to log login denial due to missing on-premises admin account')
+
+                return HttpResponse(denial_message, status=403)
 
 
             
@@ -175,6 +217,19 @@ def msal_callback(request):
 
             login(request, user)
 
+            try:
+                from myview.models import UserActivityLog
+
+                UserActivityLog.log_login(
+                    user=user,
+                    username=username,
+                    request=request,
+                    was_successful=True,
+                    message="Login successful via MSAL callback.",
+                )
+            except Exception:
+                logger.exception('Failed to log successful login for %s', username)
+
             if user.is_superuser:
                 return HttpResponseRedirect(reverse('admin:index'))
             else:
@@ -182,9 +237,33 @@ def msal_callback(request):
             
         else:
             # Handle failure or show an error message to the user
+            try:
+                from myview.models import UserActivityLog
+
+                UserActivityLog.log_login(
+                    username=activity_username or request.GET.get('login_hint', ''),
+                    request=request,
+                    was_successful=False,
+                    message=f"Failed to retrieve user information from Graph API (status {graph_response.status_code}).",
+                )
+            except Exception:
+                logger.exception('Failed to log login failure when Graph API returned status %s', graph_response.status_code)
+
             return HttpResponse("Error: failed to retrieve user information.", status=graph_response.status_code)
     else:
         # Handle failure or show an error message to the user
+        try:
+            from myview.models import UserActivityLog
+
+            UserActivityLog.log_login(
+                username=request.GET.get('login_hint', ''),
+                request=request,
+                was_successful=False,
+                message="Failed to retrieve access token from MSAL authorization code exchange.",
+            )
+        except Exception:
+            logger.exception('Failed to log login failure due to missing access token')
+
         return HttpResponse("Error: failed to retrieve access token.", status=400)
 
 

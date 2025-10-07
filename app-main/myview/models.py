@@ -23,6 +23,137 @@ class BaseModel(models.Model):
 
 
 
+class UserActivityLog(BaseModel):
+    class EventType(models.TextChoices):
+        LOGIN = "login", _("Login")
+        API_REQUEST = "api_request", _("API request")
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        related_name="activity_logs",
+        null=True,
+        blank=True,
+    )
+    username = models.CharField(max_length=150, blank=True)
+    event_type = models.CharField(max_length=32, choices=EventType.choices)
+    was_successful = models.BooleanField(default=False)
+    request_method = models.CharField(max_length=16, blank=True)
+    request_path = models.CharField(max_length=512, blank=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    status_code = models.IntegerField(null=True, blank=True)
+    message = models.TextField(blank=True)
+    extra = models.JSONField(blank=True, null=True, default=dict)
+
+    class Meta:
+        ordering = ["-datetime_created"]
+        verbose_name = "User activity log entry"
+        verbose_name_plural = "User activity log entries"
+
+    def __str__(self):
+        label = self.get_event_type_display()
+        if self.username:
+            username = self.username
+        elif self.user and hasattr(self.user, "get_username"):
+            username = self.user.get_username()
+        else:
+            username = "unknown"
+        return f"{label} for {username} at {self.datetime_created:%Y-%m-%d %H:%M:%S}"
+
+    @staticmethod
+    def _extract_ip_address(request):
+        if not request:
+            return None
+
+        forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
+        if forwarded_for:
+            ip = forwarded_for.split(",")[0].strip()
+            if ip:
+                return ip
+
+        return request.META.get("REMOTE_ADDR") or None
+
+    @classmethod
+    def _build_common_payload(
+        cls,
+        *,
+        user=None,
+        username="",
+        request=None,
+        was_successful=False,
+        status_code=None,
+        message="",
+        extra=None,
+    ):
+        payload = {
+            "user": user if getattr(user, "is_authenticated", False) else None,
+            "username": username or (user.get_username() if getattr(user, "is_authenticated", False) else ""),
+            "was_successful": was_successful,
+            "status_code": status_code,
+            "message": message or "",
+        }
+
+        if request is not None:
+            payload["request_method"] = getattr(request, "method", "")[:16]
+            payload["request_path"] = getattr(request, "path", "")[:512]
+            payload["ip_address"] = cls._extract_ip_address(request)
+
+        if extra is not None:
+            payload["extra"] = extra
+
+        return payload
+
+    @classmethod
+    def log_login(
+        cls,
+        *,
+        user=None,
+        username="",
+        request=None,
+        was_successful=False,
+        message="",
+        extra=None,
+    ):
+        payload = cls._build_common_payload(
+            user=user,
+            username=username,
+            request=request,
+            was_successful=was_successful,
+            message=message,
+            extra=extra,
+        )
+        payload["event_type"] = cls.EventType.LOGIN
+        return cls.objects.create(**payload)
+
+    @classmethod
+    def log_api_request(
+        cls,
+        *,
+        user=None,
+        username="",
+        request=None,
+        was_successful=False,
+        status_code=None,
+        message="",
+        extra=None,
+    ):
+        if request is None and user is None and not username:
+            return None
+
+        payload = cls._build_common_payload(
+            user=user,
+            username=username,
+            request=request,
+            was_successful=was_successful,
+            status_code=status_code,
+            message=message,
+            extra=extra,
+        )
+        payload["event_type"] = cls.EventType.API_REQUEST
+        return cls.objects.create(**payload)
+
+
+
 
 
 class IPLimiter(BaseModel):
