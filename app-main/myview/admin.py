@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 
 try:
-    from .models import IPLimiter
+    from .models import IPLimiter, UserActivityLog
 
 
 
@@ -36,6 +36,82 @@ except ImportError:
     pass
 
 
+
+
+if 'UserActivityLog' in globals():
+
+    @admin.register(UserActivityLog)
+    class UserActivityLogAdmin(admin.ModelAdmin):
+        list_display = (
+            "datetime_created",
+            "event_type",
+            "display_user",
+            "username",
+            "was_successful",
+            "request_method",
+            "request_path",
+            "status_code",
+        )
+        list_filter = (
+            "event_type",
+            "was_successful",
+            "request_method",
+            "status_code",
+            ("datetime_created", admin.DateFieldListFilter),
+        )
+        search_fields = (
+            "username",
+            "user__username",
+            "request_path",
+            "message",
+            "extra",
+        )
+        readonly_fields = (
+            "datetime_created",
+            "datetime_modified",
+            "user",
+            "username",
+            "event_type",
+            "was_successful",
+            "request_method",
+            "request_path",
+            "ip_address",
+            "status_code",
+            "message",
+            "extra",
+        )
+        ordering = ("-datetime_created",)
+        date_hierarchy = "datetime_created"
+
+        fieldsets = (
+            (None, {"fields": ("datetime_created", "datetime_modified", "event_type", "was_successful", "message")}),
+            (_("User"), {"fields": ("user", "username")}),
+            (
+                _("Request"),
+                {
+                    "fields": (
+                        "request_method",
+                        "request_path",
+                        "status_code",
+                        "ip_address",
+                        "extra",
+                    )
+                },
+            ),
+        )
+
+        def has_add_permission(self, request):
+            return False
+
+        def has_change_permission(self, request, obj=None):
+            return False
+
+        def display_user(self, obj):
+            if obj.user_id and obj.user:
+                return obj.user.get_username()
+            return "—"
+
+        display_user.short_description = _("User")
 
 
 # Attempt to import the ADGroup model
