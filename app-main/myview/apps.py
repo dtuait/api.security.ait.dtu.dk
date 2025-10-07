@@ -19,6 +19,7 @@ class MyviewConfig(AppConfig):
         self._startup_sync_in_progress = False
         self._startup_pending_aliases = set()
         self._startup_completed_aliases = set()
+        self._startup_worker = None
 
         from django.core.signals import request_started
 
@@ -31,12 +32,38 @@ class MyviewConfig(AppConfig):
 
         self._register_endpoint_refresh()
         self._register_limiter_type_sync()
+        self._ensure_startup_worker_running()
+
+    def _ensure_startup_worker_running(self):
+        """Start the background worker that performs deferred startup tasks."""
+
+        if not hasattr(self, "_startup_lock"):
+            return
+
+        worker = None
+        with self._startup_lock:
+            if not self._startup_pending_aliases:
+                return
+
+            existing = getattr(self, "_startup_worker", None)
+            if existing and existing.is_alive():
+                return
+
+            worker = threading.Thread(
+                target=self._run_startup_sync_if_needed,
+                name="myview-startup-sync",
+                daemon=True,
+            )
+            self._startup_worker = worker
+
+        if worker is not None:
+            worker.start()
 
     def _handle_request_started(self, **_kwargs):
         """Kick off deferred startup tasks once the application handles traffic."""
 
         try:
-            self._run_startup_sync_if_needed()
+            self._ensure_startup_worker_running()
         except Exception:
             logger.exception("Deferred startup synchronisation failed")
 
