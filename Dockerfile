@@ -22,6 +22,7 @@ RUN apt-get update \
         git \
         libffi-dev \
         libldap2-dev \
+        default-libmysqlclient-dev \
         libpq-dev \
         libsasl2-dev \
         libssl-dev \
