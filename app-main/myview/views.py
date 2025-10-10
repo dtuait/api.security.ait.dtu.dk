@@ -1,6 +1,7 @@
 import logging
 import subprocess
 from datetime import datetime
+from pathlib import Path
 from zoneinfo import ZoneInfo
 from urllib.parse import urlencode
 
@@ -63,16 +64,84 @@ class BaseView(View):
         # so you don't need to manually check if the user is authenticated here.
         return super().dispatch(request, *args, **kwargs)
 
+    def _locate_git_root(self):
+        """Return the git repository root and git directory, if located."""
+
+        current_path = Path(__file__).resolve().parent
+        for path in (current_path,) + tuple(current_path.parents):
+            git_entry = path / ".git"
+            if not git_entry.exists():
+                continue
+
+            if git_entry.is_dir():
+                return path, git_entry
+
+            # Worktree checkouts store a pointer file instead of a directory
+            gitdir_prefix = "gitdir:"
+            gitdir_path = git_entry.read_text(encoding="utf-8").strip()
+            if gitdir_path.startswith(gitdir_prefix):
+                gitdir_path = gitdir_path[len(gitdir_prefix):].strip()
+
+            gitdir_candidate = Path(gitdir_path)
+            if not gitdir_candidate.is_absolute():
+                gitdir_candidate = (path / gitdir_candidate).resolve()
+
+            if gitdir_candidate.exists():
+                return path, gitdir_candidate
+
+        return None, None
+
+    def _fallback_git_info(self, git_dir):
+        """Read git information directly from the .git directory."""
+
+        branch = "unknown"
+        commit = "unknown"
+        last_updated_formatted = "unknown"
+
+        head_path = git_dir / "HEAD"
+        if not head_path.exists():
+            return branch, commit, last_updated_formatted
+
+        head_contents = head_path.read_text(encoding="utf-8").strip()
+        if head_contents.startswith("ref:"):
+            ref = head_contents.partition(" ")[2]
+            branch = ref.rsplit("/", 1)[-1] or branch
+            ref_path = git_dir / ref
+        else:
+            ref_path = head_path
+            commit = head_contents
+
+        if ref_path.exists():
+            commit = ref_path.read_text(encoding="utf-8").strip() or commit
+            last_updated_dt = datetime.fromtimestamp(ref_path.stat().st_mtime, tz=ZoneInfo("Europe/Copenhagen"))
+            last_updated_formatted = last_updated_dt.strftime('%H:%M %d-%m-%Y %Z')
+
+        return branch, commit, last_updated_formatted
+
     def get_git_info(self):
         branch = "unknown"
         commit = "unknown"
         last_updated_formatted = "unknown"
         last_updated_raw = None
 
+        git_root, git_dir = self._locate_git_root()
+
         try:
-            branch = subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD']).decode('utf-8').strip()
-            commit = subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode('utf-8').strip()
-            last_updated_raw = subprocess.check_output(['git', 'log', '-1', '--format=%cd']).decode('utf-8').strip()
+            if not git_root:
+                raise FileNotFoundError("Unable to locate git repository root")
+
+            branch = subprocess.check_output(
+                ['git', 'rev-parse', '--abbrev-ref', 'HEAD'],
+                cwd=git_root,
+            ).decode('utf-8').strip()
+            commit = subprocess.check_output(
+                ['git', 'rev-parse', 'HEAD'],
+                cwd=git_root,
+            ).decode('utf-8').strip()
+            last_updated_raw = subprocess.check_output(
+                ['git', 'log', '-1', '--format=%cd'],
+                cwd=git_root,
+            ).decode('utf-8').strip()
 
             # Parse the last_updated date string and reformat it
             last_updated_dt = datetime.strptime(last_updated_raw, '%a %b %d %H:%M:%S %Y %z')
@@ -80,6 +149,8 @@ class BaseView(View):
             last_updated_formatted = last_updated_dt.strftime('%H:%M %d-%m-%Y %Z')
         except (subprocess.CalledProcessError, FileNotFoundError) as exc:
             logger.warning("Unable to read git metadata for template footer: %s", exc)
+            if git_dir:
+                branch, commit, last_updated_formatted = self._fallback_git_info(git_dir)
             if last_updated_raw:
                 last_updated_formatted = last_updated_raw
         except ValueError as exc:
