@@ -10,7 +10,7 @@ import logging
 import re
 from urllib.parse import urlparse
 import time
-from .models import Endpoint, IPLimiter, ADOrganizationalUnitLimiter
+from .models import Endpoint, IPLimiter, ADOrganizationalUnitLimiter, APIRequestLog
 
 
 logger = logging.getLogger(__name__)
@@ -268,6 +268,48 @@ class AccessControlMiddleware(MiddlewareMixin):
                 return False  # Grant access if user is part of any related AD group
         return False
 
+    def _should_log_request(self, request):
+        path = request.path or ''
+        if path.startswith('/static/') or path.startswith('/media/'):
+            return False
+        if path == '/favicon.ico':
+            return False
+        return True
+
+    def _log_request(self, request, response, action, duration_ms, token):
+        if not self._should_log_request(request):
+            return
+
+        try:
+            if token and isinstance(token, str):
+                token_value = token.split()[-1] if ' ' in token else token
+                token_value = token_value[:32]
+            else:
+                token_value = ''
+
+            if token:
+                auth_type = APIRequestLog.AUTH_TYPE_TOKEN
+            elif getattr(request.user, 'is_authenticated', False):
+                auth_type = APIRequestLog.AUTH_TYPE_SESSION
+            else:
+                auth_type = APIRequestLog.AUTH_TYPE_ANONYMOUS
+
+            APIRequestLog.objects.create(
+                user=request.user if getattr(request.user, 'is_authenticated', False) else None,
+                method=request.method,
+                path=request.path,
+                query_string=request.META.get('QUERY_STRING', ''),
+                status_code=getattr(response, 'status_code', None),
+                duration_ms=duration_ms,
+                ip_address=get_client_ip(request),
+                user_agent=request.META.get('HTTP_USER_AGENT', '')[:500],
+                auth_type=auth_type,
+                auth_token=token_value,
+                action=action,
+            )
+        except Exception:
+            logger.warning('Failed to record API request log entry.', exc_info=True)
+
     def handle_ado_ou_limiter(self, limiters, user_groups, request):
         for limiter in limiters:
             if limiter.ad_groups.filter(id__in=user_groups).exists():
@@ -512,5 +554,7 @@ class AccessControlMiddleware(MiddlewareMixin):
             getattr(request.user, 'username', 'anonymous'),
             bool(token),
         )
+
+        self._log_request(request, response, action, duration_ms, token)
 
         return response

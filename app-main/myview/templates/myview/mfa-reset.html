@@ -18,25 +18,83 @@
 {% block main-content %}
 <div class="container my-4">
     <h2>MFA User Lookup</h2>
-    <form method="post">
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="{% trans 'Close' %}"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <form method="post" class="mb-4">
         {% csrf_token %}
+        <input type="hidden" name="action" value="lookup">
         <div class="mb-3">
-            <label for="id-userprincipalname" class="form-label">userPrincipalName
-                <i class="bi bi-question-circle-fill" data-bs-toggle="tooltip" data-bs-placement="right" title="userPrincipalName&lt;br&gt; vicre-test01@dtudk.onmicrosoft.com &lt;br&gt; vicre@dtu.dk" data-bs-html="true"></i>
-            </label>
-            <input type="text" class="form-control" id="id-userprincipalname" name="userprincipalname" required value="vicre-test01@dtudk.onmicrosoft.com">
+            {% with field=lookup_form.user_principal_name %}
+                <label for="{{ field.id_for_label }}" class="form-label">
+                    {{ field.label }}
+                    <i class="bi bi-question-circle-fill"
+                       data-bs-toggle="tooltip"
+                       data-bs-placement="right"
+                       data-bs-html="true"
+                       title="userPrincipalName&lt;br&gt; vicre-test01@dtudk.onmicrosoft.com &lt;br&gt; vicre@dtu.dk"></i>
+                </label>
+                {{ field }}
+                {% if field.errors %}
+                    <div class="invalid-feedback d-block">{{ field.errors|striptags }}</div>
+                {% endif %}
+                {% if field.help_text %}
+                    <div class="form-text">{{ field.help_text }}</div>
+                {% endif %}
+            {% endwith %}
         </div>
-        <button type="submit" id="mfa-user-lookup-submit-btn" class="btn btn-primary">
-            Submit
-            <span id="loadingSpinner" class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="display: none;"></span>
-        </button>
+        <button type="submit" class="btn btn-primary">Submit</button>
     </form>
 
-    <div id="cards-container">
-        <!-- Cards will be appended here -->
-    </div>
-</div>
+    {% if selected_user_principal_name %}
+        <div class="user-principal-info p-3 mb-3 bg-light border rounded">
+            <strong>{% trans "Results for" %}:</strong> {{ selected_user_principal_name }}
+        </div>
+    {% endif %}
 
-<script src="{% static 'myview/js/mfa-reset.js' %}" defer></script>
+    {% if authentication_methods %}
+        <div class="row row-cols-1 g-3" id="cards-container">
+            {% for method in authentication_methods %}
+                <div class="col">
+                    <div class="card h-100 auth-method-card">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ method.type_label }}</h5>
+                            <dl class="row mb-0">
+                                {% for key, value in method.details %}
+                                    <dt class="col-sm-4">{{ key }}</dt>
+                                    <dd class="col-sm-8">{{ value }}</dd>
+                                {% endfor %}
+                            </dl>
+                        </div>
+                        <div class="card-footer bg-transparent">
+                            {% if method.can_delete %}
+                                <form method="post" class="d-inline">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="delete">
+                                    <input type="hidden" name="user_principal_name" value="{{ selected_user_principal_name }}">
+                                    <input type="hidden" name="method_id" value="{{ method.id }}">
+                                    <input type="hidden" name="method_type" value="{{ method.type_key }}">
+                                    <button type="submit" class="btn btn-danger btn-sm">{% trans "Remove" %}</button>
+                                </form>
+                            {% else %}
+                                <span class="text-muted">{% trans "Removal not supported for this method." %}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% elif selected_user_principal_name and no_methods %}
+        <div class="alert alert-info" role="alert">
+            {% blocktrans with upn=selected_user_principal_name %}No authentication methods found for {{ upn }}.{% endblocktrans %}
+        </div>
+    {% endif %}
+</div>
 <link rel="stylesheet" type="text/css" media="all" href="{% static 'myview/css/mfa-reset.css' %}" />
 {% endblock %}

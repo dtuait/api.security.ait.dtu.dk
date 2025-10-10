@@ -20,12 +20,20 @@ import logging
 from django.http import JsonResponse
 from django.views.decorators.http import require_GET
 from django.views.decorators.cache import cache_control
+from myview.models import UserLoginLog
 
 logger = logging.getLogger(__name__)
 
 
 
 
+
+def _get_client_ip(request):
+    """Best-effort extraction of the client IP address."""
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        return x_forwarded_for.split(',')[0].strip()
+    return request.META.get('REMOTE_ADDR')
 
 
 
@@ -216,6 +224,21 @@ def msal_callback(request):
             ADGroupAssociation.sync_user_ad_groups(username=user.username)
 
             login(request, user)
+            try:
+                UserLoginLog.objects.create(
+                    user=user,
+                    user_principal_name=user_principal_name or '',
+                    ip_address=_get_client_ip(request),
+                    user_agent=request.META.get('HTTP_USER_AGENT', '')[:500],
+                    session_key=request.session.session_key or '',
+                    additional_info={
+                        "graph_user_id": user_data.get('id'),
+                        "displayName": user_data.get('displayName'),
+                    },
+                )
+            except Exception:
+                logger = logging.getLogger(__name__)
+                logger.warning("Failed to record user login event for %s", user.username, exc_info=True)
 
             try:
                 from myview.models import UserActivityLog
@@ -521,8 +544,6 @@ def msal_logout(request):
     response = redirect(logout_url)
     response.delete_cookie('csrftoken')
     return response
-
-
 
 
 

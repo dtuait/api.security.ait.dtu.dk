@@ -1,98 +1,23 @@
 .user-principal-info {
-    background-color: #f0f0f0; /* Light grey background */
+    background-color: #f0f0f0;
     padding: 10px;
-    margin-bottom: 20px; /* Adds space between the user info and auth methods */
+    margin-bottom: 20px;
 }
 
-.auth-methods-list {
-    background-color: #e9ecef; /* Slightly different background color for contrast */
-    padding: 10px;
+.auth-method-card dl {
+    margin-bottom: 0;
 }
 
-.auth-method {
-    margin-bottom: 10px;
+.auth-method-card dt {
+    font-weight: 600;
 }
 
-.remove-btn {
-    margin-top: 5px;
+.auth-method-card dd {
+    margin-bottom: 0.5rem;
 }
 
-
-/* Custom CSS to expand tooltip width */
+/* Allow the tooltip used in the label to expand when necessary */
 .tooltip-inner {
-    max-width: none; /* Remove the max-width restriction */
-    width: auto; /* Allow it to expand based on content */
+    max-width: none;
+    width: auto;
 }
-
-/* Optional: Add some padding for better visual appeal */
-.bs-tooltip-auto[x-placement^=top] .tooltip-inner {
-    max-width: 100%;
-}
-
-
-
-
-
-
-
-
-button {
-    width: 150px;
-    height: 50px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    background: red;
-    border: none;
-    border-radius: 5px;
-    box-shadow: 1px 1px 3px rgba(0,0,0,0.15);
-    background: #e62222;
-   }
-   
-   button, button span {
-    transition: 200ms;
-   }
-   
-   button .text {
-    transform: translateX(35px);
-    color: white;
-    font-weight: bold;
-   }
-   
-   button .icon {
-    position: absolute;
-    border-left: 1px solid #c41b1b;
-    transform: translateX(110px);
-    height: 40px;
-    width: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-   }
-   
-   button svg {
-    width: 15px;
-    fill: #eee;
-   }
-   
-   button:hover {
-    background: #ff3636;
-   }
-   
-   button:hover .text {
-    color: transparent;
-   }
-   
-   button:hover .icon {
-    width: 150px;
-    border-left: none;
-    transform: translateX(0);
-   }
-   
-   button:focus {
-    outline: none;
-   }
-   
-   button:active .icon svg {
-    transform: scale(0.8);
-   }

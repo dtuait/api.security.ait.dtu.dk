@@ -943,3 +943,76 @@ class ChatMessage(models.Model):
 
     def __str__(self):
         return f"{self.role}: {self.content[:50]}"
+
+
+class APIRequestLog(BaseModel):
+    """Records metadata about inbound API calls for auditing in the admin."""
+
+    AUTH_TYPE_SESSION = 'session'
+    AUTH_TYPE_TOKEN = 'token'
+    AUTH_TYPE_ANONYMOUS = 'anonymous'
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='api_request_logs',
+    )
+    method = models.CharField(max_length=10)
+    path = models.CharField(max_length=512)
+    query_string = models.TextField(blank=True, default='')
+    status_code = models.PositiveSmallIntegerField(null=True, blank=True)
+    duration_ms = models.FloatField(null=True, blank=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.CharField(max_length=512, blank=True, default='')
+    auth_type = models.CharField(max_length=32, blank=True, default='')
+    auth_token = models.CharField(max_length=128, blank=True, default='')
+    action = models.CharField(max_length=64, blank=True, default='')
+
+    class Meta:
+        ordering = ['-datetime_created']
+        indexes = [
+            models.Index(fields=['datetime_created']),
+            models.Index(fields=['path']),
+            models.Index(fields=['status_code']),
+        ]
+        verbose_name = "API request log"
+        verbose_name_plural = "API request logs"
+
+    def __str__(self):
+        status = self.status_code if self.status_code is not None else '—'
+        return f"{self.method} {self.path} [{status}]"
+
+
+class UserLoginLog(BaseModel):
+    """Tracks MSAL login events for auditing."""
+
+    AUTH_METHOD_MSAL = 'msal'
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='login_events',
+    )
+    user_principal_name = models.CharField(max_length=255, blank=True, default='')
+    auth_method = models.CharField(max_length=32, default=AUTH_METHOD_MSAL)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.CharField(max_length=512, blank=True, default='')
+    session_key = models.CharField(max_length=40, blank=True, default='')
+    additional_info = models.JSONField(blank=True, null=True)
+
+    class Meta:
+        ordering = ['-datetime_created']
+        verbose_name = "User login"
+        verbose_name_plural = "User logins"
+        indexes = [
+            models.Index(fields=['datetime_created']),
+            models.Index(fields=['user_principal_name']),
+        ]
+
+    def __str__(self):
+        username = self.user_principal_name or getattr(self.user, 'username', 'unknown')
+        return f"{username} via {self.auth_method} at {self.datetime_created:%Y-%m-%d %H:%M:%S}"
