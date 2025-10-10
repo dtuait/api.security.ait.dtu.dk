@@ -8,11 +8,22 @@ import django.db.models.deletion
 TABLE_NAME = "myview_userloginlog"
 
 
+def _get_model(apps, model_name):
+    """Return the historical model or fall back to the runtime model."""
+
+    try:
+        return apps.get_model("myview", model_name)
+    except LookupError:
+        from myview import models as myview_models
+
+        return getattr(myview_models, model_name)
+
+
 def create_userloginlog_table(apps, schema_editor):
     if TABLE_NAME in schema_editor.connection.introspection.table_names():
         return
 
-    UserLoginLog = apps.get_model("myview", "UserLoginLog")
+    UserLoginLog = _get_model(apps, "UserLoginLog")
     schema_editor.create_model(UserLoginLog)
 
 
