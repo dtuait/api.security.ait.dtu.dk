@@ -748,6 +748,66 @@ def run_utility_script(request: HttpRequest, slug: str):
     return redirect("admin:utility-scripts")
 
 
+try:
+    from .models import APIRequestLog
+
+    @admin.register(APIRequestLog)
+    class APIRequestLogAdmin(admin.ModelAdmin):
+        list_display = (
+            'datetime_created',
+            'method',
+            'path',
+            'status_code',
+            'user',
+            'ip_address',
+            'auth_type',
+            'duration_display',
+        )
+        list_filter = (
+            'method',
+            'status_code',
+            'auth_type',
+            'action',
+            ('datetime_created', admin.DateFieldListFilter),
+        )
+        search_fields = ('path', 'query_string', 'user__username', 'ip_address', 'auth_token')
+        readonly_fields = (
+            'datetime_created',
+            'datetime_modified',
+            'user',
+            'method',
+            'path',
+            'query_string',
+            'status_code',
+            'duration_ms',
+            'ip_address',
+            'user_agent',
+            'auth_type',
+            'auth_token',
+            'action',
+        )
+        ordering = ('-datetime_created',)
+        list_per_page = 50
+
+        def has_add_permission(self, request):
+            return False
+
+        def has_change_permission(self, request, obj=None):
+            # Allow viewing detail/change pages with read-only fields.
+            return True
+
+        def duration_display(self, obj):
+            if obj.duration_ms is None:
+                return "—"
+            return f"{obj.duration_ms:.1f} ms"
+
+        duration_display.short_description = "Duration"
+
+except ImportError:
+    print("APIRequestLog model is not available for registration in the admin site.")
+    pass
+
+
 def _register_utility_admin_urls():
     original_get_urls = admin.site.get_urls
 
