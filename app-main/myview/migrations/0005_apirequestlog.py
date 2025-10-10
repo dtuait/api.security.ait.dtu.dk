@@ -5,6 +5,17 @@ from django.db import migrations, models
 import django.db.models.deletion
 
 
+TABLE_NAME = "myview_apirequestlog"
+
+
+def create_apirequestlog_table(apps, schema_editor):
+    if TABLE_NAME in schema_editor.connection.introspection.table_names():
+        return
+
+    APIRequestLog = apps.get_model("myview", "APIRequestLog")
+    schema_editor.create_model(APIRequestLog)
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -13,29 +24,36 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.CreateModel(
-            name='APIRequestLog',
-            fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('datetime_created', models.DateTimeField(auto_now_add=True)),
-                ('datetime_modified', models.DateTimeField(auto_now=True)),
-                ('method', models.CharField(max_length=10)),
-                ('path', models.CharField(max_length=512)),
-                ('query_string', models.TextField(blank=True, default='')),
-                ('status_code', models.PositiveSmallIntegerField(blank=True, null=True)),
-                ('duration_ms', models.FloatField(blank=True, null=True)),
-                ('ip_address', models.GenericIPAddressField(blank=True, null=True)),
-                ('user_agent', models.CharField(blank=True, default='', max_length=512)),
-                ('auth_type', models.CharField(blank=True, default='', max_length=32)),
-                ('auth_token', models.CharField(blank=True, default='', max_length=128)),
-                ('action', models.CharField(blank=True, default='', max_length=64)),
-                ('user', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='api_request_logs', to=settings.AUTH_USER_MODEL)),
+        migrations.SeparateDatabaseAndState(
+            state_operations=[
+                migrations.CreateModel(
+                    name='APIRequestLog',
+                    fields=[
+                        ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                        ('datetime_created', models.DateTimeField(auto_now_add=True)),
+                        ('datetime_modified', models.DateTimeField(auto_now=True)),
+                        ('method', models.CharField(max_length=10)),
+                        ('path', models.CharField(max_length=512)),
+                        ('query_string', models.TextField(blank=True, default='')),
+                        ('status_code', models.PositiveSmallIntegerField(blank=True, null=True)),
+                        ('duration_ms', models.FloatField(blank=True, null=True)),
+                        ('ip_address', models.GenericIPAddressField(blank=True, null=True)),
+                        ('user_agent', models.CharField(blank=True, default='', max_length=512)),
+                        ('auth_type', models.CharField(blank=True, default='', max_length=32)),
+                        ('auth_token', models.CharField(blank=True, default='', max_length=128)),
+                        ('action', models.CharField(blank=True, default='', max_length=64)),
+                        ('user', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='api_request_logs', to=settings.AUTH_USER_MODEL)),
+                    ],
+                    options={
+                        'verbose_name': 'API request log',
+                        'verbose_name_plural': 'API request logs',
+                        'ordering': ['-datetime_created'],
+                        'indexes': [models.Index(fields=['datetime_created'], name='myview_apir_datetim_b8c2a6_idx'), models.Index(fields=['path'], name='myview_apir_path_f5c028_idx'), models.Index(fields=['status_code'], name='myview_apir_status__e3c9d0_idx')],
+                    },
+                ),
             ],
-            options={
-                'verbose_name': 'API request log',
-                'verbose_name_plural': 'API request logs',
-                'ordering': ['-datetime_created'],
-                'indexes': [models.Index(fields=['datetime_created'], name='myview_apir_datetim_b8c2a6_idx'), models.Index(fields=['path'], name='myview_apir_path_f5c028_idx'), models.Index(fields=['status_code'], name='myview_apir_status__e3c9d0_idx')],
-            },
+            database_operations=[
+                migrations.RunPython(create_apirequestlog_table, migrations.RunPython.noop),
+            ],
         ),
     ]
