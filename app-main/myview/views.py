@@ -10,6 +10,7 @@ from django.utils.decorators import method_decorator
 from django.contrib.auth.decorators import login_required
 import logging
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +59,8 @@ class BaseView(View):
 
             # Parse the last_updated date string and reformat it
             last_updated_dt = datetime.strptime(last_updated_raw, '%a %b %d %H:%M:%S %Y %z')
-            last_updated_formatted = last_updated_dt.strftime('%H:%M %d-%m-%Y')
+            last_updated_dt = last_updated_dt.astimezone(ZoneInfo("Europe/Copenhagen"))
+            last_updated_formatted = last_updated_dt.strftime('%H:%M %d-%m-%Y %Z')
         except (subprocess.CalledProcessError, FileNotFoundError) as exc:
             logger.warning("Unable to read git metadata for template footer: %s", exc)
             if last_updated_raw:

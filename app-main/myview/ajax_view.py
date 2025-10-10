@@ -8,6 +8,7 @@ from ldap3 import ALL_ATTRIBUTES
 import json
 import logging
 from django.conf import settings  # Added import for settings
+from zoneinfo import ZoneInfo
 
 
 # Get the logger for your app
@@ -27,9 +28,9 @@ def get_nt_time_from_date(year, month=1, day=1):
 
 def nt_time_to_date(nt_time):
     import datetime
-    nt_epoch = datetime.datetime(1601, 1, 1)
+    nt_epoch = datetime.datetime(1601, 1, 1, tzinfo=datetime.timezone.utc)
     delta = datetime.timedelta(microseconds=nt_time / 10)
-    target_date = nt_epoch + delta
+    target_date = (nt_epoch + delta).astimezone(ZoneInfo("Europe/Copenhagen"))
     return target_date.strftime('%d-%m-%Y')
 
 def generate_generic_xlsx_document(data):
@@ -59,7 +60,7 @@ def generate_generic_xlsx_document(data):
     df = pd.DataFrame(extracted_data)
 
     # Generate unique file name
-    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+    timestamp = datetime.now(ZoneInfo("Europe/Copenhagen")).strftime("%Y%m%d%H%M%S")
     output_file_name = f'active_directory_query_{timestamp}.xlsx'
     output_file_path = os.path.join(settings.MEDIA_ROOT, output_file_name)
 
