@@ -983,3 +983,36 @@ class APIRequestLog(BaseModel):
     def __str__(self):
         status = self.status_code if self.status_code is not None else '—'
         return f"{self.method} {self.path} [{status}]"
+
+
+class UserLoginLog(BaseModel):
+    """Tracks MSAL login events for auditing."""
+
+    AUTH_METHOD_MSAL = 'msal'
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='login_events',
+    )
+    user_principal_name = models.CharField(max_length=255, blank=True, default='')
+    auth_method = models.CharField(max_length=32, default=AUTH_METHOD_MSAL)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.CharField(max_length=512, blank=True, default='')
+    session_key = models.CharField(max_length=40, blank=True, default='')
+    additional_info = models.JSONField(blank=True, null=True)
+
+    class Meta:
+        ordering = ['-datetime_created']
+        verbose_name = "User login"
+        verbose_name_plural = "User logins"
+        indexes = [
+            models.Index(fields=['datetime_created']),
+            models.Index(fields=['user_principal_name']),
+        ]
+
+    def __str__(self):
+        username = self.user_principal_name or getattr(self.user, 'username', 'unknown')
+        return f"{username} via {self.auth_method} at {self.datetime_created:%Y-%m-%d %H:%M:%S}"

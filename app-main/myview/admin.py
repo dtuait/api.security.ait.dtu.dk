@@ -808,6 +808,49 @@ except ImportError:
     pass
 
 
+try:
+    from .models import UserLoginLog
+
+    @admin.register(UserLoginLog)
+    class UserLoginLogAdmin(admin.ModelAdmin):
+        list_display = (
+            'datetime_created',
+            'user',
+            'user_principal_name',
+            'auth_method',
+            'ip_address',
+            'session_key',
+        )
+        list_filter = (
+            'auth_method',
+            ('datetime_created', admin.DateFieldListFilter),
+        )
+        search_fields = ('user__username', 'user_principal_name', 'ip_address', 'session_key')
+        readonly_fields = (
+            'datetime_created',
+            'datetime_modified',
+            'user',
+            'user_principal_name',
+            'auth_method',
+            'ip_address',
+            'user_agent',
+            'session_key',
+            'additional_info',
+        )
+        ordering = ('-datetime_created',)
+        list_per_page = 50
+
+        def has_add_permission(self, request):
+            return False
+
+        def has_change_permission(self, request, obj=None):
+            return False
+
+except ImportError:
+    print("UserLoginLog model is not available for registration in the admin site.")
+    pass
+
+
 def _register_utility_admin_urls():
     original_get_urls = admin.site.get_urls
 
