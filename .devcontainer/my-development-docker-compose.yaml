@@ -6,19 +6,17 @@
 
 services:
   xx-api-security-ait-dtu-dk-app-main:
-    image: dtuait/api-security-ait-dtu-dk-app-main:python-3.12-bookworm-django-5.1.1-postgres-16-29-09-2025
-    # build:
-    #   context: .
-    #   dockerfile: Dockerfile
-
-    # development command
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      target: development
+    image: dtuait/api-security-ait-dtu-dk-app-main:dev-latest
     command: sleep infinity
-    # production command
-    # command: 'bash -c "cd /app/app-main && gunicorn app.wsgi:application --bind 0.0.0.0:8121"'
-
-
     restart: always
     tty: true
+    environment:
+      DJANGO_MIGRATE: "false"
+      DJANGO_COLLECTSTATIC: "false"
     volumes:
       - ..:/app
       - ../shared-project-data:/mnt/shared-project-data

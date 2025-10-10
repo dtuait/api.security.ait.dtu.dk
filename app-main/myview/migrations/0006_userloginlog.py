@@ -9,7 +9,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
-        ('myview', '0004_apirequestlog'),
+        ('myview', '0005_apirequestlog'),
     ]
 
     operations = [

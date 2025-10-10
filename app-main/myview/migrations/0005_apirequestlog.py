@@ -9,7 +9,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
-        ('myview', '0003_alter_adgroupassociation_options_and_more'),
+        ('myview', '0004_useractivitylog'),
     ]
 
     operations = [
