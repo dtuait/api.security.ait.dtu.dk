@@ -8,11 +8,27 @@ import django.db.models.deletion
 TABLE_NAME = "myview_apirequestlog"
 
 
+def _get_model(apps, model_name):
+    """Return the historical model or fall back to the runtime model.
+
+    When running migrations inside SeparateDatabaseAndState the historical
+    state does not yet include the newly declared model.  In that situation we
+    fall back to importing the runtime model so the table can still be created.
+    """
+
+    try:
+        return apps.get_model("myview", model_name)
+    except LookupError:
+        from myview import models as myview_models
+
+        return getattr(myview_models, model_name)
+
+
 def create_apirequestlog_table(apps, schema_editor):
     if TABLE_NAME in schema_editor.connection.introspection.table_names():
         return
 
-    APIRequestLog = apps.get_model("myview", "APIRequestLog")
+    APIRequestLog = _get_model(apps, "APIRequestLog")
     schema_editor.create_model(APIRequestLog)
 
 
