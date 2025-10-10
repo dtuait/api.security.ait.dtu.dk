@@ -1,4 +1,5 @@
 import logging
+import os
 import subprocess
 from datetime import datetime
 from pathlib import Path
@@ -91,6 +92,58 @@ class BaseView(View):
 
         return None, None
 
+    def _environment_git_info(self):
+        """Return git metadata exposed through environment variables."""
+
+        branch = None
+        commit = None
+        last_updated_formatted = None
+
+        branch = (
+            os.environ.get("COOLIFY_GIT_BRANCH")
+            or os.environ.get("GIT_BRANCH")
+            or os.environ.get("BRANCH")
+        )
+
+        commit = (
+            os.environ.get("COOLIFY_GIT_COMMIT")
+            or os.environ.get("GIT_COMMIT")
+            or os.environ.get("SOURCE_VERSION")
+            or os.environ.get("COMMIT")
+        )
+
+        last_updated_raw = (
+            os.environ.get("COOLIFY_LAST_UPDATED")
+            or os.environ.get("COOLIFY_DEPLOYED_AT")
+            or os.environ.get("LAST_DEPLOYED_AT")
+            or os.environ.get("LAST_UPDATED")
+        )
+
+        if last_updated_raw:
+            last_updated_dt = parse_datetime(last_updated_raw)
+            if last_updated_dt is None:
+                if last_updated_raw.isdigit():
+                    last_updated_dt = datetime.fromtimestamp(
+                        int(last_updated_raw), tz=ZoneInfo("UTC")
+                    )
+                else:
+                    try:
+                        last_updated_dt = datetime.fromisoformat(last_updated_raw)
+                    except ValueError:
+                        last_updated_dt = None
+
+            if last_updated_dt is not None:
+                if last_updated_dt.tzinfo is None:
+                    last_updated_dt = last_updated_dt.replace(tzinfo=ZoneInfo("UTC"))
+                last_updated_dt = last_updated_dt.astimezone(
+                    ZoneInfo("Europe/Copenhagen")
+                )
+                last_updated_formatted = last_updated_dt.strftime('%H:%M %d-%m-%Y %Z')
+            else:
+                last_updated_formatted = last_updated_raw
+
+        return branch, commit, last_updated_formatted
+
     def _fallback_git_info(self, git_dir):
         """Read git information directly from the .git directory."""
 
@@ -125,6 +178,14 @@ class BaseView(View):
         last_updated_raw = None
 
         git_root, git_dir = self._locate_git_root()
+
+        env_branch, env_commit, env_last_updated = self._environment_git_info()
+        if env_branch:
+            branch = env_branch
+        if env_commit:
+            commit = env_commit
+        if env_last_updated:
+            last_updated_formatted = env_last_updated
 
         try:
             if not git_root:
