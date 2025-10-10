@@ -1,42 +1,48 @@
-from django.forms import ValidationError
-from django.http import JsonResponse
-from rest_framework import viewsets, status
-from rest_framework.response import Response
-import json
+"""Graph API endpoints that retain the original behaviour and documentation."""
+
+from __future__ import annotations
+
 import logging
+from typing import Any, Optional
 
-from drf_yasg.utils import swagger_auto_schema
-from rest_framework.authentication import TokenAuthentication
-from rest_framework.permissions import IsAuthenticated
 from drf_yasg import openapi
-from rest_framework.exceptions import ParseError
-from .serializers import QuerySerializer
-# from .scripts.graph_apicall_runhuntingquery import run_hunting_query
-from .services import execute_hunting_query, execute_get_user, execute_list_user_authentication_methods
+from drf_yasg.utils import swagger_auto_schema
+from rest_framework import status
+from rest_framework.response import Response
 
-from rest_framework.decorators import action
-from rest_framework.authentication import SessionAuthentication, TokenAuthentication
+from utils.api import SecuredAPIView
+
+from .serializers import QuerySerializer
+from .services import (
+    execute_delete_software_mfa_method,
+    execute_get_user,
+    execute_hunting_query,
+    execute_list_user_authentication_methods,
+    execute_microsoft_authentication_method,
+    execute_phone_authentication_method,
+)
 
 logger = logging.getLogger(__name__)
 
 
-def _extract_graph_error(response):
+def _extract_graph_error(response: Optional[Any]) -> str:
+    """Return a human readable error description from a Graph response."""
     if response is None:
-        return 'No response received from Microsoft Graph.'
+        return "No response received from Microsoft Graph."
 
     try:
         data = response.json()
     except ValueError:
-        text = getattr(response, 'text', '')
-        return text or 'Microsoft Graph returned an error without a body.'
+        text = getattr(response, "text", "")
+        return text or "Microsoft Graph returned an error without a body."
 
     if not isinstance(data, dict):
-        return data
+        return str(data)
 
-    error = data.get('error')
+    error = data.get("error")
     if isinstance(error, dict):
-        message = error.get('message')
-        code = error.get('code')
+        message = error.get("message")
+        code = error.get("code")
         if message and code:
             return f"{code}: {message}"
         if message:
@@ -44,752 +50,475 @@ def _extract_graph_error(response):
         if code:
             return code
 
-    return data
-
-
-
-
-
-
-
-
-
-
-class APIAuthBaseViewSet(viewsets.ViewSet):
-    # The 'authentication_classes' attribute is crucial for securing our API. It determines how incoming requests should be authenticated.
-    # In this case, we're using two authentication methods: SessionAuthentication and TokenAuthentication.
-    # SessionAuthentication is used for users who are authenticated via a web form and have an active session.
-    # TokenAuthentication is used for programmatic access to the API, where the client sends a token as part of the request.
-    # The order of the classes in the list matters. Django REST Framework will use the first class that successfully authenticates.
-    # This setup allows us to support both interactive browser-based usage of the API (via sessions) and programmatic usage (via tokens).
-    authentication_classes = [SessionAuthentication, TokenAuthentication]
-
-    def finalize_response(self, request, response, *args, **kwargs):
-        response = super().finalize_response(request, response, *args, **kwargs)
-        try:
-            self._log_api_request_activity(request, response)
-        except Exception:
-            logger.exception("Failed to capture API activity log entry")
-        return response
-
-    def _log_api_request_activity(self, request, response):
-        if request is None or response is None:
-            return
-
-        if request.method in {"OPTIONS", "HEAD"}:
-            return
-
-        user = getattr(request, "user", None)
-        if not user or not getattr(user, "is_authenticated", False):
-            return
-
-        status_code = getattr(response, "status_code", None)
-        was_successful = status_code is not None and 200 <= status_code < 400
-
-        message = ""
-        if not was_successful:
-            detail = getattr(response, "data", None)
-            if isinstance(detail, (dict, list)):
-                try:
-                    message = json.dumps(detail, default=str)
-                except TypeError:
-                    message = str(detail)
-            elif detail is not None:
-                message = str(detail)
-            else:
-                message = getattr(response, "reason_phrase", "") or ""
-
-        try:
-            from myview.models import UserActivityLog
-
-            UserActivityLog.log_api_request(
-                user=user,
-                request=request,
-                was_successful=was_successful,
-                status_code=status_code,
-                message=message[:1024] if message else "",
-            )
-        except Exception:
-            logger.exception("Unable to persist user activity for %s", getattr(user, "username", user))
-
-
-
-
-
-class GetUserViewSet(APIAuthBaseViewSet):
-
-    
-
-    autho_bearer_token = openapi.Parameter(
-        'Authorization',  # name of the header        
-        in_=openapi.IN_HEADER,  # where the parameter is located
-        description="Required. Must be in the format '<token> or real token'.",
-        type=openapi.TYPE_STRING,  # type of the parameter
-        required=True,  # if the header is required or not
-        default='<token>'  # default value
-    )
-
-
-
-
-
-    @swagger_auto_schema(
-        manual_parameters=[
-            openapi.Parameter(
-                'Authorization',  # name of the header        
-                in_=openapi.IN_HEADER,  # where the parameter is located
-                description="Required. Must be in the format '<token> or real token'.",
-                type=openapi.TYPE_STRING,  # type of the parameter
-                required=True,  # if the header is required or not
-                default='<token>'  # default value
-            ), 
-            openapi.Parameter(
-                'user',  # name of the path parameter
-                in_=openapi.IN_PATH,  # location of the parameter
-                description="The username requested for retrieval",
-                type=openapi.TYPE_STRING,  # type of the parameter
-                required=True,  # if the path parameter is required
-                default='vicre-test01@dtudk.onmicrosoft.com',  # default value
-                override=True  # override the default value
-            ),
-            openapi.Parameter(
-            '$select',  # name of the query parameter
-            in_=openapi.IN_QUERY,  # location of the parameter
-            description="Optional. Specifies a subset of properties to include in the response.",
-            type=openapi.TYPE_STRING,
-            required=False
-            ),
-        ],
-
-
-        operation_description="""
-        Get the user info for the given username.
-
-        Microsoft Graph API documentation: https://learn.microsoft.com/en-us/graph/api/user-get?view=graph-rest-1.0&tabs=http
-
-        Curl example: \n
-        \t curl --location --request GET 'https://api.security.ait.dtu.dk/v1.0/graph/get-user/<user>'
-        \t\t  --header 'Authorization: Token <token>'
-
-
-
-        Response example:
-        ```json
-        {
-            "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#users/$entity",
-            "businessPhones": [],
-            "displayName": "vicre-test01",
-            "givenName": "Victors test bruger",
-            "jobTitle": "test bruger",
-            "mail": "vicre-test01@dtudk.onmicrosoft.com",
-            "mobilePhone": null,
-            "officeLocation": null,
-            "preferredLanguage": null,
-            "surname": null,
-            "userPrincipalName": "vicre-test01@dtudk.onmicrosoft.com",
-            "id": "3358461b-2b36-4019-a2b7-2da92001cf7c"
-        }
-        ```
-        """,
-        responses={
-            200: 'Successfully got user',
-            400: 'Error: 1',
-            404: 'Error: 2',
-            500: 'Error: Internal server error'
-        },
-  
-    )
-
-
-    @action(detail=False, methods=['get'], url_path='get_user')
-
-
-    def get_user(self, request, user):
-            
-        select_param = request.GET.get('$select', None)
-
-        response, status_code = execute_get_user(user, select_param)
-
-        return JsonResponse(response, status=status_code)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-class ListUserAuthenticationMethodsViewSet(APIAuthBaseViewSet):
-
-
-
-
-    autho_bearer_token = openapi.Parameter(
-        'Authorization',  # name of the header        
-        in_=openapi.IN_HEADER,  # where the parameter is located
-        description="Required. Must be in the format '<token> or real token'.",
-        type=openapi.TYPE_STRING,  # type of the parameter
-        required=True,  # if the header is required or not
-        default='<token>'  # default value
+    return str(data)
+
+
+class GetUserView(SecuredAPIView):
+    """Return information about a Microsoft Entra ID user."""
+
+    authorization_header = openapi.Parameter(
+        "Authorization",
+        in_=openapi.IN_HEADER,
+        description="Required. Must be in the format 'Token <token>'.",
+        type=openapi.TYPE_STRING,
+        required=True,
+        default="Token <token>",
     )
 
     user_path_param = openapi.Parameter(
-        'user_id__or__user_principalname',  # name of the path parameter
-        in_=openapi.IN_PATH,  # location of the parameter
-        description="Get user authentication methods for the given user id",
-        type=openapi.TYPE_STRING,  # type of the parameter
-        required=True,  # if the path parameter is required
-        default='vicre-test01@dtudk.onmicrosoft.com',  # default value
-        override=True  # override the default value
+        "user",
+        in_=openapi.IN_PATH,
+        description="The username requested for retrieval.",
+        type=openapi.TYPE_STRING,
+        required=True,
+        default="vicre-test01@dtudk.onmicrosoft.com",
+        override=True,
+    )
+
+    select_param = openapi.Parameter(
+        "$select",
+        in_=openapi.IN_QUERY,
+        description="Optional. Specifies a subset of properties to include in the response.",
+        type=openapi.TYPE_STRING,
+        required=False,
     )
 
     @swagger_auto_schema(
-        manual_parameters=[autho_bearer_token, user_path_param],
+        manual_parameters=[authorization_header, user_path_param, select_param],
         operation_description="""
-        Get the user authentication methods for the given user id.
+Get the user info for the given username.
 
-        Microsoft Graph API documentation: https://learn.microsoft.com/en-us/graph/api/microsoftauthenticatorauthenticationmethod-list?view=graph-rest-1.0&tabs=http
-        
-        Response example using sms as mfa method:
-        Curl\n
-        ```
-        curl -X 'GET'
-        \t'http://localhost:6081/v1.0/graph/list/vicre-test01%40dtudk.onmicrosoft.com/authentication-methods'
-        \t-H 'accept: application/json'
-        \t-H 'Authorization: <token>'
-        \t-H 'X-CSRFToken: qfp3Ahr3MGnV0aERFcjdAjkCNPVp39m77Y3d72WuUUanpJzJrcXN9TIe86t5yFL2'
-        ```
-        Request URL\n
-        ```
-        http://localhost:6081/v1.0/graph/list/vicre-test01%40dtudk.onmicrosoft.com/authentication-methods`
-        ```
-        Reponse\n
-        ```
+Microsoft Graph API documentation: https://learn.microsoft.com/en-us/graph/api/user-get?view=graph-rest-1.0&tabs=http
+
+Curl example:
+```
+curl --location --request GET 'https://api.security.ait.dtu.dk/v1.0/graph/get-user/<user>' \
+    --header 'Authorization: Token <token>'
+```
+
+Response example:
+```
+{
+    "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#users/$entity",
+    "businessPhones": [],
+    "displayName": "vicre-test01",
+    "givenName": "Victors test bruger",
+    "jobTitle": "test bruger",
+    "mail": "vicre-test01@dtudk.onmicrosoft.com",
+    "mobilePhone": null,
+    "officeLocation": null,
+    "preferredLanguage": null,
+    "surname": null,
+    "userPrincipalName": "vicre-test01@dtudk.onmicrosoft.com",
+    "id": "3358461b-2b36-4019-a2b7-2da92001cf7c"
+}
+```
+""",
+        responses={
+            200: "Successfully got user",
+            400: "Error: Bad request",
+            404: "Error: Not found",
+            500: "Error: Internal server error",
+        },
+    )
+    def get(self, request, user: str) -> Response:
+        select_param = request.GET.get("$select")
+        payload, status_code = execute_get_user(user, select_param)
+        return Response(payload, status=status_code)
+
+
+class ListUserAuthenticationMethodsView(SecuredAPIView):
+    """List all authentication methods configured for a user."""
+
+    authorization_header = openapi.Parameter(
+        "Authorization",
+        in_=openapi.IN_HEADER,
+        description="Required. Must be in the format 'Token <token>'.",
+        type=openapi.TYPE_STRING,
+        required=True,
+        default="Token <token>",
+    )
+
+    user_path_param = openapi.Parameter(
+        "user_id__or__user_principalname",
+        in_=openapi.IN_PATH,
+        description="Get user authentication methods for the given user id.",
+        type=openapi.TYPE_STRING,
+        required=True,
+        default="vicre-test01@dtudk.onmicrosoft.com",
+        override=True,
+    )
+
+    @swagger_auto_schema(
+        manual_parameters=[authorization_header, user_path_param],
+        operation_description="""
+Get the user authentication methods for the given user id.
+
+Microsoft Graph API documentation: https://learn.microsoft.com/en-us/graph/api/microsoftauthenticatorauthenticationmethod-list?view=graph-rest-1.0&tabs=http
+
+Response example using SMS as MFA method:
+```
+curl -X 'GET' \
+    'http://localhost:6081/v1.0/graph/list/vicre-test01%40dtudk.onmicrosoft.com/authentication-methods' \
+    -H 'accept: application/json' \
+    -H 'Authorization: Token <token>'
+```
+
+Response
+```
+{
+    "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#users('vicre-test01%40dtudk.onmicrosoft.com')/authentication/methods",
+    "value": [
         {
-        "@odata.context": "https://graph.microsoft.com/v1.0/$metadata#users('vicre-test01%40dtudk.onmicrosoft.com')/authentication/methods",
-        "value": [
-            {
             "@odata.type": "#microsoft.graph.passwordAuthenticationMethod",
             "id": "28c10230-6103-485e-b985-444c60001490",
             "password": null,
             "createdDateTime": "2024-03-12T13:25:21Z"
-            },
-            {
+        },
+        {
             "@odata.type": "#microsoft.graph.microsoftAuthenticatorAuthenticationMethod",
             "id": "123e4441-eadf-4950-883d-fea123988824",
             "displayName": "iPhone 12",
             "deviceTag": "SoftwareTokenActivated",
             "phoneAppVersion": "6.8.3",
             "createdDateTime": null
-            }
-        ]
         }
-        ```
-
-        """,
+    ]
+}
+```
+""",
         responses={
-            200: 'Successfully got user methods',
-            400: 'Error: 1',
-            404: 'Error: 2',
-            500: 'Error: Internal server error'
+            200: "Successfully got user methods",
+            400: "Error: Bad request",
+            404: "Error: Not found",
+            500: "Error: Internal server error",
         },
-  
     )
+    def get(self, request, user_id__or__user_principalname: str) -> Response:
+        payload, status_code = execute_list_user_authentication_methods(
+            user_id__or__user_principalname
+        )
+        return Response(payload, status=status_code)
 
 
-    @action(detail=False, methods=['get'], url_path='list_user_authentication_methods')
+class _BaseGraphDeleteView(SecuredAPIView):
+    """Shared helpers for delete style Graph endpoints."""
 
-
-    def list_user_authentication_methods(self, request, user_id__or__user_principalname):
-
-        response, status_code = execute_list_user_authentication_methods(user_id__or__user_principalname)
-
-        return JsonResponse(response, status=status_code)
-
-        # return Response({'error': 'Not implemented'}, status=status.HTTP_501_NOT_IMPLEMENTED)
-
-
-
-
-
-
-
-
-
-
-
-
-from .services import execute_delete_software_mfa_method  # Import the service
-
-class DeleteSoftwareMfaViewSet(APIAuthBaseViewSet):
-
-    autho_bearer_token = openapi.Parameter(
-        'Authorization',
+    authorization_header = openapi.Parameter(
+        "Authorization",
         in_=openapi.IN_HEADER,
-        description="Required. Must be in the format '<token> or real token'.",
+        description="Required. Must be in the format 'Token <token>'.",
         type=openapi.TYPE_STRING,
         required=True,
-        default='<token>'
+        default="Token <token>",
     )
 
+    def _error_response(self, response: Optional[Any], message: str, status_code: Optional[int]) -> Response:
+        detail = _extract_graph_error(response)
+        return Response(
+            {
+                "status": "error",
+                "message": message,
+                "details": detail,
+            },
+            status=status_code or status.HTTP_502_BAD_GATEWAY,
+        )
+
+
+class DeleteSoftwareMfaView(_BaseGraphDeleteView):
+    """Delete a software based MFA method for a user."""
+
     user_path_param = openapi.Parameter(
-        'user_id__or__user_principalname',
+        "user_id__or__user_principalname",
         in_=openapi.IN_PATH,
         description="The username requested for deletion of software MFA.",
         type=openapi.TYPE_STRING,
         required=True,
-        default='vicre-test01@dtudk.onmicrosoft.com',
-        override=True
+        default="vicre-test01@dtudk.onmicrosoft.com",
+        override=True,
     )
 
-    software_oath_method_id = openapi.Parameter(
-        'software_oath_method_id',
+    method_path_param = openapi.Parameter(
+        "software_oath_method_id",
         in_=openapi.IN_PATH,
         description="The authentication method ID for the software MFA solution to be deleted.",
         type=openapi.TYPE_STRING,
         required=True,
-        default=None,
-        override=True
+        default="00000000-0000-0000-0000-000000000000",
+        override=True,
     )
 
     @swagger_auto_schema(
-        manual_parameters=[autho_bearer_token, user_path_param, software_oath_method_id],
+        manual_parameters=[_BaseGraphDeleteView.authorization_header, user_path_param, method_path_param],
         operation_description="""
-        Deletes a user's software-based MFA method, such as those using apps like Google Authenticator.
+Deletes a user's software-based MFA method, such as those using apps like Google Authenticator.
 
-        Curl example:
-        ```
-        curl -X 'DELETE'
-        \t'http://localhost:6081/v1.0/graph/users/vicre-test01%40dtudk.onmicrosoft.com/software-authentication-methods/38870367-9eb1-4568-9056-23c141f777de'
-        \t-H 'accept: application/json'
-        \t-H 'Authorization: <token>'
-        ```
-        Response: 204 No content
-        """,
+Curl example:
+```
+curl -X 'DELETE' \
+    'http://localhost:6081/v1.0/graph/users/vicre-test01%40dtudk.onmicrosoft.com/software-authentication-methods/38870367-9eb1-4568-9056-23c141f777de' \
+    -H 'accept: application/json' \
+    -H 'Authorization: Token <token>'
+```
+
+Response: 204 No content
+""",
         responses={
-            204: 'Successfully deleted software MFA method',
-            400: 'Error: Bad request',
-            404: 'Error: Not found',
-            500: 'Error: Internal server error'
+            204: "Successfully deleted software MFA method",
+            400: "Error: Bad request",
+            404: "Error: Not found",
+            500: "Error: Internal server error",
         },
     )
-
-    @action(detail=False, methods=['delete'], url_path='delete_software_mfa')
-    def delete_software_mfa(self, request, user_id__or__user_principalname, software_oath_method_id):
+    def delete(
+        self,
+        request,
+        user_id__or__user_principalname: str,
+        software_oath_method_id: str,
+    ) -> Response:
         try:
             response, status_code = execute_delete_software_mfa_method(
                 user_id__or__user_principalname,
                 software_oath_method_id,
             )
-        except Exception as exc:  # noqa: BLE001
-            logger.exception('Failed to delete software MFA for %s', user_id__or__user_principalname)
-            return JsonResponse(
+        except Exception:  # noqa: BLE001
+            logger.exception(
+                "Failed to delete software MFA for %s",
+                user_id__or__user_principalname,
+            )
+            return Response(
                 {
-                    'status': 'error',
-                    'message': 'Failed to delete software MFA.',
-                    'details': str(exc),
+                    "status": "error",
+                    "message": "Failed to delete software MFA.",
                 },
-                status=500,
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-        if status_code == 204:
-            return JsonResponse(
-                {'status': 'success', 'message': 'Successfully deleted software MFA method.'},
-                status=204,
-            )
+        if status_code == status.HTTP_204_NO_CONTENT:
+            return Response(status=status.HTTP_204_NO_CONTENT)
 
-        detail = _extract_graph_error(response)
-        return JsonResponse(
-            {
-                'status': 'error',
-                'message': 'Microsoft Graph did not confirm deletion.',
-                'details': detail,
-            },
-            status=status_code or 502,
+        return self._error_response(
+            response,
+            "Microsoft Graph did not confirm deletion.",
+            status_code,
         )
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-class DeleteMfaViewSet(APIAuthBaseViewSet):
-
-
-    autho_bearer_token = openapi.Parameter(
-        'Authorization',  # name of the header        
-        in_=openapi.IN_HEADER,  # where the parameter is located
-        description="Required. Must be in the format '<token> or real token'.",
-        type=openapi.TYPE_STRING,  # type of the parameter
-        required=True,  # if the header is required or not
-        default='<token>'  # default value
-    )
+class DeleteMfaView(_BaseGraphDeleteView):
+    """Delete a Microsoft Authenticator method for a user."""
 
     user_path_param = openapi.Parameter(
-        'user_id__or__user_principalname',  # name of the path parameter
-        in_=openapi.IN_PATH,  # location of the parameter
+        "user_id__or__user_principalname",
+        in_=openapi.IN_PATH,
         description="The username requested for deletion of MFA.",
-        type=openapi.TYPE_STRING,  # type of the parameter
-        required=True,  # if the path parameter is required
-        default='vicre-test01@dtudk.onmicrosoft.com',  # default value
-        override=True  # override the default value
+        type=openapi.TYPE_STRING,
+        required=True,
+        default="vicre-test01@dtudk.onmicrosoft.com",
+        override=True,
     )
 
-    microsoft_authentication_method_id = openapi.Parameter(
-        'microsoft_authenticator_method_id',  # name of the path parameter
-        in_=openapi.IN_PATH,  # location of the parameter
-        description="The authentication method id for the MFA solution to be deleted",
-        type=openapi.TYPE_STRING,  # type of the parameter
-        required=True,  # if the path parameter is required
-        default=None,  # default value
-        override=True  # override the default value
+    method_path_param = openapi.Parameter(
+        "microsoft_authenticator_method_id",
+        in_=openapi.IN_PATH,
+        description="The authentication method id for the MFA solution to be deleted.",
+        type=openapi.TYPE_STRING,
+        required=True,
+        default="00000000-0000-0000-0000-000000000000",
+        override=True,
     )
 
     @swagger_auto_schema(
-        manual_parameters=[autho_bearer_token, user_path_param, microsoft_authentication_method_id],
+        manual_parameters=[_BaseGraphDeleteView.authorization_header, user_path_param, method_path_param],
         operation_description="""
-        Incoming user MFA solutions will be deleted, thereby giving users space to re-enable MFA by deleting their MFA solution on the app, then visiting office.com and signing in with <user>@dtu.dk to re-enable MFA.
+Incoming user MFA solutions will be deleted, thereby giving users space to re-enable MFA by deleting their MFA solution on the app, then visiting office.com and signing in with <user>@dtu.dk to re-enable MFA.
 
-        Microsoft Graph API documentation: https://learn.microsoft.com/en-us/graph/api/microsoftauthenticatorauthenticationmethod-delete?view=graph-rest-1.0&tabs=http
+Microsoft Graph API documentation: https://learn.microsoft.com/en-us/graph/api/microsoftauthenticatorauthenticationmethod-delete?view=graph-rest-1.0&tabs=http
 
-        How the call looks when calling microsoft api: https://graph.microsoft.com/v1.0/users/{azure_user_principal_id}/authentication/microsoftAuthenticatorMethods/{authentication_method_id}
+Curl example:
+```
+curl -X 'DELETE' \
+    'http://localhost:6081/v1.0/graph/users/vicre-test01%40dtudk.onmicrosoft.com/microsoft-authentication-methods/171397f2-804e-4664-8ede-c4b3adf6bbb0' \
+    -H 'accept: application/json' \
+    -H 'Authorization: Token <token>'
+```
 
-        
-
-        Curl:
-        ```
-        curl -X 'DELETE'
-            \t'http://localhost:6081/v1.0/graph/users/vicre-test01%40dtudk.onmicrosoft.com/authentication-methods/171397f2-804e-4664-8ede-c4b3adf6bbb0'
-            \t-H 'accept: application/json'
-            \t-H 'Authorization: <token>'
-            \t-H 'X-CSRFToken: zVFVMDNniqLL9sdWjjcsvYrOb4haiVgfgEj5joiOqEydy18O5jQ24yPqwlPQNrFa'
-        ```
-        Request URL
-        ```
-        http://localhost:6081/v1.0/graph/users/vicre-test01%40dtudk.onmicrosoft.com/authentication-methods/171397f2-804e-4664-8ede-c4b3adf6bbb0
-        ```
-        Response is 204 No content. This means that the request was successful and the MFA was deleted.       
-
-
-
-        """,
+Response: 204 No content
+""",
         responses={
-            204: 'Successfully deleted MFA', # No content - meaning the request was successful
-            400: 'Error: 1',
-            404: 'Error: 2',
-            500: 'Error: Internal server error'
+            204: "Successfully deleted MFA",
+            400: "Error: Bad request",
+            404: "Error: Not found",
+            500: "Error: Internal server error",
         },
-  
     )
-
-
-    @action(detail=False, methods=['delete'], url_path='delete-mfa')
-
-
-    def delete_mfa(self, request, user_id__or__user_principalname, microsoft_authenticator_method_id):
-        from .services import execute_microsoft_authentication_method as delete_authentication_method
-
+    def delete(
+        self,
+        request,
+        user_id__or__user_principalname: str,
+        microsoft_authenticator_method_id: str,
+    ) -> Response:
         try:
-            response, status_code = delete_authentication_method(
+            response, status_code = execute_microsoft_authentication_method(
                 user_id__or__user_principalname,
                 microsoft_authenticator_method_id,
             )
-        except Exception as exc:  # noqa: BLE001
-            logger.exception('Failed to delete Microsoft authenticator method for %s', user_id__or__user_principalname)
-            return JsonResponse(
+        except Exception:  # noqa: BLE001
+            logger.exception(
+                "Failed to delete Microsoft authenticator method for %s",
+                user_id__or__user_principalname,
+            )
+            return Response(
                 {
-                    'status': 'error',
-                    'message': 'Failed to delete authentication method.',
-                    'details': str(exc),
+                    "status": "error",
+                    "message": "Failed to delete authentication method.",
                 },
-                status=500,
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-        if status_code == 204:
-            return JsonResponse(
-                {'status': 'success', 'message': 'Successfully deleted authentication method.'},
-                status=204,
-            )
+        if status_code == status.HTTP_204_NO_CONTENT:
+            return Response(status=status.HTTP_204_NO_CONTENT)
 
-        detail = _extract_graph_error(response)
-        return JsonResponse(
-            {
-                'status': 'error',
-                'message': 'Microsoft Graph did not confirm deletion.',
-                'details': detail,
-            },
-            status=status_code or 502,
+        return self._error_response(
+            response,
+            "Microsoft Graph did not confirm deletion.",
+            status_code,
         )
 
-        
 
-
-
-
-
-
-
-
-
-class DeletePhoneViewSet(APIAuthBaseViewSet):
-
-
-    autho_bearer_token = openapi.Parameter(
-        'Authorization',  # name of the header        
-        in_=openapi.IN_HEADER,  # where the parameter is located
-        description="Required. Must be in the format '<token> or real token'.",
-        type=openapi.TYPE_STRING,  # type of the parameter
-        required=True,  # if the header is required or not
-        default='<token>'  # default value
-    )
+class DeletePhoneView(_BaseGraphDeleteView):
+    """Delete a phone based MFA method for a user."""
 
     user_path_param = openapi.Parameter(
-        'user_id__or__user_principalname',  # name of the path parameter
-        in_=openapi.IN_PATH,  # location of the parameter
-        description="The username requested for deletion of Phone.",
-        type=openapi.TYPE_STRING,  # type of the parameter
-        required=True,  # if the path parameter is required
-        default='vicre-test01@dtudk.onmicrosoft.com',  # default value
-        override=True  # override the default value
+        "user_id__or__user_principalname",
+        in_=openapi.IN_PATH,
+        description="The username requested for deletion of phone MFA.",
+        type=openapi.TYPE_STRING,
+        required=True,
+        default="vicre-test01@dtudk.onmicrosoft.com",
+        override=True,
     )
 
-    phone_authenticator_method_id = openapi.Parameter(
-        'phone_authenticator_method_id',  # name of the path parameter
-        in_=openapi.IN_PATH,  # location of the parameter
-        description="The authentication method id for the Phone solution to be deleted",
-        type=openapi.TYPE_STRING,  # type of the parameter
-        required=True,  # if the path parameter is required
-        default=None,  # default value
-        override=True  # override the default value
+    method_path_param = openapi.Parameter(
+        "phone_authenticator_method_id",
+        in_=openapi.IN_PATH,
+        description="The authentication method id for the phone solution to be deleted.",
+        type=openapi.TYPE_STRING,
+        required=True,
+        default="00000000-0000-0000-0000-000000000000",
+        override=True,
     )
 
     @swagger_auto_schema(
-        manual_parameters=[autho_bearer_token, user_path_param, phone_authenticator_method_id],
+        manual_parameters=[_BaseGraphDeleteView.authorization_header, user_path_param, method_path_param],
         operation_description="""
-        Incoming user MFA solutions will be deleted, thereby giving users space to re-enable MFA by deleting their MFA solution on the app, then visiting office.com and signing in with <user>@dtu.dk to re-enable MFA.
+Incoming user phone based MFA solutions will be deleted, thereby giving users space to re-enable MFA by deleting their phone authentication method and then re-registering it.
 
-        Microsoft Phone API documentation: https://learn.microsoft.com/en-us/graph/api/phoneauthenticationmethod-delete?view=graph-rest-1.0&tabs=http
+Microsoft Graph API documentation: https://learn.microsoft.com/en-us/graph/api/phoneauthenticationmethod-delete?view=graph-rest-1.0&tabs=http
 
-        How the call looks when calling microsoft api: https://graph.microsoft.com/v1.0/users/{azure_user_principal_id}/authentication/microsoftAuthenticatorMethods/{authentication_method_id}
+Curl example:
+```
+curl -X 'DELETE' \
+    'http://localhost:6081/v1.0/graph/users/vicre-test01%40dtudk.onmicrosoft.com/phone-authentication-methods/171397f2-804e-4664-8ede-c4b3adf6bbb0' \
+    -H 'accept: application/json' \
+    -H 'Authorization: Token <token>'
+```
 
-        
-
-        Curl:
-        ```
-        curl -X 'DELETE'
-            \t'http://localhost:6081/v1.0/graph/users/vicre-test01%40dtudk.onmicrosoft.com/phone-authentication-methods/171397f2-804e-4664-8ede-c4b3adf6bbb0'
-            \t-H 'accept: application/json'
-            \t-H 'Authorization: <token>'
-            \t-H 'X-CSRFToken: zVFVMDNniqLL9sdWjjcsvYrOb4haiVgfgEj5joiOqEydy18O5jQ24yPqwlPQNrFa'
-        ```
-        Request URL
-        ```
-        http://localhost:6081/v1.0/graph/users/vicre-test01%40dtudk.onmicrosoft.com/phone-authentication-methods/171397f2-804e-4664-8ede-c4b3adf6bbb0
-        ```
-        Response is 204 No content. This means that the request was successful and the MFA was deleted.       
-
-
-
-        """,
+Response: 204 No content
+""",
         responses={
-            204: 'Successfully deleted phone', # No content - meaning the request was successful
-            400: 'Error: 1',
-            404: 'Error: 2',
-            500: 'Error: Internal server error'
+            204: "Successfully deleted phone MFA",
+            400: "Error: Bad request",
+            404: "Error: Not found",
+            500: "Error: Internal server error",
         },
-  
     )
-
-
-    @action(detail=False, methods=['delete'], url_path='delete_phone')
-
-
-    def delete_phone(self, request, user_id__or__user_principalname, phone_authenticator_method_id):
-        from .services import execute_phone_authentication_method as phone_authentication_method
-
+    def delete(
+        self,
+        request,
+        user_id__or__user_principalname: str,
+        phone_authenticator_method_id: str,
+    ) -> Response:
         try:
-            response, status_code = phone_authentication_method(
+            response, status_code = execute_phone_authentication_method(
                 user_id__or__user_principalname,
                 phone_authenticator_method_id,
             )
-        except Exception as exc:  # noqa: BLE001
-            logger.exception('Failed to delete phone authentication method for %s', user_id__or__user_principalname)
-            return JsonResponse(
+        except Exception:  # noqa: BLE001
+            logger.exception(
+                "Failed to delete phone authentication method for %s",
+                user_id__or__user_principalname,
+            )
+            return Response(
                 {
-                    'status': 'error',
-                    'message': 'Failed to delete phone authentication method.',
-                    'details': str(exc),
+                    "status": "error",
+                    "message": "Failed to delete phone authentication method.",
                 },
-                status=500,
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
-        if status_code == 204:
-            return JsonResponse(
-                {'status': 'success', 'message': 'Successfully deleted phone authentication method.'},
-                status=204,
-            )
+        if status_code == status.HTTP_204_NO_CONTENT:
+            return Response(status=status.HTTP_204_NO_CONTENT)
 
-        detail = _extract_graph_error(response)
-        return JsonResponse(
-            {
-                'status': 'error',
-                'message': 'Microsoft Graph did not confirm deletion.',
-                'details': detail,
-            },
-            status=status_code or 502,
+        return self._error_response(
+            response,
+            "Microsoft Graph did not confirm deletion.",
+            status_code,
         )
 
-        
 
+class HuntingQueryView(SecuredAPIView):
+    """Execute a hunting query."""
 
-
-
-
-
-
-
-
-class UnlockMfaViewSet(viewsets.ViewSet):
-    pass
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-class HuntingQueryViewSet(APIAuthBaseViewSet):
-
-
-    autho_bearer_token = openapi.Parameter(
-        'Authorization',  # name of the header
-        in_=openapi.IN_HEADER,  # where the parameter is located
+    authorization_header = openapi.Parameter(
+        "Authorization",
+        in_=openapi.IN_HEADER,
         description="Required. Must be in the format 'Token <token>'.",
-        type=openapi.TYPE_STRING,  # type of the parameter
-        required=True  # if the header is required or not
+        type=openapi.TYPE_STRING,
+        required=True,
     )
 
     content_type_parameter = openapi.Parameter(
-        'Content-Type',  # name of the header
-        in_=openapi.IN_HEADER,  # where the parameter is located
+        "Content-Type",
+        in_=openapi.IN_HEADER,
         description="Required. Must be 'application/json'.",
-        type=openapi.TYPE_STRING,  # type of the parameter
-        required=True  # if the header is required or not
+        type=openapi.TYPE_STRING,
+        required=True,
+    )
+
+    request_body = openapi.Schema(
+        type=openapi.TYPE_OBJECT,
+        required=["Query"],
+        properties={
+            "Query": openapi.Schema(
+                type=openapi.TYPE_STRING,
+                example="<kql query>",
+            )
+        },
     )
 
     @swagger_auto_schema(
-        manual_parameters=[autho_bearer_token, content_type_parameter],
-        operation_description="""
-        Hunting query description
-        """,
+        manual_parameters=[authorization_header, content_type_parameter],
+        request_body=request_body,
+        operation_description="Hunting query description",
         responses={
-            200: 'ComputerInfoSerializer()',
-            400: 'Error: 1',
-            404: 'Error: 2',
-            500: 'Error: Internal server error'
+            200: "ComputerInfoSerializer()",
+            400: "Error: Bad request",
+            404: "Error: Not found",
+            500: "Error: Internal server error",
         },
-        request_body=openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            required=['Query'],
-            properties={
-                'Query': openapi.Schema(
-                    type=openapi.TYPE_STRING,
-                    example='<kql query>'
-                )
-            },
-        ),
     )
+    def post(self, request) -> Response:
+        serializer = QuerySerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
 
-
-    @action(detail=False, methods=['post'], url_path='run-hunting-query')
-
-
-    def run_hunting_query(self, request):
+        query = serializer.validated_data["Query"]
         try:
-            # serialize incoming data
-            serializer = QuerySerializer(data=request.data)
+            payload, status_code = execute_hunting_query(query)
+        except Exception as exc:  # noqa: BLE001
+            logger.exception("Failed to execute hunting query")
+            return Response(
+                {"error": str(exc)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
-            # Raise an exception if the data is not valid
-            serializer.is_valid(raise_exception=True)
-
-            # Extract the validated query
-            query = serializer.validated_data['Query']
-
-            # Execute the hunting query
-            response, status_code = execute_hunting_query(query)
-
-            # Return the response
-            return Response(response, status=status_code)
-        
-        except ValidationError as e:
-            # Handle validation errors from the serializer
-            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
-
-        except Exception as e:
-            # Handle other unforeseen exceptions
-            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return Response(payload, status=status_code)
