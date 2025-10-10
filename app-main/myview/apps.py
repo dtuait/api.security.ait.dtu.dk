@@ -181,7 +181,7 @@ class MyviewConfig(AppConfig):
                         return
 
                     self._ensure_limiter_types(using=using)
-                    self._mark_startup_complete()
+                    self._mark_startup_complete(using=using)
                 except Exception:
                     logger.exception("Post-migrate limiter type sync failed")
 
@@ -300,6 +300,19 @@ class MyviewConfig(AppConfig):
 
             if updated:
                 limiter_type.save()
+
+    def _mark_startup_complete(self, using=None):
+        """Mark startup tasks as completed for the given database alias."""
+
+        if using is None:
+            using = DEFAULT_DB_ALIAS
+
+        if not hasattr(self, "_startup_lock"):
+            return
+
+        with self._startup_lock:
+            self._startup_pending_aliases.discard(using)
+            self._startup_completed_aliases.add(using)
 
     def _register_ou_limiter_sync(self):
         """Ensure AD OU limiters reflect Active Directory on startup and after migrations."""
