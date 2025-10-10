@@ -1,15 +1,32 @@
-from django.shortcuts import render
-from django.views import View
-from django.http import HttpResponseForbidden
-from django.shortcuts import render
-from django.shortcuts import render
-from .forms import LargeTextAreaForm
-from .models import Endpoint
-import subprocess
-from django.utils.decorators import method_decorator
-from django.contrib.auth.decorators import login_required
 import logging
+import subprocess
 from datetime import datetime
+from urllib.parse import urlencode
+
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.http import HttpResponseForbidden
+from django.shortcuts import redirect, render
+from django.urls import reverse
+from django.utils import timezone
+from django.utils.dateparse import parse_datetime
+from django.utils.decorators import method_decorator
+from django.views import View
+from requests import RequestException
+
+from graph.services import (
+    execute_delete_software_mfa_method,
+    execute_list_user_authentication_methods,
+    execute_microsoft_authentication_method,
+    execute_phone_authentication_method,
+)
+
+from .forms import (
+    DeleteAuthenticationMethodForm,
+    LargeTextAreaForm,
+    MfaResetLookupForm,
+)
+from .models import Endpoint
 
 logger = logging.getLogger(__name__)
 
@@ -277,15 +294,225 @@ class FrontpagePageView(BaseView):
 
 
 
-class MFAResetPageView(BaseView):
+class GraphAPIError(Exception):
+    """Lightweight wrapper for surfacing Graph API errors to the UI."""
 
+
+class MFAResetPageView(BaseView):
     template_name = "myview/mfa-reset.html"
+    form_class = MfaResetLookupForm
+    delete_form_class = DeleteAuthenticationMethodForm
+
+    DELETE_HANDLERS = {
+        "#microsoft.graph.microsoftAuthenticatorAuthenticationMethod": (
+            "Microsoft Authenticator",
+            execute_microsoft_authentication_method,
+        ),
+        "#microsoft.graph.phoneAuthenticationMethod": (
+            "Phone",
+            execute_phone_authentication_method,
+        ),
+        "#microsoft.graph.softwareOathAuthenticationMethod": (
+            "Software OATH",
+            execute_delete_software_mfa_method,
+        ),
+    }
 
     def get(self, request, *args, **kwargs):
         if not self.user_has_mfa_reset_access():
             return HttpResponseForbidden("You do not have access to this page.")
+
         context = super().get_context_data(**kwargs)
+        user_principal_name = request.GET.get("userPrincipalName", "").strip()
+        lookup_form = self.form_class(
+            initial={"user_principal_name": user_principal_name}
+        ) if user_principal_name else self.form_class()
+
+        auth_methods = []
+        no_methods = False
+
+        if user_principal_name:
+            try:
+                data = self._fetch_authentication_methods(user_principal_name)
+                auth_methods = self._transform_methods(data)
+                no_methods = not auth_methods
+            except GraphAPIError as exc:
+                messages.error(request, str(exc))
+
+        context.update(
+            {
+                "lookup_form": lookup_form,
+                "authentication_methods": auth_methods,
+                "selected_user_principal_name": user_principal_name,
+                "no_methods": no_methods,
+            }
+        )
         return render(request, self.template_name, context)
+
+    def post(self, request, *args, **kwargs):
+        if not self.user_has_mfa_reset_access():
+            return HttpResponseForbidden("You do not have access to this page.")
+
+        action = request.POST.get("action", "lookup")
+        if action == "delete":
+            return self._handle_delete(request)
+        return self._handle_lookup(request, **kwargs)
+
+    def _handle_lookup(self, request, **kwargs):
+        form = self.form_class(request.POST)
+        if form.is_valid():
+            user_principal_name = form.cleaned_data["user_principal_name"]
+            query = urlencode({"userPrincipalName": user_principal_name})
+            return redirect(f"{reverse('mfa-reset')}?{query}")
+
+        context = super().get_context_data(**kwargs)
+        context.update(
+            {
+                "lookup_form": form,
+                "authentication_methods": [],
+                "selected_user_principal_name": "",
+                "no_methods": False,
+            }
+        )
+        return render(request, self.template_name, context)
+
+    def _handle_delete(self, request):
+        form = self.delete_form_class(request.POST)
+        if form.is_valid():
+            user_principal_name = form.cleaned_data["user_principal_name"]
+            method_id = form.cleaned_data["method_id"]
+            method_type = form.cleaned_data["method_type"]
+            method_label, _ = self.DELETE_HANDLERS.get(
+                method_type, (method_type, None)
+            )
+
+            try:
+                self._delete_authentication_method(
+                    user_principal_name, method_id, method_type
+                )
+                messages.success(
+                    request,
+                    f"{method_label} authentication method removed for {user_principal_name}.",
+                )
+            except GraphAPIError as exc:
+                messages.error(request, str(exc))
+
+            query = urlencode({"userPrincipalName": user_principal_name})
+            return redirect(f"{reverse('mfa-reset')}?{query}")
+
+        messages.error(request, "Invalid delete request.")
+        user_principal_name = request.POST.get("user_principal_name", "").strip()
+        if user_principal_name:
+            query = urlencode({"userPrincipalName": user_principal_name})
+            return redirect(f"{reverse('mfa-reset')}?{query}")
+        return redirect(reverse("mfa-reset"))
+
+    def _fetch_authentication_methods(self, user_principal_name):
+        try:
+            data, status_code = execute_list_user_authentication_methods(
+                user_principal_name
+            )
+        except RequestException as exc:
+            raise GraphAPIError(f"Unable to contact Microsoft Graph: {exc}") from exc
+        except Exception as exc:  # pragma: no cover - defensive
+            raise GraphAPIError(f"Unexpected error contacting Microsoft Graph: {exc}") from exc
+
+        if status_code != 200:
+            error_detail = self._extract_graph_error(data)
+            raise GraphAPIError(
+                error_detail
+                or f"Microsoft Graph returned status {status_code} when fetching methods."
+            )
+
+        if not isinstance(data, dict):
+            raise GraphAPIError("Received an unexpected response from Microsoft Graph.")
+
+        return data.get("value", [])
+
+    def _delete_authentication_method(
+        self, user_principal_name, method_id, method_type
+    ):
+        handler_entry = self.DELETE_HANDLERS.get(method_type)
+        if not handler_entry:
+            raise GraphAPIError("Deletion is not supported for this authentication method.")
+
+        _, handler = handler_entry
+        try:
+            response, status_code = handler(user_principal_name, method_id)
+        except RequestException as exc:
+            raise GraphAPIError(f"Unable to contact Microsoft Graph: {exc}") from exc
+        except Exception as exc:  # pragma: no cover - defensive
+            raise GraphAPIError(f"Unexpected error contacting Microsoft Graph: {exc}") from exc
+
+        if status_code not in {200, 202, 204}:
+            error_detail = self._extract_response_error(response)
+            raise GraphAPIError(
+                error_detail
+                or f"Microsoft Graph returned status {status_code} while deleting the method."
+            )
+
+    def _transform_methods(self, methods):
+        transformed = []
+        for method in methods:
+            method_type = method.get("@odata.type", "Unknown")
+            method_label, _ = self.DELETE_HANDLERS.get(method_type, (method_type, None))
+            created_display = self._format_datetime(method.get("createdDateTime"))
+
+            details = []
+            for key, value in method.items():
+                if key == "@odata.type":
+                    continue
+                display_value = created_display if key == "createdDateTime" else value
+                if display_value in (None, ""):
+                    display_value = "N/A"
+                details.append((key, display_value))
+
+            transformed.append(
+                {
+                    "id": method.get("id", ""),
+                    "type_key": method_type,
+                    "type_label": method_label,
+                    "details": details,
+                    "created_display": created_display,
+                    "can_delete": method_type in self.DELETE_HANDLERS,
+                }
+            )
+
+        return transformed
+
+    def _format_datetime(self, datetime_string):
+        if not datetime_string:
+            return None
+        parsed = parse_datetime(datetime_string)
+        if not parsed:
+            return datetime_string
+        if timezone.is_naive(parsed):
+            parsed = timezone.make_aware(parsed, timezone.get_default_timezone())
+        local_dt = timezone.localtime(parsed)
+        return local_dt.strftime("%Y-%m-%d %H:%M:%S %Z")
+
+    def _extract_graph_error(self, error_data):
+        if isinstance(error_data, dict):
+            error = error_data.get("error")
+            if isinstance(error, dict):
+                code = error.get("code")
+                message = error.get("message")
+                if code and message:
+                    return f"{code}: {message}"
+                return message or code
+            message = error_data.get("message")
+            if message:
+                return message
+        return ""
+
+    def _extract_response_error(self, response):
+        if response is None:
+            return "No response received from Microsoft Graph."
+        try:
+            data = response.json()
+        except ValueError:
+            return getattr(response, "text", "") or "Microsoft Graph returned an error without details."
+        return self._extract_graph_error(data)
 
 
 
@@ -346,4 +573,3 @@ class ActiveDirectoryCopilotView(BaseView):
         context['form'] = form
         return render(request, self.template_name, context)
     
-
