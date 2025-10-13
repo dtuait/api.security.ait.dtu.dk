@@ -39,10 +39,12 @@ from .forms import (
 )
 from .models import (
     ADOrganizationalUnitLimiter,
+    ADGroupAssociation,
     BugReport,
     BugReportAttachment,
     Endpoint,
     MFAResetAttempt,
+    MFAResetRecord,
 )
 from active_directory.services import execute_active_directory_query
 
@@ -787,7 +789,179 @@ class MFAResetPageView(BaseView):
         profile_raw = self._fetch_user_profile(user_principal_name)
         distinguished_name = self._extract_user_distinguished_name(profile_raw)
         authorized = self._is_target_in_scope(user_principal_name, distinguished_name)
-        return authorized, profile_raw
+        matching_limiter = None
+
+        if authorized:
+            matching_limiter = self._resolve_matching_limiter(distinguished_name)
+            if matching_limiter is None:
+                matching_limiter = self._find_limiter_via_directory_lookup(
+                    user_principal_name
+                )
+
+        return authorized, profile_raw, matching_limiter
+
+    def _resolve_matching_limiter(self, distinguished_name):
+        limiters = self._get_user_ou_limiters()
+        if limiters is None or not limiters:
+            return None
+
+        dn_normalized = self._normalize_dn(distinguished_name)
+        if not dn_normalized:
+            return None
+
+        for limiter in limiters:
+            allowed_dn = self._normalize_dn(
+                getattr(limiter, "distinguished_name", "")
+            )
+            if allowed_dn and dn_normalized.endswith(allowed_dn):
+                return limiter
+
+        return None
+
+    def _find_limiter_via_directory_lookup(self, user_principal_name):
+        limiters = self._get_user_ou_limiters()
+        if limiters is None or not limiters:
+            return None
+
+        for limiter in limiters:
+            base_dn = getattr(limiter, "distinguished_name", "") or ""
+            base_dn = base_dn.strip()
+            if not base_dn:
+                continue
+
+            try:
+                result = execute_active_directory_query(
+                    base_dn=base_dn,
+                    search_filter=f"(userPrincipalName={user_principal_name})",
+                    search_attributes=["distinguishedName"],
+                )
+            except Exception:
+                logger.exception(
+                    "Failed to verify OU scope for %s under %s",
+                    user_principal_name,
+                    base_dn,
+                )
+                continue
+
+            if result:
+                return limiter
+
+        return None
+
+    def _determine_client_label(self, profile_raw, client_limiter):
+        if client_limiter:
+            label = getattr(client_limiter, "canonical_name", "") or ""
+            if label:
+                return label
+            fallback_dn = getattr(client_limiter, "distinguished_name", "") or ""
+            if fallback_dn:
+                return fallback_dn
+
+        distinguished_name = self._extract_user_distinguished_name(profile_raw or {})
+        if not distinguished_name:
+            return ""
+
+        try:
+            canonical = ADGroupAssociation._dn_to_canonical(distinguished_name)
+        except Exception:  # pragma: no cover - defensive
+            logger.debug(
+                "Unable to convert distinguished name %s to canonical form",
+                distinguished_name,
+            )
+            canonical = ""
+
+        return canonical or distinguished_name
+
+    def _log_reset_record(
+        self,
+        *,
+        request,
+        target_user_principal_name,
+        reset_type,
+        profile_raw,
+        client_limiter,
+        attempt,
+    ):
+        try:
+            client_label = self._determine_client_label(profile_raw, client_limiter)
+            MFAResetRecord.log_success(
+                performed_by=request.user,
+                target_user_principal_name=target_user_principal_name,
+                reset_type=reset_type,
+                client=client_limiter,
+                client_label=client_label,
+                attempt=attempt,
+            )
+        except Exception:  # pragma: no cover - defensive
+            logger.exception(
+                "Failed to record MFA reset for %s",
+                target_user_principal_name,
+            )
+
+    def _get_reset_history_entries(self, *, limit=20):
+        queryset = (
+            MFAResetRecord.objects.select_related("performed_by", "client")
+            .order_by("-datetime_created")
+        )
+
+        limiters = self._get_user_ou_limiters()
+        if limiters is not None:
+            limiter_ids = [limiter.id for limiter in limiters if limiter.id]
+            if limiter_ids:
+                queryset = queryset.filter(client_id__in=limiter_ids)
+            else:
+                return []
+
+        records = list(queryset[:limit])
+        photo_cache = {}
+        entries = []
+
+        for record in records:
+            performer = record.performed_by
+            username = record.performed_by_username or (
+                performer.get_username() if performer else ""
+            )
+            display_name = record.performed_by_display_name or (
+                performer.get_full_name() if performer else ""
+            )
+            if not display_name and username:
+                display_name = username
+
+            upn = record.performed_by_user_principal_name or (
+                getattr(performer, "email", "") if performer else ""
+            )
+
+            cache_key = upn or username
+            photo_url = None
+            if cache_key:
+                if cache_key in photo_cache:
+                    photo_url = photo_cache[cache_key]
+                else:
+                    photo_url = self._resolve_user_photo(upn) if upn else None
+                    photo_cache[cache_key] = photo_url
+
+            client_label = record.client_label or ""
+            if record.client:
+                client_label = (
+                    record.client.canonical_name
+                    or record.client.distinguished_name
+                    or client_label
+                )
+
+            entries.append(
+                {
+                    "timestamp": record.datetime_created,
+                    "target": record.target_user_principal_name,
+                    "reset_type": record.get_reset_type_display(),
+                    "performed_by_name": display_name or username or "Unknown",
+                    "performed_by_username": username,
+                    "performed_by_upn": upn,
+                    "performed_by_photo_url": photo_url,
+                    "client_label": client_label,
+                }
+            )
+
+        return entries
 
     def get(self, request, *args, **kwargs):
         if not self.user_has_mfa_reset_access():
@@ -810,14 +984,14 @@ class MFAResetPageView(BaseView):
             profile_raw = None
             target_authorized = True
             try:
-                profile_raw = self._fetch_user_profile(user_principal_name)
+                target_authorized, profile_raw, _ = self._check_target_ou_access(
+                    user_principal_name
+                )
             except GraphAPIError as exc:
                 target_authorized = False
                 messages.error(request, str(exc))
             else:
-                distinguished_name = self._extract_user_distinguished_name(profile_raw)
-                if not self._is_target_in_scope(user_principal_name, distinguished_name):
-                    target_authorized = False
+                if not target_authorized:
                     messages.error(
                         request, self._build_ou_denied_message(user_principal_name)
                     )
@@ -862,6 +1036,7 @@ class MFAResetPageView(BaseView):
                 ),
                 "bulk_delete_form": bulk_delete_form,
                 "allowed_ou_labels": self._get_allowed_ou_labels(),
+                "mfa_reset_history": self._get_reset_history_entries(),
             }
         )
         return render(request, self.template_name, context)
@@ -893,6 +1068,7 @@ class MFAResetPageView(BaseView):
                 "no_methods": False,
                 "has_deletable_methods": False,
                 "bulk_delete_form": None,
+                "mfa_reset_history": self._get_reset_history_entries(),
             }
         )
         return render(request, self.template_name, context)
@@ -907,8 +1083,14 @@ class MFAResetPageView(BaseView):
                 method_type, (method_type, None)
             )
 
+            profile_raw = None
+            client_limiter = None
             try:
-                authorized, _ = self._check_target_ou_access(user_principal_name)
+                (
+                    authorized,
+                    profile_raw,
+                    client_limiter,
+                ) = self._check_target_ou_access(user_principal_name)
             except GraphAPIError as exc:
                 MFAResetAttempt.log_attempt(
                     performed_by=request.user,
@@ -942,13 +1124,21 @@ class MFAResetPageView(BaseView):
                 self._delete_authentication_method(
                     user_principal_name, method_id, method_type
                 )
-                MFAResetAttempt.log_attempt(
+                attempt = MFAResetAttempt.log_attempt(
                     performed_by=request.user,
                     target_user_principal_name=user_principal_name,
                     reset_type=MFAResetAttempt.ResetType.INDIVIDUAL,
                     was_successful=True,
                     method_id=method_id,
                     method_type=method_type,
+                )
+                self._log_reset_record(
+                    request=request,
+                    target_user_principal_name=user_principal_name,
+                    reset_type=MFAResetAttempt.ResetType.INDIVIDUAL,
+                    profile_raw=profile_raw,
+                    client_limiter=client_limiter,
+                    attempt=attempt,
                 )
                 messages.success(
                     request,
@@ -990,8 +1180,14 @@ class MFAResetPageView(BaseView):
 
         user_principal_name = form.cleaned_data["user_principal_name"]
 
+        profile_raw = None
+        client_limiter = None
         try:
-            authorized, _ = self._check_target_ou_access(user_principal_name)
+            (
+                authorized,
+                profile_raw,
+                client_limiter,
+            ) = self._check_target_ou_access(user_principal_name)
         except GraphAPIError as exc:
             MFAResetAttempt.log_attempt(
                 performed_by=request.user,
@@ -1065,6 +1261,7 @@ class MFAResetPageView(BaseView):
 
         successes = []
         failures = []
+        last_success_attempt = None
 
         for method in deletable_methods:
             method_id = method.get("id", "")
@@ -1077,7 +1274,7 @@ class MFAResetPageView(BaseView):
                     user_principal_name, method_id, method_type
                 )
                 successes.append(method_label)
-                MFAResetAttempt.log_attempt(
+                last_success_attempt = MFAResetAttempt.log_attempt(
                     performed_by=request.user,
                     target_user_principal_name=user_principal_name,
                     reset_type=MFAResetAttempt.ResetType.BULK,
@@ -1104,6 +1301,16 @@ class MFAResetPageView(BaseView):
             remaining_methods = self._transform_methods(remaining_raw)
         except GraphAPIError as exc:  # pragma: no cover - defensive
             remaining_error = str(exc)
+
+        if successes:
+            self._log_reset_record(
+                request=request,
+                target_user_principal_name=user_principal_name,
+                reset_type=MFAResetAttempt.ResetType.BULK,
+                profile_raw=profile_raw,
+                client_limiter=client_limiter,
+                attempt=last_success_attempt,
+            )
 
         unique_success_labels = sorted(set(filter(None, successes)))
         if successes:

@@ -49,3 +49,19 @@
     max-width: none;
     width: auto;
 }
+
+.reset-history-table .reset-history-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.reset-history-table .placeholder-avatar {
+    background-color: #f8f9fa;
+    border: 1px dashed #d0d0d0;
+}
+
+.reset-history-table tbody td {
+    vertical-align: middle;
+}

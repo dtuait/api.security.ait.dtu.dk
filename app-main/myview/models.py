@@ -269,6 +269,86 @@ class MFAResetAttempt(BaseModel):
         )
 
 
+class MFAResetRecord(BaseModel):
+    """High level audit log for successful MFA resets."""
+
+    attempt = models.ForeignKey(
+        MFAResetAttempt,
+        on_delete=models.SET_NULL,
+        related_name="reset_records",
+        null=True,
+        blank=True,
+    )
+    performed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        related_name="mfa_reset_records",
+        null=True,
+        blank=True,
+    )
+    performed_by_username = models.CharField(max_length=150, blank=True)
+    performed_by_display_name = models.CharField(max_length=255, blank=True)
+    performed_by_user_principal_name = models.EmailField(max_length=255, blank=True)
+    target_user_principal_name = models.EmailField(max_length=255)
+    reset_type = models.CharField(max_length=32, choices=MFAResetAttempt.ResetType.choices)
+    was_successful = models.BooleanField(default=False)
+    client = models.ForeignKey(
+        "ADOrganizationalUnitLimiter",
+        on_delete=models.SET_NULL,
+        related_name="mfa_reset_records",
+        null=True,
+        blank=True,
+    )
+    client_label = models.CharField(max_length=255, blank=True)
+
+    class Meta:
+        ordering = ["-datetime_created"]
+        verbose_name = "MFA reset record"
+        verbose_name_plural = "MFA reset records"
+
+    def __str__(self):
+        performer = self.performed_by_display_name or self.performed_by_username or "unknown"
+        return (
+            f"{self.get_reset_type_display()} by {performer} for {self.target_user_principal_name}"
+        )
+
+    @classmethod
+    def log_success(
+        cls,
+        *,
+        performed_by,
+        target_user_principal_name,
+        reset_type,
+        client=None,
+        client_label="",
+        attempt=None,
+    ):
+        user = performed_by if getattr(performed_by, "is_authenticated", False) else None
+        username = ""
+        display_name = ""
+        user_principal_name = ""
+
+        if user:
+            username = user.get_username() or ""
+            display_name = user.get_full_name() or ""
+            user_principal_name = getattr(user, "email", "") or username
+        elif performed_by:
+            username = str(performed_by)
+
+        return cls.objects.create(
+            attempt=attempt,
+            performed_by=user,
+            performed_by_username=username,
+            performed_by_display_name=display_name,
+            performed_by_user_principal_name=user_principal_name,
+            target_user_principal_name=target_user_principal_name,
+            reset_type=reset_type,
+            was_successful=True,
+            client=client,
+            client_label=client_label or "",
+        )
+
+
 class BugReportAttachment(BaseModel):
     """Files attached to bug reports."""
 
