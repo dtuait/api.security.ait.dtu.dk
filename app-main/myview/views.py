@@ -44,6 +44,7 @@ from .models import (
     Endpoint,
     MFAResetAttempt,
 )
+from active_directory.services import execute_active_directory_query
 
 logger = logging.getLogger(__name__)
 
@@ -704,16 +705,63 @@ class MFAResetPageView(BaseView):
                 return str(dn).strip()
         return ""
 
-    def _is_target_dn_authorized(self, distinguished_name):
-        allowed_dns = self._get_allowed_ou_dns()
-        if allowed_dns is None:
+    def _normalize_dn(self, value: str | None) -> str:
+        if not value:
+            return ""
+        return str(value).strip().lower()
+
+    def _directory_scope_check(self, user_principal_name, limiters):
+        if not user_principal_name:
+            return False
+
+        for limiter in limiters or ():
+            base_dn = getattr(limiter, "distinguished_name", "") or ""
+            base_dn = base_dn.strip()
+            if not base_dn:
+                continue
+            try:
+                result = execute_active_directory_query(
+                    base_dn=base_dn,
+                    search_filter=f"(userPrincipalName={user_principal_name})",
+                    search_attributes=["distinguishedName"],
+                )
+            except Exception:
+                logger.exception(
+                    "Failed to verify OU scope for %s under %s",
+                    user_principal_name,
+                    base_dn,
+                )
+                continue
+            if result:
+                return True
+        return False
+
+    def _is_target_in_scope(self, user_principal_name, distinguished_name):
+        cache_key = (user_principal_name or "").strip().lower()
+        if not hasattr(self, "_target_ou_scope_cache"):
+            self._target_ou_scope_cache = {}
+        if cache_key in self._target_ou_scope_cache:
+            return self._target_ou_scope_cache[cache_key]
+
+        limiters = self._get_user_ou_limiters()
+        if limiters is None:
+            self._target_ou_scope_cache[cache_key] = True
             return True
-        if not allowed_dns:
+        if not limiters:
+            self._target_ou_scope_cache[cache_key] = False
             return False
-        dn_normalized = str(distinguished_name or "").strip().lower()
-        if not dn_normalized:
-            return False
-        return any(dn_normalized.endswith(allowed_dn) for allowed_dn in allowed_dns)
+
+        dn_normalized = self._normalize_dn(distinguished_name)
+        if dn_normalized:
+            for limiter in limiters:
+                allowed_dn = self._normalize_dn(getattr(limiter, "distinguished_name", ""))
+                if allowed_dn and dn_normalized.endswith(allowed_dn):
+                    self._target_ou_scope_cache[cache_key] = True
+                    return True
+
+        in_scope = self._directory_scope_check(user_principal_name, limiters)
+        self._target_ou_scope_cache[cache_key] = in_scope
+        return in_scope
 
     def _build_ou_denied_message(self, user_principal_name):
         limiters = self._get_user_ou_limiters()
@@ -738,7 +786,7 @@ class MFAResetPageView(BaseView):
     def _check_target_ou_access(self, user_principal_name):
         profile_raw = self._fetch_user_profile(user_principal_name)
         distinguished_name = self._extract_user_distinguished_name(profile_raw)
-        authorized = self._is_target_dn_authorized(distinguished_name)
+        authorized = self._is_target_in_scope(user_principal_name, distinguished_name)
         return authorized, profile_raw
 
     def get(self, request, *args, **kwargs):
@@ -768,7 +816,7 @@ class MFAResetPageView(BaseView):
                 messages.error(request, str(exc))
             else:
                 distinguished_name = self._extract_user_distinguished_name(profile_raw)
-                if not self._is_target_dn_authorized(distinguished_name):
+                if not self._is_target_in_scope(user_principal_name, distinguished_name):
                     target_authorized = False
                     messages.error(
                         request, self._build_ou_denied_message(user_principal_name)
