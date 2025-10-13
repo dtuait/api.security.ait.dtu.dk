@@ -8,7 +8,7 @@ from urllib.parse import urlencode
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponseForbidden
+from django.http import HttpResponseForbidden, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -25,11 +25,12 @@ from graph.services import (
 )
 
 from .forms import (
+    BugReportForm,
     DeleteAuthenticationMethodForm,
     LargeTextAreaForm,
     MfaResetLookupForm,
 )
-from .models import Endpoint
+from .models import BugReport, BugReportAttachment, Endpoint
 
 logger = logging.getLogger(__name__)
 
@@ -281,6 +282,7 @@ class BaseView(View):
             'debug': settings.DEBUG,
             'all_limiter_types': associated_limiter_types,
             'available_limiter_types': sorted(available_limiter_types),
+            'bug_report_form': BugReportForm(),
         }
 
         return context
@@ -427,6 +429,63 @@ class FrontpagePageView(BaseView):
 
 
 
+
+
+@method_decorator(login_required, name='dispatch')
+class BugReportView(View):
+    """Accept bug report submissions from the UI."""
+
+    form_class = BugReportForm
+    http_method_names = ["post"]
+
+    def post(self, request, *args, **kwargs):
+        if not request.session.session_key:
+            request.session.save()
+
+        form = self.form_class(request.POST, request.FILES)
+
+        if not form.is_valid():
+            return JsonResponse(
+                {"success": False, "errors": form.errors},
+                status=400,
+            )
+
+        bug_report = form.save(commit=False)
+        if request.user.is_authenticated:
+            bug_report.user = request.user
+
+        bug_report.session_key = request.session.session_key or ""
+        cleaned_data = form.cleaned_data
+
+        page_url = cleaned_data.get("page_url") or request.META.get("HTTP_REFERER") or ""
+        bug_report.page_url = page_url[:2048]
+
+        page_path = cleaned_data.get("page_path") or request.META.get("PATH_INFO") or request.path
+        bug_report.page_path = page_path[:512]
+
+        site_domain = cleaned_data.get("site_domain") or request.get_host() or ""
+        bug_report.site_domain = site_domain[:255]
+
+        bug_report.user_agent = request.META.get("HTTP_USER_AGENT", "")
+
+        bug_report.save()
+
+        attachments = cleaned_data.get("attachments") or []
+        for uploaded_file in attachments:
+            BugReportAttachment.objects.create(
+                bug_report=bug_report,
+                file=uploaded_file,
+                original_name=getattr(uploaded_file, "name", ""),
+            )
+
+        return JsonResponse(
+            {
+                "success": True,
+                "message": "Thanks! Your bug report has been submitted to the team.",
+                "bug_report_id": bug_report.pk,
+            },
+            status=201,
+        )
 
 class GraphAPIError(Exception):
     """Lightweight wrapper for surfacing Graph API errors to the UI."""

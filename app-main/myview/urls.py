@@ -39,7 +39,7 @@ urlpatterns = [
 ]
 
 
-try:  
+try:
    from .views import FrontpagePageView
 
    urlpatterns += [
@@ -51,7 +51,18 @@ except ImportError:
     pass
 
 
-try:  
+try:
+   from .views import BugReportView
+
+   urlpatterns += [
+      path('bug-report/', BugReportView.as_view(), name='bug-report'),
+   ]
+except ImportError:
+   print("BugReportView is not available for registration in the admin site.")
+   pass
+
+
+try:
    from .views import MFAResetPageView
 
    urlpatterns += [
