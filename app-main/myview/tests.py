@@ -1,7 +1,10 @@
+from django.contrib.auth import get_user_model
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
+from django.urls import reverse
 from unittest.mock import patch
 
-from .models import ADOrganizationalUnitLimiter
+from .models import ADOrganizationalUnitLimiter, BugReport
 
 
 class LimiterTypeSyncTests(TestCase):
@@ -179,4 +182,58 @@ class ADOrganizationalUnitLimiterSyncTests(TestCase):
         )
 
         self.assertEqual(canonical_names, ['win.dtu.dk/DTUBaseUsers'])
+
+
+class BugReportViewTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            username="bugreporter",
+            password="example-password",
+        )
+        self.url = reverse("bug-report")
+
+    def test_authenticated_user_can_submit_bug_report_with_attachment(self):
+        self.client.force_login(self.user)
+
+        uploaded_file = SimpleUploadedFile(
+            "screenshot.png",
+            b"binarycontent",
+            content_type="image/png",
+        )
+
+        response = self.client.post(
+            self.url,
+            {
+                "description": "Buttons are unresponsive on the dashboard.",
+                "page_url": "https://example.test/frontpage/",
+                "page_path": "/frontpage/",
+                "site_domain": "https://example.test",
+                "attachments": uploaded_file,
+            },
+        )
+
+        self.assertEqual(response.status_code, 201, response.json())
+        self.assertEqual(BugReport.objects.count(), 1)
+        bug_report = BugReport.objects.first()
+        self.assertEqual(bug_report.user, self.user)
+        self.assertEqual(bug_report.page_path, "/frontpage/")
+        self.assertEqual(bug_report.site_domain, "https://example.test"[:255])
+        self.assertEqual(bug_report.description, "Buttons are unresponsive on the dashboard.")
+        self.assertEqual(bug_report.attachments.count(), 1)
+
+    def test_missing_description_returns_validation_error(self):
+        self.client.force_login(self.user)
+
+        response = self.client.post(
+            self.url,
+            {
+                "description": "",
+                "page_url": "https://example.test/frontpage/",
+                "page_path": "/frontpage/",
+                "site_domain": "https://example.test",
+            },
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("errors", response.json())
 

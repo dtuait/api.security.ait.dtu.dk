@@ -114,6 +114,64 @@ if 'UserActivityLog' in globals():
         display_user.short_description = _("User")
 
 
+try:
+    from .models import BugReport, BugReportAttachment
+
+    class BugReportAttachmentInline(admin.TabularInline):
+        model = BugReportAttachment
+        extra = 0
+        can_delete = False
+        readonly_fields = ("original_name", "file", "datetime_created")
+        fields = ("original_name", "file", "datetime_created")
+
+    @admin.register(BugReport)
+    class BugReportAdmin(admin.ModelAdmin):
+        list_display = (
+            "datetime_created",
+            "user",
+            "site_domain",
+            "page_path",
+            "short_description",
+        )
+        list_filter = (
+            "site_domain",
+            ("datetime_created", admin.DateFieldListFilter),
+        )
+        search_fields = (
+            "description",
+            "page_url",
+            "page_path",
+            "site_domain",
+            "user__username",
+        )
+        readonly_fields = (
+            "datetime_created",
+            "datetime_modified",
+            "user",
+            "session_key",
+            "page_url",
+            "page_path",
+            "site_domain",
+            "user_agent",
+            "description",
+        )
+        ordering = ("-datetime_created",)
+        inlines = [BugReportAttachmentInline]
+
+        def short_description(self, obj):
+            if not obj.description:
+                return ""
+            if len(obj.description) > 75:
+                return f"{obj.description[:75]}…"
+            return obj.description
+
+        short_description.short_description = _("Description")
+
+except ImportError:
+    print("BugReport models are not available for registration in the admin site.")
+    pass
+
+
 # Attempt to import the ADGroup model
 try:
     from django.contrib import admin

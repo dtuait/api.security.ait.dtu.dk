@@ -10,9 +10,24 @@ from django.utils.translation import gettext_lazy as _
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
+from django.utils import timezone
+from django.utils.text import slugify
+from pathlib import Path
 import time
 
 logger = logging.getLogger(__name__)
+
+
+def bug_report_attachment_upload_to(instance, filename):
+    """Return a deterministic storage path for uploaded bug report files."""
+
+    timestamp = timezone.now().strftime("%Y%m%d%H%M%S")
+    base_name = slugify(Path(filename).stem) or "attachment"
+    extension = Path(filename).suffix
+    report_identifier = instance.bug_report_id or "unassigned"
+    return f"bug_reports/{report_identifier}/{timestamp}_{base_name}{extension}"
+
+
 
 class BaseModel(models.Model):
     datetime_created = models.DateTimeField(auto_now_add=True)
@@ -153,6 +168,56 @@ class UserActivityLog(BaseModel):
         return cls.objects.create(**payload)
 
 
+
+
+
+class BugReport(BaseModel):
+    """Store bug reports submitted from the web UI."""
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        related_name="bug_reports",
+        null=True,
+        blank=True,
+    )
+    session_key = models.CharField(max_length=40, blank=True)
+    page_url = models.URLField(max_length=2048, blank=True)
+    page_path = models.CharField(max_length=512, blank=True)
+    site_domain = models.CharField(max_length=255, blank=True)
+    user_agent = models.TextField(blank=True)
+    description = models.TextField()
+
+    class Meta:
+        ordering = ["-datetime_created"]
+        verbose_name = "Bug report"
+        verbose_name_plural = "Bug reports"
+
+    def __str__(self):
+        base = f"Bug report #{self.pk}" if self.pk else "Bug report"
+        if self.page_path:
+            return f"{base} on {self.page_path}"
+        return base
+
+
+class BugReportAttachment(BaseModel):
+    """Files attached to bug reports."""
+
+    bug_report = models.ForeignKey(
+        BugReport,
+        on_delete=models.CASCADE,
+        related_name="attachments",
+    )
+    file = models.FileField(upload_to=bug_report_attachment_upload_to)
+    original_name = models.CharField(max_length=255, blank=True)
+
+    class Meta:
+        ordering = ["datetime_created"]
+        verbose_name = "Bug report attachment"
+        verbose_name_plural = "Bug report attachments"
+
+    def __str__(self):
+        return self.original_name or Path(self.file.name).name
 
 
 
