@@ -26,11 +26,12 @@ from graph.services import (
 
 from .forms import (
     BugReportForm,
+    DeleteAllAuthenticationMethodsForm,
     DeleteAuthenticationMethodForm,
     LargeTextAreaForm,
     MfaResetLookupForm,
 )
-from .models import BugReport, BugReportAttachment, Endpoint
+from .models import BugReport, BugReportAttachment, Endpoint, MFAResetAttempt
 
 logger = logging.getLogger(__name__)
 
@@ -495,6 +496,7 @@ class MFAResetPageView(BaseView):
     template_name = "myview/mfa-reset.html"
     form_class = MfaResetLookupForm
     delete_form_class = DeleteAuthenticationMethodForm
+    bulk_delete_form_class = DeleteAllAuthenticationMethodsForm
 
     DELETE_HANDLERS = {
         "#microsoft.graph.microsoftAuthenticatorAuthenticationMethod": (
@@ -538,6 +540,14 @@ class MFAResetPageView(BaseView):
                 "authentication_methods": auth_methods,
                 "selected_user_principal_name": user_principal_name,
                 "no_methods": no_methods,
+                "has_deletable_methods": any(
+                    method.get("can_delete") for method in auth_methods
+                ),
+                "bulk_delete_form": self.bulk_delete_form_class(
+                    initial={"user_principal_name": user_principal_name}
+                )
+                if user_principal_name
+                else None,
             }
         )
         return render(request, self.template_name, context)
@@ -549,6 +559,8 @@ class MFAResetPageView(BaseView):
         action = request.POST.get("action", "lookup")
         if action == "delete":
             return self._handle_delete(request)
+        if action == "delete_all":
+            return self._handle_delete_all(request)
         return self._handle_lookup(request, **kwargs)
 
     def _handle_lookup(self, request, **kwargs):
@@ -565,6 +577,8 @@ class MFAResetPageView(BaseView):
                 "authentication_methods": [],
                 "selected_user_principal_name": "",
                 "no_methods": False,
+                "has_deletable_methods": False,
+                "bulk_delete_form": None,
             }
         )
         return render(request, self.template_name, context)
@@ -583,11 +597,28 @@ class MFAResetPageView(BaseView):
                 self._delete_authentication_method(
                     user_principal_name, method_id, method_type
                 )
+                MFAResetAttempt.log_attempt(
+                    performed_by=request.user,
+                    target_user_principal_name=user_principal_name,
+                    reset_type=MFAResetAttempt.ResetType.INDIVIDUAL,
+                    was_successful=True,
+                    method_id=method_id,
+                    method_type=method_type,
+                )
                 messages.success(
                     request,
                     f"{method_label} authentication method removed for {user_principal_name}.",
                 )
             except GraphAPIError as exc:
+                MFAResetAttempt.log_attempt(
+                    performed_by=request.user,
+                    target_user_principal_name=user_principal_name,
+                    reset_type=MFAResetAttempt.ResetType.INDIVIDUAL,
+                    was_successful=False,
+                    method_id=method_id,
+                    method_type=method_type,
+                    details=str(exc),
+                )
                 messages.error(request, str(exc))
 
             query = urlencode({"userPrincipalName": user_principal_name})
@@ -599,6 +630,104 @@ class MFAResetPageView(BaseView):
             query = urlencode({"userPrincipalName": user_principal_name})
             return redirect(f"{reverse('mfa-reset')}?{query}")
         return redirect(reverse("mfa-reset"))
+
+    def _handle_delete_all(self, request):
+        form = self.bulk_delete_form_class(request.POST)
+        if not form.is_valid():
+            messages.error(request, "Invalid bulk delete request.")
+            return redirect(reverse("mfa-reset"))
+
+        user_principal_name = form.cleaned_data["user_principal_name"]
+
+        try:
+            methods = self._fetch_authentication_methods(user_principal_name)
+        except GraphAPIError as exc:
+            MFAResetAttempt.log_attempt(
+                performed_by=request.user,
+                target_user_principal_name=user_principal_name,
+                reset_type=MFAResetAttempt.ResetType.BULK,
+                was_successful=False,
+                details=str(exc),
+            )
+            messages.error(request, str(exc))
+            query = urlencode({"userPrincipalName": user_principal_name})
+            return redirect(f"{reverse('mfa-reset')}?{query}")
+
+        deletable_methods = [
+            method
+            for method in methods
+            if method.get("@odata.type") in self.DELETE_HANDLERS
+        ]
+
+        if not deletable_methods:
+            MFAResetAttempt.log_attempt(
+                performed_by=request.user,
+                target_user_principal_name=user_principal_name,
+                reset_type=MFAResetAttempt.ResetType.BULK,
+                was_successful=False,
+                details="No removable authentication methods were found.",
+            )
+            messages.info(
+                request,
+                "No removable authentication methods were found for this user.",
+            )
+            query = urlencode({"userPrincipalName": user_principal_name})
+            return redirect(f"{reverse('mfa-reset')}?{query}")
+
+        successes = []
+        failures = []
+
+        for method in deletable_methods:
+            method_id = method.get("id", "")
+            method_type = method.get("@odata.type", "")
+            method_label, _ = self.DELETE_HANDLERS.get(
+                method_type, (method_type, None)
+            )
+            try:
+                self._delete_authentication_method(
+                    user_principal_name, method_id, method_type
+                )
+                successes.append(method_label)
+                MFAResetAttempt.log_attempt(
+                    performed_by=request.user,
+                    target_user_principal_name=user_principal_name,
+                    reset_type=MFAResetAttempt.ResetType.BULK,
+                    was_successful=True,
+                    method_id=method_id,
+                    method_type=method_type,
+                )
+            except GraphAPIError as exc:
+                failures.append((method_label, str(exc)))
+                MFAResetAttempt.log_attempt(
+                    performed_by=request.user,
+                    target_user_principal_name=user_principal_name,
+                    reset_type=MFAResetAttempt.ResetType.BULK,
+                    was_successful=False,
+                    method_id=method_id,
+                    method_type=method_type,
+                    details=str(exc),
+                )
+
+        if successes:
+            unique_success_labels = sorted(set(filter(None, successes)))
+            messages.success(
+                request,
+                "Successfully removed the following authentication methods: "
+                + ", ".join(unique_success_labels),
+            )
+
+        if failures:
+            failure_messages = [
+                f"{label or 'Method'}: {error}" for label, error in failures
+            ]
+            messages.error(
+                request,
+                "Some authentication methods could not be removed: "
+                + " ; ".join(failure_messages),
+            )
+
+        query = urlencode({"userPrincipalName": user_principal_name})
+        return redirect(f"{reverse('mfa-reset')}?{query}")
 
     def _fetch_authentication_methods(self, user_principal_name):
         try:

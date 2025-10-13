@@ -38,6 +38,16 @@ class DeleteAuthenticationMethodForm(forms.Form):
     method_type = forms.ChoiceField(choices=METHOD_TYPE_CHOICES, widget=forms.HiddenInput())
 
 
+class DeleteAllAuthenticationMethodsForm(forms.Form):
+    """Form used for deleting all authentication methods for a user."""
+
+    user_principal_name = forms.EmailField(
+        max_length=255,
+        validators=[EmailValidator()],
+        widget=forms.HiddenInput(),
+    )
+
+
 
 # create a form field for a large text area - for example, a text that can take up to a a4 page
 class LargeTextAreaForm(forms.Form):

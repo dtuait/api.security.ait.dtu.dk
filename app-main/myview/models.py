@@ -200,6 +200,74 @@ class BugReport(BaseModel):
         return base
 
 
+class MFAResetAttempt(BaseModel):
+    class ResetType(models.TextChoices):
+        BULK = "bulk", _("Bulk reset")
+        INDIVIDUAL = "individual", _("Individual reset")
+
+    performed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        related_name="mfa_reset_attempts",
+        null=True,
+        blank=True,
+    )
+    performed_by_username = models.CharField(max_length=150, blank=True)
+    target_user_principal_name = models.EmailField(max_length=255)
+    method_id = models.CharField(max_length=255, blank=True)
+    method_type = models.CharField(max_length=255, blank=True)
+    was_successful = models.BooleanField(default=False)
+    reset_type = models.CharField(max_length=32, choices=ResetType.choices)
+    details = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ["-datetime_created"]
+        verbose_name = "MFA reset attempt"
+        verbose_name_plural = "MFA reset attempts"
+
+    def __str__(self):
+        actor = self.performed_by_username or (
+            self.performed_by.get_username()
+            if getattr(self.performed_by, "is_authenticated", False)
+            else "unknown"
+        )
+        status = _("successful") if self.was_successful else _("unsuccessful")
+        return (
+            f"{self.get_reset_type_display()} by {actor} for {self.target_user_principal_name}"
+            f" ({status})"
+        )
+
+    @classmethod
+    def log_attempt(
+        cls,
+        *,
+        performed_by,
+        target_user_principal_name,
+        reset_type,
+        was_successful,
+        method_id="",
+        method_type="",
+        details="",
+    ):
+        user = performed_by if getattr(performed_by, "is_authenticated", False) else None
+        username = ""
+        if getattr(performed_by, "is_authenticated", False):
+            username = performed_by.get_username()
+        elif performed_by:
+            username = str(performed_by)
+
+        return cls.objects.create(
+            performed_by=user,
+            performed_by_username=username,
+            target_user_principal_name=target_user_principal_name,
+            method_id=method_id or "",
+            method_type=method_type or "",
+            was_successful=was_successful,
+            reset_type=reset_type,
+            details=details or "",
+        )
+
+
 class BugReportAttachment(BaseModel):
     """Files attached to bug reports."""
 
