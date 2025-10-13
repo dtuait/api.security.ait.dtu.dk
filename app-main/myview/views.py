@@ -2,6 +2,8 @@ import json
 import logging
 import os
 import subprocess
+import base64
+import logging
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -20,7 +22,10 @@ from requests import RequestException
 
 from graph.services import (
     execute_delete_software_mfa_method,
+    execute_get_user,
+    execute_get_user_photo,
     execute_list_user_authentication_methods,
+    execute_list_user_groups,
     execute_microsoft_authentication_method,
     execute_phone_authentication_method,
 )
@@ -600,6 +605,13 @@ class MFAResetPageView(BaseView):
         ),
     }
 
+    USER_PROFILE_SELECT_FIELDS = (
+        "displayName,givenName,surname,jobTitle,department,mail,userPrincipalName,"
+        "onPremisesDistinguishedName,onPremisesSamAccountName,employeeId,id,"
+        "businessPhones,mobilePhone,officeLocation"
+    )
+    USER_PROFILE_SELECT = f"$select={USER_PROFILE_SELECT_FIELDS}"
+
     def get(self, request, *args, **kwargs):
         if not self.user_has_mfa_reset_access():
             return HttpResponseForbidden("You do not have access to this page.")
@@ -612,8 +624,32 @@ class MFAResetPageView(BaseView):
 
         auth_methods = []
         no_methods = False
+        user_profile = {}
+        user_groups = []
+        user_photo_url = None
 
         if user_principal_name:
+            profile_raw = None
+            try:
+                profile_raw = self._fetch_user_profile(user_principal_name)
+            except GraphAPIError as exc:
+                messages.error(request, str(exc))
+            else:
+                user_profile = self._transform_user_profile(profile_raw)
+
+            if profile_raw is not None:
+                try:
+                    groups_raw = self._fetch_user_groups(user_principal_name)
+                except GraphAPIError as exc:
+                    messages.error(request, str(exc))
+                else:
+                    user_groups = self._transform_user_groups(groups_raw)
+
+            user_photo_url = self._resolve_user_photo(
+                user_principal_name,
+                user_profile.get("employee_id") if user_profile else None,
+            )
+
             try:
                 data = self._fetch_authentication_methods(user_principal_name)
                 auth_methods = self._transform_methods(data)
@@ -627,6 +663,9 @@ class MFAResetPageView(BaseView):
                 "authentication_methods": auth_methods,
                 "selected_user_principal_name": user_principal_name,
                 "no_methods": no_methods,
+                "user_profile": user_profile,
+                "user_groups": user_groups,
+                "user_photo_url": user_photo_url,
                 "has_deletable_methods": any(
                     method.get("can_delete") for method in auth_methods
                 ),
@@ -815,6 +854,166 @@ class MFAResetPageView(BaseView):
 
         query = urlencode({"userPrincipalName": user_principal_name})
         return redirect(f"{reverse('mfa-reset')}?{query}")
+
+    def _fetch_user_profile(self, user_principal_name):
+        data, status_code = execute_get_user(
+            user_principal_name=user_principal_name,
+            select_parameters=self.USER_PROFILE_SELECT,
+        )
+
+        if status_code != 200:
+            error_detail = self._extract_graph_error(data)
+            raise GraphAPIError(
+                error_detail
+                or f"Microsoft Graph returned status {status_code} when fetching the user profile."
+            )
+
+        if not isinstance(data, dict):
+            raise GraphAPIError(
+                "Received an unexpected response from Microsoft Graph while fetching the user profile."
+            )
+
+        return data
+
+    def _transform_user_profile(self, profile_data):
+        if not isinstance(profile_data, dict):
+            return {}
+
+        business_phones = profile_data.get("businessPhones") or []
+        if isinstance(business_phones, list):
+            business_phones = [phone for phone in business_phones if phone]
+        elif business_phones:
+            business_phones = [business_phones]
+        else:
+            business_phones = []
+
+        distinguished_name = profile_data.get("onPremisesDistinguishedName") or ""
+
+        return {
+            "display_name": profile_data.get("displayName")
+            or profile_data.get("userPrincipalName"),
+            "job_title": profile_data.get("jobTitle"),
+            "department": profile_data.get("department"),
+            "email": profile_data.get("mail") or profile_data.get("userPrincipalName"),
+            "user_principal_name": profile_data.get("userPrincipalName"),
+            "ou": self._format_organizational_units(distinguished_name),
+            "employee_id": profile_data.get("employeeId"),
+            "office_location": profile_data.get("officeLocation"),
+            "mobile_phone": profile_data.get("mobilePhone"),
+            "business_phones": business_phones,
+        }
+
+    def _fetch_user_groups(self, user_principal_name):
+        data, status_code = execute_list_user_groups(user_principal_name)
+
+        if status_code != 200:
+            error_detail = self._extract_graph_error(data)
+            raise GraphAPIError(
+                error_detail
+                or f"Microsoft Graph returned status {status_code} when fetching group memberships."
+            )
+
+        if not isinstance(data, dict):
+            raise GraphAPIError(
+                "Received an unexpected response from Microsoft Graph while fetching group memberships."
+            )
+
+        return data.get("value", [])
+
+    def _transform_user_groups(self, group_entries):
+        groups = []
+
+        for entry in group_entries:
+            if not isinstance(entry, dict):
+                continue
+
+            entry_type = (entry.get("@odata.type") or "").lower()
+            if "group" not in entry_type:
+                continue
+
+            display_name = entry.get("displayName") or entry.get("onPremisesSamAccountName")
+            if not display_name and entry.get("id"):
+                display_name = entry["id"]
+
+            groups.append(
+                {
+                    "display_name": display_name,
+                    "mail": entry.get("mail"),
+                    "ou": self._format_organizational_units(
+                        entry.get("onPremisesDistinguishedName") or ""
+                    ),
+                }
+            )
+
+        groups.sort(key=lambda item: str(item.get("display_name") or "").casefold())
+        return groups
+
+    def _resolve_user_photo(self, user_principal_name, employee_id=None):
+        try:
+            payload, status_code, content_type = execute_get_user_photo(
+                user_principal_name
+            )
+        except Exception:  # pragma: no cover - defensive
+            logger.exception(
+                "Unexpected error while retrieving profile photo for %s",
+                user_principal_name,
+            )
+            payload = None
+            status_code = None
+            content_type = None
+
+        if status_code == 200 and isinstance(payload, (bytes, bytearray)):
+            mime_type = (
+                content_type if content_type and content_type.startswith("image/") else "image/jpeg"
+            )
+            encoded = base64.b64encode(payload).decode("ascii")
+            return f"data:{mime_type};base64,{encoded}"
+
+        if status_code and status_code not in {200, 404}:
+            error_detail = ""
+            if isinstance(payload, dict):
+                error_detail = self._extract_graph_error(payload)
+            if error_detail:
+                logger.warning(
+                    "Unable to retrieve profile photo for %s: %s (status %s)",
+                    user_principal_name,
+                    error_detail,
+                    status_code,
+                )
+            else:
+                logger.warning(
+                    "Unable to retrieve profile photo for %s (status %s)",
+                    user_principal_name,
+                    status_code,
+                )
+
+        if employee_id:
+            return self._build_dtubasen_photo_url(employee_id)
+
+        return None
+
+    @staticmethod
+    def _build_dtubasen_photo_url(employee_id):
+        employee_id_str = str(employee_id).strip()
+        if not employee_id_str:
+            return None
+        return f"https://www.dtubasen.dtu.dk/showimage.aspx?id={employee_id_str}"
+
+    @staticmethod
+    def _format_organizational_units(distinguished_name):
+        if not distinguished_name:
+            return None
+
+        parts = []
+        for component in str(distinguished_name).split(","):
+            component = component.strip()
+            if component.upper().startswith("OU="):
+                parts.append(component[3:])
+
+        if parts:
+            return " / ".join(reversed(parts))
+
+        return distinguished_name
 
     def _fetch_authentication_methods(self, user_principal_name):
         try:
