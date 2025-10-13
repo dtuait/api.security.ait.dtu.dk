@@ -29,6 +29,7 @@ class AccessControlMiddleware(MiddlewareMixin):
         self.get_response = get_response
         # Define paths that do not require access control
         self.whitelist_paths = [
+            '/',
             '/favicon.ico',
             '/login/',
             '/logout/',
@@ -87,7 +88,25 @@ class AccessControlMiddleware(MiddlewareMixin):
         for path in filter(None, static_candidates):
             if path not in self.whitelist_paths:
                 self.whitelist_paths.append(path)
-    
+
+    def _is_whitelisted_path(self, normalized_path):
+        """Return True if the given path should bypass access control."""
+        for path in self.whitelist_paths:
+            if not path:
+                continue
+
+            if normalized_path == path:
+                return True
+
+            # Avoid treating the root path as a prefix that matches every request.
+            if path == '/' or normalized_path == '/':
+                continue
+
+            if normalized_path.startswith(path):
+                return True
+
+        return False
+
     def compare_paths(self, endpoint_path, request_path):
         """Compare endpoint path with placeholders against the actual request path."""
         # Replace placeholders in endpoint path with regex pattern
@@ -511,7 +530,7 @@ class AccessControlMiddleware(MiddlewareMixin):
             is_authorized = False
 
             if response is None:
-                if any(normalized_request_path.startswith(whitelist_path) for whitelist_path in self.whitelist_paths):
+                if self._is_whitelisted_path(normalized_request_path):
                     action = 'whitelist'
                     if request.user.is_authenticated:
                         from myview.middleware import AccessControlMiddleware
