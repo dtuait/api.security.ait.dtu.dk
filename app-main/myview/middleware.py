@@ -426,8 +426,8 @@ class AccessControlMiddleware(MiddlewareMixin):
             ADGroupAssociation.sync_user_ad_groups_cached(
                 username=user.username,
                 max_age_seconds=getattr(settings, 'AD_GROUP_CACHE_TIMEOUT', 15 * 60),
+                block=False,
             )
-            user.refresh_from_db()
             user_ad_groups = user.ad_group_members.all()
 
             # Cache for a specified time using AD_GROUP_CACHE_TIMEOUT from settings
@@ -443,26 +443,38 @@ class AccessControlMiddleware(MiddlewareMixin):
             return
 
         from django.conf import settings
+        from django.core.cache import cache
 
         max_age = getattr(settings, "AD_GROUP_CACHE_TIMEOUT", 15 * 60)
-        last_synced = session.get("ad_groups_synced_at")
         now = time.time()
 
-        needs_sync = last_synced is None or (now - float(last_synced)) > max_age
-        if not needs_sync:
+        session_last = session.get("ad_groups_synced_at")
+        if session_last and (now - float(session_last)) <= max_age:
+            return
+
+        username_key = str(request.user.username).strip().lower()
+        cache_ts_key = f"user_ad_groups_sync_ts:{username_key}"
+        cache_last = cache.get(cache_ts_key)
+        if cache_last and (now - float(cache_last)) <= max_age:
+            session["ad_groups_synced_at"] = cache_last
+            session.modified = True
             return
 
         try:
-            refreshed = ADGroupAssociation.sync_user_ad_groups_cached(
+            scheduled = ADGroupAssociation.sync_user_ad_groups_cached(
                 username=request.user.username,
                 max_age_seconds=max_age,
                 force=False,
+                block=False,
             )
-            if refreshed:
-                request.user.refresh_from_db()
+            if scheduled:
+                logger.debug(
+                    "Scheduled async AD group refresh for session user=%s",
+                    request.user.username,
+                )
         except Exception:
             logger.warning(
-                "Failed to refresh AD groups for session user=%s",
+                "Failed to schedule AD group refresh for session user=%s",
                 getattr(request.user, "username", "unknown"),
                 exc_info=True,
             )

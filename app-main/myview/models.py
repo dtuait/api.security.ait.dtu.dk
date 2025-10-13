@@ -1,5 +1,6 @@
 from django.db import models
 import logging
+import threading
 from django.contrib.auth.models import User
 from django.contrib.auth import get_user_model
 from django.conf import settings
@@ -745,32 +746,87 @@ class ADGroupAssociation(BaseModel):
         )
 
     @classmethod
-    def sync_user_ad_groups_cached(cls, *, username, max_age_seconds=None, force=False):
+    def sync_user_ad_groups_cached(
+        cls,
+        *,
+        username,
+        max_age_seconds=None,
+        force=False,
+        block=True,
+        logger_override=None,
+    ):
         """Synchronise a user's AD group membership with optional caching.
 
         - Uses the Django cache to avoid repeated LDAP lookups within ``max_age_seconds``.
         - When ``force`` is True the sync is executed regardless of cache state.
-        - Returns True if a sync was performed, otherwise False.
+        - When ``block`` is False the sync is executed in a background thread and this
+          method returns immediately after scheduling it.
+        - Returns True if a sync was performed or scheduled, otherwise False.
         """
         if not username:
             return False
 
         from django.core.cache import cache
 
+        logger_local = logger_override or logger
+
         if max_age_seconds is None:
             max_age_seconds = getattr(settings, 'AD_GROUP_CACHE_TIMEOUT', 15 * 60)
 
-        cache_key = f"user_ad_groups_sync_ts:{str(username).strip().lower()}"
+        username_key = str(username).strip().lower()
+        cache_key = f"user_ad_groups_sync_ts:{username_key}"
+        lock_key = f"{cache_key}:lock"
+        lock_timeout = max(60, int(max_age_seconds / 2))
         now = time.time()
 
-        if not force:
-            last_synced = cache.get(cache_key)
-            if last_synced and (now - float(last_synced)) < max_age_seconds:
+        last_synced = cache.get(cache_key)
+        if not force and last_synced and (now - float(last_synced)) < max_age_seconds:
+            return False
+
+        def _acquire_lock(wait: bool) -> bool:
+            if wait:
+                deadline = time.monotonic() + 10.0
+                while time.monotonic() < deadline:
+                    if cache.add(lock_key, "1", timeout=lock_timeout):
+                        return True
+                    time.sleep(0.1)
+                return False
+            return cache.add(lock_key, "1", timeout=lock_timeout)
+
+        def _perform_sync():
+            try:
+                cls.sync_user_ad_groups(username=username)
+                cache.set(cache_key, time.time(), timeout=max_age_seconds)
+            except Exception:
+                logger_local.exception(
+                    "Failed to synchronise AD groups for user %s", username
+                )
+                raise
+            finally:
+                cache.delete(lock_key)
+
+        if not block:
+            if not _acquire_lock(wait=False):
                 return False
 
-        cls.sync_user_ad_groups(username=username)
-        cache.set(cache_key, now, timeout=max_age_seconds)
-        return True
+            thread = threading.Thread(
+                target=_perform_sync,
+                name=f"ad-sync-{username_key}",
+                daemon=True,
+            )
+            thread.start()
+            return True
+
+        if not _acquire_lock(wait=force):
+            # Someone else is refreshing; rely on their result.
+            return False
+
+        try:
+            _perform_sync()
+            return True
+        finally:
+            # _perform_sync already clears the lock in normal flow, but ensure cleanup if it raised.
+            cache.delete(lock_key)
 
     @staticmethod
     def delete_unused_groups():
