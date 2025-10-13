@@ -89,25 +89,46 @@ if not output_raw or not project_root_raw:
 output_path = pathlib.Path(output_raw)
 project_root = pathlib.Path(project_root_raw)
 
-branch = (
-    os.environ.get("COOLIFY_GIT_BRANCH")
-    or os.environ.get("GIT_BRANCH")
-    or os.environ.get("BRANCH")
-    or ""
+def _env_value(*names: str) -> str:
+    for name in names:
+        value = os.environ.get(name)
+        if value:
+            value = value.strip()
+            if value:
+                return value
+    return ""
+
+
+branch = _env_value(
+    "COOLIFY_GIT_BRANCH",
+    "COOLIFY_BRANCH",
+    "GIT_BRANCH",
+    "BRANCH",
+    "CI_COMMIT_BRANCH",
+    "GITHUB_REF_NAME",
 )
-commit = (
-    os.environ.get("COOLIFY_GIT_COMMIT")
-    or os.environ.get("GIT_COMMIT")
-    or os.environ.get("SOURCE_VERSION")
-    or os.environ.get("COMMIT")
-    or ""
+commit = _env_value(
+    "COOLIFY_GIT_COMMIT",
+    "COOLIFY_GIT_HASH",
+    "COOLIFY_GIT_SHA",
+    "COOLIFY_SHA",
+    "COOLIFY_COMMIT",
+    "COOLIFY_GIT_COMMIT_SHORT",
+    "GIT_COMMIT",
+    "GIT_SHA",
+    "GIT_HASH",
+    "SOURCE_VERSION",
+    "CI_COMMIT_SHA",
+    "GITHUB_SHA",
+    "COMMIT",
 )
-last_updated = (
-    os.environ.get("COOLIFY_LAST_UPDATED")
-    or os.environ.get("COOLIFY_DEPLOYED_AT")
-    or os.environ.get("LAST_DEPLOYED_AT")
-    or os.environ.get("LAST_UPDATED")
-    or ""
+last_updated = _env_value(
+    "COOLIFY_LAST_UPDATED",
+    "COOLIFY_DEPLOYED_AT",
+    "COOLIFY_GIT_UPDATED_AT",
+    "COOLIFY_BUILD_AT",
+    "LAST_DEPLOYED_AT",
+    "LAST_UPDATED",
 )
 
 
