@@ -37,7 +37,13 @@ from .forms import (
     LargeTextAreaForm,
     MfaResetLookupForm,
 )
-from .models import BugReport, BugReportAttachment, Endpoint, MFAResetAttempt
+from .models import (
+    ADOrganizationalUnitLimiter,
+    BugReport,
+    BugReportAttachment,
+    Endpoint,
+    MFAResetAttempt,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -47,18 +53,18 @@ class BaseView(View):
     require_login = True  # By default, require login for all views inheriting from BaseView
     base_template = "myview/base.html"
     _git_info_cache: tuple[str, str, str] | None = None
+    MFA_RESET_REQUIRED_ENDPOINTS = [
+        {'method': 'GET', 'path': '/graph/v1.0/get-user/{user}'},
+        {'method': 'GET', 'path': '/graph/v1.0/list/{user_id__or__user_principalname}/authentication-methods'},
+        {'method': 'DELETE', 'path': '/graph/v1.0/users/{user_id__or__user_principalname}/microsoft-authentication-methods/{microsoft_authenticator_method_id}'},
+        {'method': 'DELETE', 'path': '/graph/v1.0/users/{user_id__or__user_principalname}/phone-authentication-methods/{phone_authenticator_method_id}'},
+        {'method': 'DELETE', 'path': '/graph/v1.0/users/{user_id__or__user_principalname}/software-authentication-methods/{software_oath_method_id}'},
+        {'method': 'GET', 'path': '/active-directory/v1.0/query'},
+    ]
 
 
     def user_has_mfa_reset_access(self):
-        required_endpoints = [
-            {'method': 'GET', 'path': '/graph/v1.0/get-user/{user}'},
-            {'method': 'GET', 'path': '/graph/v1.0/list/{user_id__or__user_principalname}/authentication-methods'},
-            {'method': 'DELETE', 'path': '/graph/v1.0/users/{user_id__or__user_principalname}/microsoft-authentication-methods/{microsoft_authenticator_method_id}'},
-            {'method': 'DELETE', 'path': '/graph/v1.0/users/{user_id__or__user_principalname}/phone-authentication-methods/{phone_authenticator_method_id}'},
-            {'method': 'DELETE', 'path': '/graph/v1.0/users/{user_id__or__user_principalname}/software-authentication-methods/{software_oath_method_id}'},
-            {'method': 'GET', 'path': '/active-directory/v1.0/query'}
-        ]
-
+        required_endpoints = self.MFA_RESET_REQUIRED_ENDPOINTS
         # Fetch user's ad groups and user endpoints
         user_ad_groups = self.request.user.ad_group_members.all()
         user_endpoints = Endpoint.objects.filter(ad_groups__in=user_ad_groups).prefetch_related('ad_groups').distinct()
@@ -612,6 +618,129 @@ class MFAResetPageView(BaseView):
     )
     USER_PROFILE_SELECT = f"$select={USER_PROFILE_SELECT_FIELDS}"
 
+    def _user_has_unrestricted_ou_scope(self):
+        if getattr(self.request.user, "is_superuser", False):
+            return True
+        if hasattr(self, "_unrestricted_ou_scope_cache"):
+            return self._unrestricted_ou_scope_cache
+
+        endpoint_requirements = {
+            (entry["method"].upper(), entry["path"])
+            for entry in self.MFA_RESET_REQUIRED_ENDPOINTS
+        }
+        if not endpoint_requirements:
+            return False
+
+        user_group_ids = list(
+            self.request.user.ad_group_members.values_list("id", flat=True)
+        )
+        if not user_group_ids:
+            return False
+
+        endpoints = (
+            Endpoint.objects.filter(ad_groups__in=user_group_ids, no_limit=True)
+            .distinct()
+        )
+        for endpoint in endpoints:
+            method = (endpoint.method or "").upper()
+            path = endpoint.path or ""
+            if (method, path) in endpoint_requirements:
+                self._unrestricted_ou_scope_cache = True
+                return True
+
+        self._unrestricted_ou_scope_cache = False
+        return False
+
+    def _get_user_ou_limiters(self):
+        if getattr(self.request.user, "is_superuser", False):
+            return None
+        if self._user_has_unrestricted_ou_scope():
+            return None
+        if not hasattr(self, "_user_ou_limiters_cache"):
+            user_group_ids = list(
+                self.request.user.ad_group_members.values_list("id", flat=True)
+            )
+            if not user_group_ids:
+                self._user_ou_limiters_cache = []
+            else:
+                limiters = (
+                    ADOrganizationalUnitLimiter.objects.filter(
+                        ad_groups__in=user_group_ids
+                    )
+                    .distinct()
+                )
+                self._user_ou_limiters_cache = list(limiters)
+        return self._user_ou_limiters_cache
+
+    def _get_allowed_ou_dns(self):
+        limiters = self._get_user_ou_limiters()
+        if limiters is None:
+            return None
+        distinguished_names = set()
+        for limiter in limiters:
+            dn = getattr(limiter, "distinguished_name", "") or ""
+            dn = str(dn).strip()
+            if dn:
+                distinguished_names.add(dn.lower())
+        return distinguished_names
+
+    def _get_allowed_ou_labels(self):
+        limiters = self._get_user_ou_limiters()
+        if limiters is None:
+            return ()
+        labels = []
+        for limiter in limiters:
+            label = getattr(limiter, "canonical_name", "") or ""
+            label = str(label).strip()
+            if label:
+                labels.append(label)
+        return tuple(sorted(set(labels), key=str.lower))
+
+    @staticmethod
+    def _extract_user_distinguished_name(profile_data):
+        if isinstance(profile_data, dict):
+            dn = profile_data.get("onPremisesDistinguishedName")
+            if dn:
+                return str(dn).strip()
+        return ""
+
+    def _is_target_dn_authorized(self, distinguished_name):
+        allowed_dns = self._get_allowed_ou_dns()
+        if allowed_dns is None:
+            return True
+        if not allowed_dns:
+            return False
+        dn_normalized = str(distinguished_name or "").strip().lower()
+        if not dn_normalized:
+            return False
+        return any(dn_normalized.endswith(allowed_dn) for allowed_dn in allowed_dns)
+
+    def _build_ou_denied_message(self, user_principal_name):
+        limiters = self._get_user_ou_limiters()
+        if limiters is None:
+            return (
+                f"You are not permitted to manage MFA for {user_principal_name}."
+            )
+
+        allowed_labels = self._get_allowed_ou_labels()
+        if not allowed_labels:
+            return (
+                "You are not assigned to any organizational units that allow MFA resets, "
+                f"so you cannot manage MFA for {user_principal_name}."
+            )
+
+        readable_labels = ", ".join(allowed_labels)
+        return (
+            f"You can only manage MFA for users within these organizational units: {readable_labels}. "
+            f"{user_principal_name} is outside your scope."
+        )
+
+    def _check_target_ou_access(self, user_principal_name):
+        profile_raw = self._fetch_user_profile(user_principal_name)
+        distinguished_name = self._extract_user_distinguished_name(profile_raw)
+        authorized = self._is_target_dn_authorized(distinguished_name)
+        return authorized, profile_raw
+
     def get(self, request, *args, **kwargs):
         if not self.user_has_mfa_reset_access():
             return HttpResponseForbidden("You do not have access to this page.")
@@ -627,17 +756,27 @@ class MFAResetPageView(BaseView):
         user_profile = {}
         user_groups = []
         user_photo_url = None
+        bulk_delete_form = None
 
         if user_principal_name:
             profile_raw = None
+            target_authorized = True
             try:
                 profile_raw = self._fetch_user_profile(user_principal_name)
             except GraphAPIError as exc:
+                target_authorized = False
                 messages.error(request, str(exc))
             else:
+                distinguished_name = self._extract_user_distinguished_name(profile_raw)
+                if not self._is_target_dn_authorized(distinguished_name):
+                    target_authorized = False
+                    messages.error(
+                        request, self._build_ou_denied_message(user_principal_name)
+                    )
+
+            if target_authorized and profile_raw is not None:
                 user_profile = self._transform_user_profile(profile_raw)
 
-            if profile_raw is not None:
                 try:
                     groups_raw = self._fetch_user_groups(user_principal_name)
                 except GraphAPIError as exc:
@@ -645,17 +784,21 @@ class MFAResetPageView(BaseView):
                 else:
                     user_groups = self._transform_user_groups(groups_raw)
 
-            user_photo_url = self._resolve_user_photo(
-                user_principal_name,
-                user_profile.get("employee_id") if user_profile else None,
-            )
+                user_photo_url = self._resolve_user_photo(
+                    user_principal_name,
+                    user_profile.get("employee_id") if user_profile else None,
+                )
 
-            try:
-                data = self._fetch_authentication_methods(user_principal_name)
-                auth_methods = self._transform_methods(data)
-                no_methods = not auth_methods
-            except GraphAPIError as exc:
-                messages.error(request, str(exc))
+                try:
+                    data = self._fetch_authentication_methods(user_principal_name)
+                    auth_methods = self._transform_methods(data)
+                    no_methods = not auth_methods
+                except GraphAPIError as exc:
+                    messages.error(request, str(exc))
+
+                bulk_delete_form = self.bulk_delete_form_class(
+                    initial={"user_principal_name": user_principal_name}
+                )
 
         context.update(
             {
@@ -669,11 +812,8 @@ class MFAResetPageView(BaseView):
                 "has_deletable_methods": any(
                     method.get("can_delete") for method in auth_methods
                 ),
-                "bulk_delete_form": self.bulk_delete_form_class(
-                    initial={"user_principal_name": user_principal_name}
-                )
-                if user_principal_name
-                else None,
+                "bulk_delete_form": bulk_delete_form,
+                "allowed_ou_labels": self._get_allowed_ou_labels(),
             }
         )
         return render(request, self.template_name, context)
@@ -718,6 +858,37 @@ class MFAResetPageView(BaseView):
             method_label, _ = self.DELETE_HANDLERS.get(
                 method_type, (method_type, None)
             )
+
+            try:
+                authorized, _ = self._check_target_ou_access(user_principal_name)
+            except GraphAPIError as exc:
+                MFAResetAttempt.log_attempt(
+                    performed_by=request.user,
+                    target_user_principal_name=user_principal_name,
+                    reset_type=MFAResetAttempt.ResetType.INDIVIDUAL,
+                    was_successful=False,
+                    method_id=method_id,
+                    method_type=method_type,
+                    details=str(exc),
+                )
+                messages.error(request, str(exc))
+                query = urlencode({"userPrincipalName": user_principal_name})
+                return redirect(f"{reverse('mfa-reset')}?{query}")
+
+            if not authorized:
+                denial_message = self._build_ou_denied_message(user_principal_name)
+                MFAResetAttempt.log_attempt(
+                    performed_by=request.user,
+                    target_user_principal_name=user_principal_name,
+                    reset_type=MFAResetAttempt.ResetType.INDIVIDUAL,
+                    was_successful=False,
+                    method_id=method_id,
+                    method_type=method_type,
+                    details=denial_message,
+                )
+                messages.error(request, denial_message)
+                query = urlencode({"userPrincipalName": user_principal_name})
+                return redirect(f"{reverse('mfa-reset')}?{query}")
 
             try:
                 self._delete_authentication_method(
@@ -770,6 +941,33 @@ class MFAResetPageView(BaseView):
             return redirect(reverse("mfa-reset"))
 
         user_principal_name = form.cleaned_data["user_principal_name"]
+
+        try:
+            authorized, _ = self._check_target_ou_access(user_principal_name)
+        except GraphAPIError as exc:
+            MFAResetAttempt.log_attempt(
+                performed_by=request.user,
+                target_user_principal_name=user_principal_name,
+                reset_type=MFAResetAttempt.ResetType.BULK,
+                was_successful=False,
+                details=str(exc),
+            )
+            messages.error(request, str(exc))
+            query = urlencode({"userPrincipalName": user_principal_name})
+            return redirect(f"{reverse('mfa-reset')}?{query}")
+
+        if not authorized:
+            denial_message = self._build_ou_denied_message(user_principal_name)
+            MFAResetAttempt.log_attempt(
+                performed_by=request.user,
+                target_user_principal_name=user_principal_name,
+                reset_type=MFAResetAttempt.ResetType.BULK,
+                was_successful=False,
+                details=denial_message,
+            )
+            messages.error(request, denial_message)
+            query = urlencode({"userPrincipalName": user_principal_name})
+            return redirect(f"{reverse('mfa-reset')}?{query}")
 
         try:
             methods = self._fetch_authentication_methods(user_principal_name)
