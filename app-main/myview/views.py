@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import subprocess
@@ -40,6 +41,7 @@ logger = logging.getLogger(__name__)
 class BaseView(View):
     require_login = True  # By default, require login for all views inheriting from BaseView
     base_template = "myview/base.html"
+    _git_info_cache: tuple[str, str, str] | None = None
 
 
     def user_has_mfa_reset_access(self):
@@ -94,12 +96,43 @@ class BaseView(View):
 
         return None, None
 
+    def _format_last_updated(self, last_updated_raw):
+        """Convert various date representations into a formatted string."""
+
+        if not last_updated_raw:
+            return None
+
+        last_updated_dt = None
+
+        if isinstance(last_updated_raw, datetime):
+            last_updated_dt = last_updated_raw
+        else:
+            value = last_updated_raw
+            if isinstance(value, (int, float)):
+                last_updated_dt = datetime.fromtimestamp(int(value), tz=ZoneInfo("UTC"))
+            elif isinstance(value, str):
+                parsed = parse_datetime(value)
+                if parsed is not None:
+                    last_updated_dt = parsed
+                elif value.isdigit():
+                    last_updated_dt = datetime.fromtimestamp(int(value), tz=ZoneInfo("UTC"))
+                else:
+                    try:
+                        last_updated_dt = datetime.fromisoformat(value)
+                    except ValueError:
+                        last_updated_dt = None
+
+        if last_updated_dt is None:
+            return str(last_updated_raw)
+
+        if last_updated_dt.tzinfo is None:
+            last_updated_dt = last_updated_dt.replace(tzinfo=ZoneInfo("UTC"))
+
+        last_updated_dt = last_updated_dt.astimezone(ZoneInfo("Europe/Copenhagen"))
+        return last_updated_dt.strftime('%H:%M %d-%m-%Y %Z')
+
     def _environment_git_info(self):
         """Return git metadata exposed through environment variables."""
-
-        branch = None
-        commit = None
-        last_updated_formatted = None
 
         branch = (
             os.environ.get("COOLIFY_GIT_BRANCH")
@@ -121,37 +154,40 @@ class BaseView(View):
             or os.environ.get("LAST_UPDATED")
         )
 
-        if last_updated_raw:
-            last_updated_dt = parse_datetime(last_updated_raw)
-            if last_updated_dt is None:
-                if last_updated_raw.isdigit():
-                    last_updated_dt = datetime.fromtimestamp(
-                        int(last_updated_raw), tz=ZoneInfo("UTC")
-                    )
-                else:
-                    try:
-                        last_updated_dt = datetime.fromisoformat(last_updated_raw)
-                    except ValueError:
-                        last_updated_dt = None
-
-            if last_updated_dt is not None:
-                if last_updated_dt.tzinfo is None:
-                    last_updated_dt = last_updated_dt.replace(tzinfo=ZoneInfo("UTC"))
-                last_updated_dt = last_updated_dt.astimezone(
-                    ZoneInfo("Europe/Copenhagen")
-                )
-                last_updated_formatted = last_updated_dt.strftime('%H:%M %d-%m-%Y %Z')
-            else:
-                last_updated_formatted = last_updated_raw
+        last_updated_formatted = self._format_last_updated(last_updated_raw)
 
         return branch, commit, last_updated_formatted
+
+    def _file_git_info(self):
+        """Read git metadata written during the container build/startup."""
+
+        from django.conf import settings
+
+        metadata_path = getattr(settings, "GIT_METADATA_FILE", None)
+        if not metadata_path:
+            return None, None, None
+
+        metadata_file = Path(metadata_path)
+        if not metadata_file.exists():
+            return None, None, None
+
+        try:
+            data = json.loads(metadata_file.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return None, None, None
+
+        branch = data.get("branch")
+        commit = data.get("commit")
+        last_updated = self._format_last_updated(data.get("last_updated"))
+
+        return branch, commit, last_updated
 
     def _fallback_git_info(self, git_dir):
         """Read git information directly from the .git directory."""
 
-        branch = "unknown"
-        commit = "unknown"
-        last_updated_formatted = "unknown"
+        branch = None
+        commit = None
+        last_updated_formatted = None
 
         head_path = git_dir / "HEAD"
         if not head_path.exists():
@@ -167,61 +203,89 @@ class BaseView(View):
             commit = head_contents
 
         if ref_path.exists():
-            commit = ref_path.read_text(encoding="utf-8").strip() or commit
-            last_updated_dt = datetime.fromtimestamp(ref_path.stat().st_mtime, tz=ZoneInfo("Europe/Copenhagen"))
-            last_updated_formatted = last_updated_dt.strftime('%H:%M %d-%m-%Y %Z')
+            commit_contents = ref_path.read_text(encoding="utf-8").strip()
+            if commit_contents:
+                commit = commit_contents
+            last_updated_formatted = self._format_last_updated(
+                datetime.fromtimestamp(ref_path.stat().st_mtime, tz=ZoneInfo("Europe/Copenhagen"))
+            )
 
         return branch, commit, last_updated_formatted
 
     def get_git_info(self):
-        branch = "unknown"
-        commit = "unknown"
-        last_updated_formatted = "unknown"
-        last_updated_raw = None
+        if BaseView._git_info_cache is not None:
+            return BaseView._git_info_cache
+
+        branch = None
+        commit = None
+        last_updated_formatted = None
 
         git_root, git_dir = self._locate_git_root()
 
         env_branch, env_commit, env_last_updated = self._environment_git_info()
+        file_branch, file_commit, file_last_updated = self._file_git_info()
+
         if env_branch:
             branch = env_branch
+        elif file_branch:
+            branch = file_branch
+
         if env_commit:
             commit = env_commit
+        elif file_commit:
+            commit = file_commit
+
         if env_last_updated:
             last_updated_formatted = env_last_updated
+        elif file_last_updated:
+            last_updated_formatted = file_last_updated
+
+        git_branch = None
+        git_commit = None
+        git_last_updated_raw = None
 
         try:
             if not git_root:
                 raise FileNotFoundError("Unable to locate git repository root")
 
-            branch = subprocess.check_output(
+            git_branch = subprocess.check_output(
                 ['git', 'rev-parse', '--abbrev-ref', 'HEAD'],
                 cwd=git_root,
             ).decode('utf-8').strip()
-            commit = subprocess.check_output(
+            git_commit = subprocess.check_output(
                 ['git', 'rev-parse', 'HEAD'],
                 cwd=git_root,
             ).decode('utf-8').strip()
-            last_updated_raw = subprocess.check_output(
-                ['git', 'log', '-1', '--format=%cd'],
+            git_last_updated_raw = subprocess.check_output(
+                ['git', 'log', '-1', '--format=%cI'],
                 cwd=git_root,
             ).decode('utf-8').strip()
-
-            # Parse the last_updated date string and reformat it
-            last_updated_dt = datetime.strptime(last_updated_raw, '%a %b %d %H:%M:%S %Y %z')
-            last_updated_dt = last_updated_dt.astimezone(ZoneInfo("Europe/Copenhagen"))
-            last_updated_formatted = last_updated_dt.strftime('%H:%M %d-%m-%Y %Z')
         except (subprocess.CalledProcessError, FileNotFoundError) as exc:
             logger.warning("Unable to read git metadata for template footer: %s", exc)
             if git_dir:
-                branch, commit, last_updated_formatted = self._fallback_git_info(git_dir)
-            if last_updated_raw:
-                last_updated_formatted = last_updated_raw
-        except ValueError as exc:
-            logger.warning("Unable to parse git commit timestamp '%s': %s", last_updated_raw, exc)
-            if last_updated_raw:
-                last_updated_formatted = last_updated_raw
+                fb_branch, fb_commit, fb_last_updated = self._fallback_git_info(git_dir)
+                branch = branch or fb_branch
+                commit = commit or fb_commit
+                last_updated_formatted = last_updated_formatted or fb_last_updated
+        else:
+            if git_branch and git_branch != 'HEAD':
+                branch = git_branch
+            elif not branch:
+                branch = git_branch
 
-        return branch, commit, last_updated_formatted
+            if git_commit:
+                commit = git_commit
+
+            formatted_last_updated = self._format_last_updated(git_last_updated_raw)
+            if formatted_last_updated:
+                last_updated_formatted = formatted_last_updated
+
+        branch = branch or "unknown"
+        commit = commit or "unknown"
+        last_updated_formatted = last_updated_formatted or "unknown"
+
+        BaseView._git_info_cache = (branch, commit, last_updated_formatted)
+        return BaseView._git_info_cache
 
     def get_context_data(self, **kwargs):
         branch, commit, last_updated = self.get_git_info()

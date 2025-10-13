@@ -448,6 +448,13 @@ SWAGGER_SETTINGS = {
 
 LOGIN_URL='/login/'
 
+_git_metadata_env = os.getenv("DJANGO_GIT_METADATA_FILE")
+
+if _git_metadata_env:
+    GIT_METADATA_FILE = Path(_git_metadata_env)
+else:
+    GIT_METADATA_FILE = PROJECT_ROOT / "git-metadata.json"
+
 LOG_DIR = PROJECT_ROOT / "logs"
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 
