@@ -758,8 +758,14 @@ class MFAResetPageView(BaseView):
         return redirect(reverse("mfa-reset"))
 
     def _handle_delete_all(self, request):
+        is_ajax = request.headers.get("X-Requested-With", "").lower() == "xmlhttprequest"
         form = self.bulk_delete_form_class(request.POST)
         if not form.is_valid():
+            if is_ajax:
+                return JsonResponse(
+                    {"success": False, "message": "Invalid bulk delete request."},
+                    status=400,
+                )
             messages.error(request, "Invalid bulk delete request.")
             return redirect(reverse("mfa-reset"))
 
@@ -775,6 +781,11 @@ class MFAResetPageView(BaseView):
                 was_successful=False,
                 details=str(exc),
             )
+            if is_ajax:
+                return JsonResponse(
+                    {"success": False, "message": str(exc)},
+                    status=502,
+                )
             messages.error(request, str(exc))
             query = urlencode({"userPrincipalName": user_principal_name})
             return redirect(f"{reverse('mfa-reset')}?{query}")
@@ -793,10 +804,16 @@ class MFAResetPageView(BaseView):
                 was_successful=False,
                 details="No removable authentication methods were found.",
             )
-            messages.info(
-                request,
-                "No removable authentication methods were found for this user.",
-            )
+            message = "No removable authentication methods were found for this user."
+            if is_ajax:
+                return JsonResponse(
+                    {
+                        "success": True,
+                        "message": message,
+                        "remaining_methods": [],
+                    }
+                )
+            messages.info(request, message)
             query = urlencode({"userPrincipalName": user_principal_name})
             return redirect(f"{reverse('mfa-reset')}?{query}")
 
@@ -834,8 +851,16 @@ class MFAResetPageView(BaseView):
                     details=str(exc),
                 )
 
+        remaining_methods = []
+        remaining_error = None
+        try:
+            remaining_raw = self._fetch_authentication_methods(user_principal_name)
+            remaining_methods = self._transform_methods(remaining_raw)
+        except GraphAPIError as exc:  # pragma: no cover - defensive
+            remaining_error = str(exc)
+
+        unique_success_labels = sorted(set(filter(None, successes)))
         if successes:
-            unique_success_labels = sorted(set(filter(None, successes)))
             messages.success(
                 request,
                 "Successfully removed the following authentication methods: "
@@ -851,6 +876,24 @@ class MFAResetPageView(BaseView):
                 "Some authentication methods could not be removed: "
                 + " ; ".join(failure_messages),
             )
+
+        if is_ajax:
+            response_payload = {
+                "success": not failures,
+                "deleted_methods": unique_success_labels,
+                "failures": [
+                    {"label": label, "error": error} for label, error in failures
+                ],
+                "remaining_methods": remaining_methods,
+            }
+            if remaining_error:
+                response_payload["remaining_error"] = remaining_error
+            if not failures:
+                response_payload.setdefault(
+                    "message",
+                    "All removable authentication methods were deleted.",
+                )
+            return JsonResponse(response_payload)
 
         query = urlencode({"userPrincipalName": user_principal_name})
         return redirect(f"{reverse('mfa-reset')}?{query}")
