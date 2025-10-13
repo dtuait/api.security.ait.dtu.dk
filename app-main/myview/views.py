@@ -134,24 +134,47 @@ class BaseView(View):
     def _environment_git_info(self):
         """Return git metadata exposed through environment variables."""
 
-        branch = (
-            os.environ.get("COOLIFY_GIT_BRANCH")
-            or os.environ.get("GIT_BRANCH")
-            or os.environ.get("BRANCH")
+        def _get_env_value(*names: str) -> str | None:
+            for name in names:
+                value = os.environ.get(name)
+                if value:
+                    value = value.strip()
+                    if value:
+                        return value
+            return None
+
+        branch = _get_env_value(
+            "COOLIFY_GIT_BRANCH",
+            "COOLIFY_BRANCH",
+            "GIT_BRANCH",
+            "BRANCH",
+            "CI_COMMIT_BRANCH",
+            "GITHUB_REF_NAME",
         )
 
-        commit = (
-            os.environ.get("COOLIFY_GIT_COMMIT")
-            or os.environ.get("GIT_COMMIT")
-            or os.environ.get("SOURCE_VERSION")
-            or os.environ.get("COMMIT")
+        commit = _get_env_value(
+            "COOLIFY_GIT_COMMIT",
+            "COOLIFY_GIT_HASH",
+            "COOLIFY_GIT_SHA",
+            "COOLIFY_SHA",
+            "COOLIFY_COMMIT",
+            "COOLIFY_GIT_COMMIT_SHORT",
+            "GIT_COMMIT",
+            "GIT_SHA",
+            "GIT_HASH",
+            "SOURCE_VERSION",
+            "CI_COMMIT_SHA",
+            "GITHUB_SHA",
+            "COMMIT",
         )
 
-        last_updated_raw = (
-            os.environ.get("COOLIFY_LAST_UPDATED")
-            or os.environ.get("COOLIFY_DEPLOYED_AT")
-            or os.environ.get("LAST_DEPLOYED_AT")
-            or os.environ.get("LAST_UPDATED")
+        last_updated_raw = _get_env_value(
+            "COOLIFY_LAST_UPDATED",
+            "COOLIFY_DEPLOYED_AT",
+            "COOLIFY_GIT_UPDATED_AT",
+            "COOLIFY_BUILD_AT",
+            "LAST_DEPLOYED_AT",
+            "LAST_UPDATED",
         )
 
         last_updated_formatted = self._format_last_updated(last_updated_raw)
