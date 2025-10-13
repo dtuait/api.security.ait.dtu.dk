@@ -47,7 +47,7 @@ urlpatterns = [
     path('admin/', RedirectView.as_view(pattern_name='admin-panel', permanent=False)),
     
     # myview
-    path('', RedirectView.as_view(url="myview/frontpage/", permanent=True)),
+    path('', RedirectView.as_view(url="myview/", permanent=True)),
     path('myview/', include('myview.urls')),
 
     # graph api
