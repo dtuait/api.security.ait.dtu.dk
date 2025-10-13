@@ -19,13 +19,13 @@ from django.utils.dateparse import parse_datetime
 from django.utils.decorators import method_decorator
 from django.views import View
 from requests import RequestException
+from ldap3.utils.conv import escape_filter_chars
 
 from graph.services import (
     execute_delete_software_mfa_method,
     execute_get_user,
     execute_get_user_photo,
     execute_list_user_authentication_methods,
-    execute_list_user_groups,
     execute_microsoft_authentication_method,
     execute_phone_authentication_method,
 )
@@ -1193,21 +1193,170 @@ class MFAResetPageView(BaseView):
         }
 
     def _fetch_user_groups(self, user_principal_name):
-        data, status_code = execute_list_user_groups(user_principal_name)
+        from django.conf import settings
 
-        if status_code != 200:
-            error_detail = self._extract_graph_error(data)
+        base_dn = (
+            getattr(settings, "ACTIVE_DIRECTORY_DEFAULT_BASE_DN", None)
+            or getattr(settings, "ACTIVE_DIRECTORY_BASE_DN", None)
+            or getattr(settings, "AD_BASE_DN", None)
+            or "DC=win,DC=dtu,DC=dk"
+        )
+
+        escaped_upn = escape_filter_chars(str(user_principal_name or "").strip())
+        if not escaped_upn:
+            return []
+
+        try:
+            user_entries = execute_active_directory_query(
+                base_dn=base_dn,
+                search_filter=f"(userPrincipalName={escaped_upn})",
+                search_attributes=["memberOf", "distinguishedName"],
+                limit=1,
+                excluded_attributes=["thumbnailPhoto"],
+            )
+        except Exception as exc:  # pragma: no cover - defensive
             raise GraphAPIError(
-                error_detail
-                or f"Microsoft Graph returned status {status_code} when fetching group memberships."
+                f"Unable to query Active Directory for group memberships: {exc}"
+            ) from exc
+
+        if not isinstance(user_entries, list):
+            raise GraphAPIError(
+                "Received an unexpected response from Active Directory while fetching group memberships."
             )
 
-        if not isinstance(data, dict):
+        if not user_entries:
+            return []
+
+        entry = user_entries[0]
+        member_of_raw = entry.get("memberOf") or entry.get("memberof")
+
+        def _coerce_list(value):
+            if isinstance(value, list):
+                return value
+            if value in (None, ""):
+                return []
+            return [value]
+
+        group_dns = [
+            str(dn).strip()
+            for dn in _coerce_list(member_of_raw)
+            if str(dn).strip()
+        ]
+
+        if not group_dns:
+            return []
+
+        unique_dns = sorted(set(group_dns))
+        filter_clauses = [
+            f"(distinguishedName={escape_filter_chars(dn)})" for dn in unique_dns
+        ]
+
+        if not filter_clauses:
+            return []
+
+        if len(filter_clauses) == 1:
+            group_filter = filter_clauses[0]
+        else:
+            group_filter = f"(|{''.join(filter_clauses)})"
+
+        try:
+            group_entries = execute_active_directory_query(
+                base_dn=base_dn,
+                search_filter=group_filter,
+                search_attributes=[
+                    "displayName",
+                    "cn",
+                    "distinguishedName",
+                    "mail",
+                    "sAMAccountName",
+                ],
+                excluded_attributes=["thumbnailPhoto"],
+            )
+        except Exception as exc:  # pragma: no cover - defensive
             raise GraphAPIError(
-                "Received an unexpected response from Microsoft Graph while fetching group memberships."
+                f"Unable to query Active Directory for group details: {exc}"
+            ) from exc
+
+        if group_entries is None:
+            group_entries = []
+        elif not isinstance(group_entries, list):
+            raise GraphAPIError(
+                "Received an unexpected response from Active Directory while fetching group details."
             )
 
-        return data.get("value", [])
+        groups_by_dn = {}
+
+        def _first_value(entry, *keys):
+            for key in keys:
+                values = entry.get(key)
+                if isinstance(values, list):
+                    if values:
+                        return values[0]
+                elif values:
+                    return values
+            return None
+
+        for group_entry in (group_entries or []):
+            if not isinstance(group_entry, dict):
+                continue
+
+            distinguished_name = _first_value(
+                group_entry,
+                "distinguishedName",
+                "distinguishedname",
+            )
+            if not distinguished_name:
+                continue
+
+            display_name = _first_value(
+                group_entry,
+                "displayName",
+                "displayname",
+                "cn",
+                "CN",
+                "sAMAccountName",
+                "samaccountname",
+            )
+
+            if not display_name:
+                display_name = self._extract_common_name(str(distinguished_name))
+
+            mail = _first_value(group_entry, "mail", "Mail")
+            sam_account = _first_value(
+                group_entry,
+                "sAMAccountName",
+                "samaccountname",
+            )
+
+            dn_key = str(distinguished_name).strip().lower()
+            group_payload = {
+                "displayName": display_name,
+                "mail": mail,
+                "onPremisesDistinguishedName": distinguished_name,
+            }
+            if sam_account:
+                group_payload["onPremisesSamAccountName"] = sam_account
+
+            groups_by_dn[dn_key] = group_payload
+
+        groups = []
+        for dn in unique_dns:
+            group_data = groups_by_dn.get(str(dn).strip().lower())
+            if group_data:
+                groups.append(group_data)
+            else:
+                groups.append(
+                    {
+                        "displayName": self._extract_common_name(dn),
+                        "mail": None,
+                        "onPremisesDistinguishedName": dn,
+                    }
+                )
+
+        groups.sort(
+            key=lambda item: str(item.get("displayName") or "").casefold()
+        )
+        return groups
 
     def _is_probably_group(self, entry):
         if not isinstance(entry, dict):
@@ -1310,6 +1459,18 @@ class MFAResetPageView(BaseView):
         if not employee_id_str:
             return None
         return f"https://www.dtubasen.dtu.dk/showimage.aspx?id={employee_id_str}"
+
+    @staticmethod
+    def _extract_common_name(distinguished_name):
+        if not distinguished_name:
+            return None
+
+        for component in str(distinguished_name).split(","):
+            component = component.strip()
+            if component.upper().startswith("CN="):
+                return component[3:]
+
+        return str(distinguished_name)
 
     @staticmethod
     def _format_organizational_units(distinguished_name):
