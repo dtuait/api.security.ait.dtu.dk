@@ -1209,6 +1209,30 @@ class MFAResetPageView(BaseView):
 
         return data.get("value", [])
 
+    def _is_probably_group(self, entry):
+        if not isinstance(entry, dict):
+            return False
+
+        entry_type = (entry.get("@odata.type") or "").lower()
+        if entry_type:
+            return "group" in entry_type
+
+        group_types = entry.get("groupTypes")
+        if isinstance(group_types, list) and group_types:
+            return True
+
+        if entry.get("securityEnabled") is not None:
+            return True
+
+        return any(
+            entry.get(field)
+            for field in (
+                "onPremisesSamAccountName",
+                "onPremisesDistinguishedName",
+                "mail",
+            )
+        )
+
     def _transform_user_groups(self, group_entries):
         groups = []
 
@@ -1216,8 +1240,7 @@ class MFAResetPageView(BaseView):
             if not isinstance(entry, dict):
                 continue
 
-            entry_type = (entry.get("@odata.type") or "").lower()
-            if "group" not in entry_type:
+            if not self._is_probably_group(entry):
                 continue
 
             display_name = entry.get("displayName") or entry.get("onPremisesSamAccountName")

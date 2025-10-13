@@ -12,7 +12,11 @@ from ._http import graph_request
 
 logger = logging.getLogger(__name__)
 
-_GROUP_SELECT = "$select=displayName,mail,id,onPremisesSamAccountName,onPremisesDistinguishedName,@odata.type"
+_GROUP_SELECT = (
+    "$select="
+    "displayName,mail,id,onPremisesSamAccountName,onPremisesDistinguishedName,"
+    "securityEnabled,groupTypes"
+)
 
 
 def _error_response(message: str, *, status: int = 503, code: str = "RequestError") -> Tuple[Dict[str, Dict[str, str]], int]:
