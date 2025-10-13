@@ -68,15 +68,15 @@ class APIDocumentationView(APIView):
     """Expose endpoint documentation extracted from the OpenAPI specification."""
 
     def get(self, request, endpoint_name: str | None = None):  # noqa: D401 - Django signature
-        if not endpoint_name:
-            return JsonResponse({"message": "All documentation"})
-
         try:
             spec = _load_openapi_spec()
         except (RequestException, ValueError):
             return JsonResponse({"error": "OpenAPI specification not available"}, status=503)
 
         paths = spec.get("paths", {})
+
+        if not endpoint_name:
+            return JsonResponse({"message": "All documentation"})
 
         if endpoint_name == "ALL_ENDPOINTS":
             return JsonResponse(paths)
