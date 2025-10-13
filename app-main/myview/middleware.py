@@ -10,7 +10,13 @@ import logging
 import re
 from urllib.parse import urlparse
 import time
-from .models import Endpoint, IPLimiter, ADOrganizationalUnitLimiter, APIRequestLog
+from .models import (
+    Endpoint,
+    IPLimiter,
+    ADOrganizationalUnitLimiter,
+    ADGroupAssociation,
+    APIRequestLog,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -408,7 +414,6 @@ class AccessControlMiddleware(MiddlewareMixin):
 
 
     def set_user_ad_groups_cache(self, user):
-        from myview.models import ADGroupAssociation
         from django.core.cache import cache
         from django.conf import settings
 
@@ -418,11 +423,52 @@ class AccessControlMiddleware(MiddlewareMixin):
             cache_key = f"user_ad_groups_{user.id}"
 
             # Sync user AD groups
-            ADGroupAssociation.sync_user_ad_groups(username=user.username)
+            ADGroupAssociation.sync_user_ad_groups_cached(
+                username=user.username,
+                max_age_seconds=getattr(settings, 'AD_GROUP_CACHE_TIMEOUT', 15 * 60),
+            )
+            user.refresh_from_db()
             user_ad_groups = user.ad_group_members.all()
 
             # Cache for a specified time using AD_GROUP_CACHE_TIMEOUT from settings
             cache.set(cache_key, list(user_ad_groups.values_list('id', flat=True)), timeout=settings.AD_GROUP_CACHE_TIMEOUT)
+
+    def _ensure_session_group_sync(self, request):
+        """Ensure the user's AD group membership is refreshed for the active session."""
+        if not getattr(request.user, "is_authenticated", False):
+            return
+
+        session = getattr(request, "session", None)
+        if session is None:
+            return
+
+        from django.conf import settings
+
+        max_age = getattr(settings, "AD_GROUP_CACHE_TIMEOUT", 15 * 60)
+        last_synced = session.get("ad_groups_synced_at")
+        now = time.time()
+
+        needs_sync = last_synced is None or (now - float(last_synced)) > max_age
+        if not needs_sync:
+            return
+
+        try:
+            refreshed = ADGroupAssociation.sync_user_ad_groups_cached(
+                username=request.user.username,
+                max_age_seconds=max_age,
+                force=False,
+            )
+            if refreshed:
+                request.user.refresh_from_db()
+        except Exception:
+            logger.warning(
+                "Failed to refresh AD groups for session user=%s",
+                getattr(request.user, "username", "unknown"),
+                exc_info=True,
+            )
+        finally:
+            session["ad_groups_synced_at"] = now
+            session.modified = True
 
 
 
@@ -530,6 +576,8 @@ class AccessControlMiddleware(MiddlewareMixin):
             is_authorized = False
 
             if response is None:
+                if request.user.is_authenticated:
+                    self._ensure_session_group_sync(request)
                 if self._is_whitelisted_path(normalized_request_path):
                     action = 'whitelist'
                     if request.user.is_authenticated:

@@ -744,6 +744,34 @@ class ADGroupAssociation(BaseModel):
             time.monotonic() - sync_started,
         )
 
+    @classmethod
+    def sync_user_ad_groups_cached(cls, *, username, max_age_seconds=None, force=False):
+        """Synchronise a user's AD group membership with optional caching.
+
+        - Uses the Django cache to avoid repeated LDAP lookups within ``max_age_seconds``.
+        - When ``force`` is True the sync is executed regardless of cache state.
+        - Returns True if a sync was performed, otherwise False.
+        """
+        if not username:
+            return False
+
+        from django.core.cache import cache
+
+        if max_age_seconds is None:
+            max_age_seconds = getattr(settings, 'AD_GROUP_CACHE_TIMEOUT', 15 * 60)
+
+        cache_key = f"user_ad_groups_sync_ts:{str(username).strip().lower()}"
+        now = time.time()
+
+        if not force:
+            last_synced = cache.get(cache_key)
+            if last_synced and (now - float(last_synced)) < max_age_seconds:
+                return False
+
+        cls.sync_user_ad_groups(username=username)
+        cache.set(cache_key, now, timeout=max_age_seconds)
+        return True
+
     @staticmethod
     def delete_unused_groups():
         unused_ad_groups = ADGroupAssociation.objects.filter(endpoints__isnull=True)

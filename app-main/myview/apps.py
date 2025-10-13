@@ -1,5 +1,6 @@
 import logging
 import threading
+import time
 
 from django.apps import AppConfig
 from django.db import DEFAULT_DB_ALIAS, connections, transaction
@@ -26,6 +27,13 @@ class MyviewConfig(AppConfig):
         request_started.connect(
             self._handle_request_started,
             dispatch_uid="myview_request_started_startup_sync",
+        )
+
+        from django.contrib.auth.signals import user_logged_in
+
+        user_logged_in.connect(
+            self._handle_user_logged_in,
+            dispatch_uid="myview_sync_groups_on_login",
         )
 
         self._record_startup_alias(DEFAULT_DB_ALIAS)
@@ -66,6 +74,27 @@ class MyviewConfig(AppConfig):
             self._ensure_startup_worker_running()
         except Exception:
             logger.exception("Deferred startup synchronisation failed")
+
+    def _handle_user_logged_in(self, sender, user, request, **_kwargs):
+        """Ensure a fresh AD group sync occurs when a user logs in."""
+        try:
+            from django.conf import settings
+            from .models import ADGroupAssociation
+
+            max_age = getattr(settings, "AD_GROUP_CACHE_TIMEOUT", 15 * 60)
+            ADGroupAssociation.sync_user_ad_groups_cached(
+                username=user.username,
+                max_age_seconds=max_age,
+                force=True,
+            )
+            if request and hasattr(request, "session"):
+                request.session["ad_groups_synced_at"] = time.time()
+                request.session.modified = True
+        except Exception:
+            logger.exception(
+                "Failed to refresh AD group membership after login for user %s",
+                getattr(user, "username", "unknown"),
+            )
 
     def _register_ad_group_sync(self):
         """Ensure AD groups are synced at startup and after migrations."""

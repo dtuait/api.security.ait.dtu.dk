@@ -192,8 +192,11 @@ def msal_callback(request):
             user = User.objects.get(username=username)
             user.backend = 'django.contrib.auth.backends.ModelBackend'
 
-            # Sync user AD groups
-            ADGroupAssociation.sync_user_ad_groups(username=user.username)
+            # Sync user AD groups (force on login to ensure fresh membership)
+            ADGroupAssociation.sync_user_ad_groups_cached(
+                username=user.username,
+                force=True,
+            )
 
             required_groups = getattr(settings, 'IT_STAFF_API_GROUP_CANONICAL_NAMES', ())
             has_required_group = True
@@ -556,7 +559,6 @@ def msal_logout(request):
     response = redirect(logout_url)
     response.delete_cookie('csrftoken')
     return response
-
 
 
 
