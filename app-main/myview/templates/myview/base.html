@@ -103,6 +103,9 @@
     <footer>
         <div class="footer-content">
             <p>Branch: {{ git_branch }}</p>
+            {% if git_commit and git_commit != 'unknown' %}
+            <p>Commit: <a href="https://github.com/dtuait/api.security.ait.dtu.dk/commit/{{ git_commit }}" target="_blank" rel="noopener">{{ git_commit|slice:":12" }}</a></p>
+            {% endif %}
             <p>Last Updated: {{ last_updated }}</p>
             <p>Link: <a href="https://github.com/dtuait/api.security.ait.dtu.dk">https://github.com/dtuait/api.security.ait.dtu.dk</a></p>
         </div>

@@ -54,6 +54,110 @@ if [ ! -f "$MANAGE_PY" ]; then
   exit 1
 fi
 
+APP_DIR=$(cd "$(dirname "$MANAGE_PY")" && pwd)
+
+if [ -z "$PROJECT_ROOT" ]; then
+  candidate_parent=$(cd "$APP_DIR/.." && pwd)
+  if [ -e "$candidate_parent/.git" ]; then
+    PROJECT_ROOT="$candidate_parent"
+  else
+    PROJECT_ROOT=$(cd "$APP_DIR" && pwd)
+  fi
+fi
+
+generate_git_metadata() {
+  output_path="${DJANGO_GIT_METADATA_FILE:-$PROJECT_ROOT/git-metadata.json}"
+
+  if [ -z "$output_path" ]; then
+    return
+  fi
+
+  DJANGO_GIT_METADATA_FILE_RESOLVED="$output_path" \
+  DJANGO_GIT_METADATA_PROJECT_ROOT="$PROJECT_ROOT" \
+  python <<'PY'
+import json
+import os
+import pathlib
+import subprocess
+
+output_raw = os.environ.get("DJANGO_GIT_METADATA_FILE_RESOLVED")
+project_root_raw = os.environ.get("DJANGO_GIT_METADATA_PROJECT_ROOT")
+
+if not output_raw or not project_root_raw:
+    raise SystemExit(0)
+
+output_path = pathlib.Path(output_raw)
+project_root = pathlib.Path(project_root_raw)
+
+branch = (
+    os.environ.get("COOLIFY_GIT_BRANCH")
+    or os.environ.get("GIT_BRANCH")
+    or os.environ.get("BRANCH")
+    or ""
+)
+commit = (
+    os.environ.get("COOLIFY_GIT_COMMIT")
+    or os.environ.get("GIT_COMMIT")
+    or os.environ.get("SOURCE_VERSION")
+    or os.environ.get("COMMIT")
+    or ""
+)
+last_updated = (
+    os.environ.get("COOLIFY_LAST_UPDATED")
+    or os.environ.get("COOLIFY_DEPLOYED_AT")
+    or os.environ.get("LAST_DEPLOYED_AT")
+    or os.environ.get("LAST_UPDATED")
+    or ""
+)
+
+
+def run_git(*args: str) -> str:
+    try:
+        completed = subprocess.run(
+            ["git", "-C", str(project_root), *args],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except (FileNotFoundError, subprocess.CalledProcessError):
+        return ""
+    return completed.stdout.strip()
+
+
+if not branch:
+    branch = run_git("rev-parse", "--abbrev-ref", "HEAD")
+    if branch == "HEAD":
+        branch = ""
+
+if not commit:
+    commit = run_git("rev-parse", "HEAD")
+
+if not last_updated:
+    last_updated = run_git("log", "-1", "--format=%cI")
+
+metadata: dict[str, str] = {}
+
+if branch:
+    metadata["branch"] = branch
+
+if commit:
+    metadata["commit"] = commit
+
+if last_updated:
+    metadata["last_updated"] = last_updated
+
+if metadata:
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(json.dumps(metadata), encoding="utf-8")
+PY
+
+  if [ -f "$output_path" ]; then
+    chown "$APP_USER":"$APP_GROUP" "$output_path" 2>/dev/null || true
+  fi
+}
+
+generate_git_metadata
+
 if [ "$(id -u)" = "0" ]; then
   ensure_storage_dir "${DJANGO_STATIC_ROOT}"
   ensure_storage_dir "${DJANGO_MEDIA_ROOT}"
