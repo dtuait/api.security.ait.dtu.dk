@@ -140,6 +140,19 @@ AD_GROUP_SYNC_DELETE_MISSING = _as_bool(os.getenv('AD_GROUP_SYNC_DELETE_MISSING'
 AD_GROUP_AUTO_SYNC_ENABLED = _as_bool(os.getenv('AD_GROUP_AUTO_SYNC_ENABLED'), False)
 AD_GROUP_SYNC_REFRESH_MEMBERS = _as_bool(os.getenv('AD_GROUP_SYNC_REFRESH_MEMBERS'), False)
 
+default_it_staff_groups = _split_env_list(os.getenv('IT_STAFF_API_GROUPS'))
+if not default_it_staff_groups:
+    default_it_staff_groups = [
+        'win.dtu.dk/AIT/CIS/SOC/Groups/API-SECURITY-AIT-DTU-DK/AIT-CIS-SOC-MFAReset-AIT',
+        'win.dtu.dk/AIT/CIS/SOC/Groups/API-SECURITY-AIT-DTU-DK/AIT-CIS-SOC-MFAReset-BIO',
+        'win.dtu.dk/AIT/CIS/SOC/Groups/API-SECURITY-AIT-DTU-DK/AIT-CIS-SOC-MFAReset-NNFCB',
+        'win.dtu.dk/AIT/CIS/SOC/Groups/API-SECURITY-AIT-DTU-DK/AIT-CIS-SOC-MFAReset-SUS',
+        'win.dtu.dk/AIT/CIS/SOC/Groups/API-SECURITY-AIT-DTU-DK/AIT-CIS-SOC-MFAReset-COMP',
+        'win.dtu.dk/AIT/CIS/SOC/Groups/API-SECURITY-AIT-DTU-DK/AIT-CIS-SOC-MFAReset-CME',
+    ]
+
+IT_STAFF_API_GROUP_CANONICAL_NAMES = tuple(default_it_staff_groups)
+
 default_ou_limiter_bases = _split_env_list(os.getenv('AD_OU_LIMITER_BASES'))
 if not default_ou_limiter_bases:
     default_ou_limiter_bases = ['win.dtu.dk/DTUBaseUsers']

@@ -20,7 +20,7 @@ import logging
 from django.http import JsonResponse
 from django.views.decorators.http import require_GET
 from django.views.decorators.cache import cache_control
-from myview.models import UserLoginLog
+from myview.models import UserLoginLog, ADGroupAssociation
 
 logger = logging.getLogger(__name__)
 
@@ -187,15 +187,35 @@ def msal_callback(request):
                 raise ValueError(f"The account you logged in with ({user_principal_name}) is not synched with on-premise users, which is a requirement.")
 
 
-            from .scripts.user_have_onpremises_adm_account import user_have_onpremises_adm_account
-            user_have_onpremises_adm_account = user_have_onpremises_adm_account(user_principal_name)
-            if not user_have_onpremises_adm_account:
-                # Construct the dynamic part of the message based on user's principal name.
-                adm_account_suffix = user_principal_name.split('@')[0]
+            from app.scripts.create_or_update_django_user import create_or_update_django_user
+            create_or_update_django_user(username=username, first_name=first_name, last_name=last_name, email=email)
+            user = User.objects.get(username=username)
+            user.backend = 'django.contrib.auth.backends.ModelBackend'
+
+            # Sync user AD groups
+            ADGroupAssociation.sync_user_ad_groups(username=user.username)
+
+            required_groups = getattr(settings, 'IT_STAFF_API_GROUP_CANONICAL_NAMES', ())
+            has_required_group = True
+            if required_groups:
+                has_required_group = ADGroupAssociation.objects.filter(
+                    canonical_name__in=required_groups,
+                    members=user,
+                ).exists()
+
+            if not has_required_group:
+                configured_groups = list(
+                    ADGroupAssociation.objects.filter(
+                        canonical_name__in=required_groups
+                    ).values_list('name', flat=True)
+                )
+                if not configured_groups:
+                    configured_groups = list(required_groups)
+
                 denial_message = (
-                    "You are not authenticated because the Azure user with which you have logged in does not have an on-premises admin account. "
-                    f"The account adm-{adm_account_suffix}* does not appear to exist in Active Directory. This restriction is in place to allow only IT staff to access this application. "
-                    "If you believe this is an error or need access, please contact vicre@dtu.dk."
+                    "You are not authorised to access this application. "
+                    "Membership in one of the IT Staff API groups is required. "
+                    "If you believe you should have access, please contact vicre@dtu.dk."
                 )
 
                 try:
@@ -205,23 +225,15 @@ def msal_callback(request):
                         username=activity_username or username,
                         request=request,
                         was_successful=False,
-                        message="Login denied because no matching on-premises admin account was found.",
+                        message=(
+                            "Login denied because the user is not a member of any authorised IT Staff API group. "
+                            f"Configured groups: {', '.join(configured_groups)}"
+                        ),
                     )
                 except Exception:
-                    logger.exception('Failed to log login denial due to missing on-premises admin account')
+                    logger.exception('Failed to log login denial due to missing IT Staff API group membership')
 
                 return HttpResponse(denial_message, status=403)
-
-
-            
-            from app.scripts.create_or_update_django_user import create_or_update_django_user
-            create_or_update_django_user(username=username, first_name=first_name, last_name=last_name, email=email)
-            user = User.objects.get(username=username)
-            user.backend = 'django.contrib.auth.backends.ModelBackend'
-
-            # Sync user AD groups
-            from myview.models import ADGroupAssociation
-            ADGroupAssociation.sync_user_ad_groups(username=user.username)
 
             login(request, user)
             try:
