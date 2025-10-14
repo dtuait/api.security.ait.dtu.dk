@@ -484,6 +484,15 @@ class FrontpagePageView(BaseView):
         return render(request, self.template_name, context)
 
 
+class SwaggerPageView(BaseView):
+    template_name = "myview/swagger.html"
+
+    def get(self, request, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["swagger_ui_url"] = reverse("schema-swagger-ui-embedded")
+        return render(request, self.template_name, context)
+
+
 
 
 

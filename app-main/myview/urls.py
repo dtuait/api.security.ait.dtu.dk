@@ -3,12 +3,13 @@ from django.contrib.auth import views as auth_views
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 from rest_framework import permissions
-from .views import FrontpagePageView # , MFAResetPageView, AjaxView
+from .views import FrontpagePageView, SwaggerPageView # , MFAResetPageView, AjaxView
 from django.contrib.auth.decorators import login_required
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from django.views.generic import RedirectView
 from django.http import HttpResponseForbidden
+from django.views.decorators.clickjacking import xframe_options_sameorigin
 
 schema_view = get_schema_view(
    openapi.Info(
@@ -25,7 +26,8 @@ schema_view = get_schema_view(
 
 
 @login_required
-def schema_swagger_ui(request, *args, **kwargs):
+@xframe_options_sameorigin
+def schema_swagger_ui_embedded(request, *args, **kwargs):
     return schema_view.with_ui('swagger', cache_timeout=0)(request, *args, **kwargs)
 
 
@@ -34,7 +36,8 @@ def my_view_fobidden_access(request):
 
 
 urlpatterns = [
-   path('swagger/', schema_swagger_ui, name='schema-swagger-ui'),
+   path('swagger/', SwaggerPageView.as_view(), name='schema-swagger-ui'),
+   path('swagger/embed/', schema_swagger_ui_embedded, name='schema-swagger-ui-embedded'),
    path('only-allowed-for-it-staff/', my_view_fobidden_access),
 ]
 
