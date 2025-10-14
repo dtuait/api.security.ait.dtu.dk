@@ -17,6 +17,9 @@
 
 {% block main-content %}
 <div class="container my-4">
+    <div class="row g-4 align-items-start">
+        <div class="col-lg-8 col-xl-9">
+            <section class="mfa-main">
     <h2>MFA User Lookup</h2>
     {% if messages %}
         {% for message in messages %}
@@ -204,70 +207,73 @@
         </div>
     {% endif %}
 
-    <div class="card mt-5">
-        <div class="card-header">
-            {% trans "Recent MFA resets in your scope" %}
+            </section>
         </div>
-        <div class="card-body">
-            {% if mfa_reset_history %}
-                <div class="table-responsive">
-                    <table class="table align-middle reset-history-table">
-                        <thead>
-                            <tr>
-                                <th scope="col">{% trans "When" %}</th>
-                                <th scope="col">{% trans "Client" %}</th>
-                                <th scope="col">{% trans "Target user" %}</th>
-                                <th scope="col">{% trans "Reset by" %}</th>
-                                <th scope="col">{% trans "Reset type" %}</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for entry in mfa_reset_history %}
-                                <tr>
-                                    <td>
-                                        <span class="d-block fw-semibold">{{ entry.timestamp|date:"SHORT_DATE_FORMAT" }}</span>
-                                        <span class="text-muted small">{{ entry.timestamp|date:"TIME_FORMAT" }}</span>
-                                    </td>
-                                    <td>
-                                        {% if entry.client_label %}
-                                            <span class="fw-semibold">{{ entry.client_label }}</span>
-                                        {% else %}
-                                            <span class="text-muted">&mdash;</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        <span class="fw-semibold">{{ entry.target }}</span>
-                                    </td>
-                                    <td>
-                                        <div class="d-flex align-items-center gap-2">
-                                            {% if entry.performed_by_photo_url %}
-                                                <img src="{{ entry.performed_by_photo_url }}" alt="{% trans 'Profile photo' %}" class="reset-history-avatar">
-                                            {% else %}
-                                                <div class="reset-history-avatar placeholder-avatar d-flex align-items-center justify-content-center text-muted">
-                                                    <i class="bi bi-person"></i>
-                                                </div>
-                                            {% endif %}
-                                            <div>
-                                                <div class="fw-semibold">{{ entry.performed_by_name }}</div>
-                                                {% if entry.performed_by_upn %}
-                                                    <div class="text-muted small">{{ entry.performed_by_upn }}</div>
-                                                {% elif entry.performed_by_username %}
-                                                    <div class="text-muted small">{{ entry.performed_by_username }}</div>
+        <div class="col-lg-4 col-xl-3">
+            <aside class="mfa-side-panel">
+                <h3 class="mfa-side-panel-title">{% trans "Recent MFA resets in your scope" %}</h3>
+                <div class="mfa-side-panel-body">
+                    {% if mfa_reset_history %}
+                        <div class="table-responsive mfa-side-panel-table">
+                            <table class="table align-middle reset-history-table mb-0">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">{% trans "When" %}</th>
+                                        <th scope="col">{% trans "Client" %}</th>
+                                        <th scope="col">{% trans "Target user" %}</th>
+                                        <th scope="col">{% trans "Reset by" %}</th>
+                                        <th scope="col">{% trans "Reset type" %}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for entry in mfa_reset_history %}
+                                        <tr>
+                                            <td>
+                                                <span class="d-block fw-semibold">{{ entry.timestamp|date:"SHORT_DATE_FORMAT" }}</span>
+                                                <span class="text-muted small">{{ entry.timestamp|date:"TIME_FORMAT" }}</span>
+                                            </td>
+                                            <td>
+                                                {% if entry.client_label %}
+                                                    <span class="fw-semibold">{{ entry.client_label }}</span>
+                                                {% else %}
+                                                    <span class="text-muted">&mdash;</span>
                                                 {% endif %}
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <span class="badge bg-secondary">{{ entry.reset_type }}</span>
-                                    </td>
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+                                            </td>
+                                            <td>
+                                                <span class="fw-semibold">{{ entry.target }}</span>
+                                            </td>
+                                            <td>
+                                                <div class="d-flex align-items-center gap-2">
+                                                    {% if entry.performed_by_photo_url %}
+                                                        <img src="{{ entry.performed_by_photo_url }}" alt="{% trans 'Profile photo' %}" class="reset-history-avatar">
+                                                    {% else %}
+                                                        <div class="reset-history-avatar placeholder-avatar d-flex align-items-center justify-content-center text-muted">
+                                                            <i class="bi bi-person"></i>
+                                                        </div>
+                                                    {% endif %}
+                                                    <div>
+                                                        <div class="fw-semibold">{{ entry.performed_by_name }}</div>
+                                                        {% if entry.performed_by_upn %}
+                                                            <div class="text-muted small">{{ entry.performed_by_upn }}</div>
+                                                        {% elif entry.performed_by_username %}
+                                                            <div class="text-muted small">{{ entry.performed_by_username }}</div>
+                                                        {% endif %}
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-secondary">{{ entry.reset_type }}</span>
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted mb-0">{% trans "No MFA resets have been recorded in your scope yet." %}</p>
+                    {% endif %}
                 </div>
-            {% else %}
-                <p class="text-muted mb-0">{% trans "No MFA resets have been recorded in your scope yet." %}</p>
-            {% endif %}
+            </aside>
         </div>
     </div>
 </div>
