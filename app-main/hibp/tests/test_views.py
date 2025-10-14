@@ -5,6 +5,7 @@ from unittest.mock import patch
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 from django.test import TestCase
+from rest_framework.authtoken.models import Token
 from rest_framework.test import APIRequestFactory, force_authenticate
 import requests
 
@@ -18,6 +19,7 @@ class HibpViewTests(TestCase):
     def setUp(self) -> None:
         self.factory = APIRequestFactory()
         self.user = get_user_model().objects.create_user(username="tester", password="pass")
+        self.token = Token.objects.create(user=self.user)
 
     def _create_response(self, status_code: int, body: bytes, content_type: str) -> requests.Response:
         response = requests.Response()
@@ -31,8 +33,8 @@ class HibpViewTests(TestCase):
         response = self._create_response(200, b"[\"EmailAddresses\"]", "application/json")
         service_response = HIBPServiceResponse(response=response)
 
-        request = self.factory.get("/hibp/v3/dataclasses", HTTP_AUTHORIZATION="Token abc123")
-        force_authenticate(request, user=self.user)
+        request = self.factory.get("/hibp/v3/dataclasses", HTTP_AUTHORIZATION=f"Token {self.token.key}")
+        force_authenticate(request, user=self.user, token=self.token)
 
         with patch("hibp.views.HIBPClient.get", return_value=service_response) as mock_get:
             drf_response = DataClassesView.as_view()(request)
@@ -42,7 +44,7 @@ class HibpViewTests(TestCase):
         mock_get.assert_called_once()
         _, kwargs = mock_get.call_args
         self.assertIn("headers", kwargs)
-        self.assertEqual(kwargs["headers"].get("hibp-api-key"), "abc123")
+        self.assertEqual(kwargs["headers"].get("hibp-api-key"), self.token.key)
 
     def test_dataclasses_view_requires_api_key(self) -> None:
         request = self.factory.get("/hibp/v3/dataclasses")
@@ -51,14 +53,14 @@ class HibpViewTests(TestCase):
         response = DataClassesView.as_view()(request)
 
         self.assertEqual(response.status_code, 401)
-        self.assertEqual(response.data, {"detail": "Authorization header with Token <token> is required."})
+        self.assertEqual(response.data, {"detail": "API token required."})
 
     def test_pwned_passwords_range_view_returns_plain_text(self) -> None:
         response = self._create_response(200, b"5BAA6:10", "text/plain")
         service_response = HIBPServiceResponse(response=response)
 
-        request = self.factory.get("/hibp/range/5BAA6", HTTP_AUTHORIZATION="Token abc123")
-        force_authenticate(request, user=self.user)
+        request = self.factory.get("/hibp/range/5BAA6", HTTP_AUTHORIZATION=f"Token {self.token.key}")
+        force_authenticate(request, user=self.user, token=self.token)
 
         with patch("hibp.views.HIBPClient.get", return_value=service_response):
             django_response = PwnedPasswordsRangeView.as_view()(request, prefix="5BAA6")
@@ -73,9 +75,9 @@ class HibpViewTests(TestCase):
         service_response = HIBPServiceResponse(response=response)
 
         request = self.factory.get(
-            "/hibp/v3/stealerlogsbyemaildomain/dtu.dk", HTTP_AUTHORIZATION="Token key123"
+            "/hibp/v3/stealerlogsbyemaildomain/dtu.dk", HTTP_AUTHORIZATION=f"Token {self.token.key}"
         )
-        force_authenticate(request, user=self.user)
+        force_authenticate(request, user=self.user, token=self.token)
         allowed_dn = "OU=SUS,OU=DTUBaseUsers,DC=win,DC=dtu,DC=dk"
         request._ado_ou_base_dns = {allowed_dn}
 

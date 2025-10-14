@@ -9,7 +9,6 @@ from active_directory.services import execute_active_directory_query
 from django.http import HttpResponse
 from rest_framework import status
 from rest_framework.response import Response
-from rest_framework.authentication import get_authorization_header
 from rest_framework.authtoken.models import Token
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
@@ -23,7 +22,10 @@ logger = logging.getLogger(__name__)
 AUTHORIZATION_HEADER_PARAM = openapi.Parameter(
     "Authorization",
     in_=openapi.IN_HEADER,
-    description="Required. Must be in the format 'Token <token>'.",
+    description=(
+        "Required. Provide the unencrypted 32-character Django REST Framework token "
+        "as 'Token <token>'."
+    ),
     type=openapi.TYPE_STRING,
     required=True,
     default="Token <token>",
@@ -65,7 +67,7 @@ class BaseHIBPView(SecuredAPIView):
             token_value = self._extract_authorization_token(request)
             if not token_value:
                 return Response(
-                    {"detail": "Authorization header with Token <token> is required."},
+                    {"detail": "API token required."},
                     status=status.HTTP_401_UNAUTHORIZED,
                 )
             headers["hibp-api-key"] = token_value
@@ -108,28 +110,11 @@ class BaseHIBPView(SecuredAPIView):
         return HttpResponse(data, status=response.status_code, content_type=content_type)
 
     def _extract_authorization_token(self, request) -> str | None:
-        raw_header = get_authorization_header(request)
-        if raw_header:
-            try:
-                header_value = raw_header.decode("utf-8")
-            except UnicodeDecodeError:  # pragma: no cover - defensive
-                header_value = ""
-
-            parts = header_value.strip().split()
-            if len(parts) == 2 and parts[1]:
-                scheme = parts[0].lower()
-                if scheme in {"token", "bearer"}:
-                    return parts[1]
-
-        user = getattr(request, "user", None)
-        if user and getattr(user, "is_authenticated", False):
-            try:
-                token = Token.objects.get(user=user)
-            except Token.DoesNotExist:
-                return None
-            else:
-                return token.key
-
+        auth = getattr(request, "auth", None)
+        if isinstance(auth, Token):
+            return auth.key
+        if isinstance(auth, str):
+            return auth
         return None
 
     def transform_response_data(self, data: Any, request, **kwargs: Any) -> Any:
