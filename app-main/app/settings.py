@@ -273,7 +273,6 @@ INSTALLED_APPS = [
     'rest_framework.authtoken',
     'sccm',
     'drf_yasg',
-    'app_mod',
     'myview',
     'active_directory',
     'misc',
