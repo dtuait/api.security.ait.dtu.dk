@@ -1,35 +1,43 @@
-<!-- myview/templates/myview/swagger.html -->
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Swagger UI</title>
-  <link rel="stylesheet" type="text/css" href="{% static 'path_to_swagger_ui_css' %}" >
-</head>
-<body>
+{% extends base_template %}
+{% load i18n static %}
 
-<div id="swagger-ui"></div>
+{% block title %}{% trans "API Documentation" %}{% endblock %}
 
-<script src="{% static 'path_to_swagger_ui_bundle_js' %}"></script>
-<script src="{% static 'path_to_swagger_ui_standalone_preset_js' %}"></script>
-<script>
-window.onload = function() {
-  // Begin Swagger UI call region
-  const ui = SwaggerUIBundle({
-    url: "{% url 'schema-json' %}",
-    dom_id: '#swagger-ui',
-    deepLinking: true,
-    presets: [
-      SwaggerUIBundle.presets.apis,
-      SwaggerUIStandalonePreset
-    ],
-    plugins: [
-      SwaggerUIBundle.plugins.DownloadUrl
-    ],
-    layout: "StandaloneLayout"
-  })
-  // End Swagger UI call region
-}
-</script>
-</body>
-</html>
+{% block dynamic_head_content %}
+<style>
+    #swagger-iframe-wrapper {
+        height: calc(100vh - 200px);
+        min-height: 600px;
+    }
+
+    #swagger-iframe {
+        width: 100%;
+        height: 100%;
+        border: 0;
+        border-radius: 0.5rem;
+        background-color: #fff;
+    }
+
+    @media (max-width: 576px) {
+        #swagger-iframe-wrapper {
+            height: calc(100vh - 240px);
+        }
+    }
+</style>
+{% endblock %}
+
+{% block headline %}{% trans "API Documentation" %}{% endblock %}
+
+{% block main-content %}
+<div class="container-fluid py-3">
+    <div id="swagger-iframe-wrapper" class="shadow-sm border border-1">
+        <iframe
+            id="swagger-iframe"
+            src="{{ swagger_ui_url }}"
+            title="{% trans 'Swagger UI' %}"
+            loading="lazy"
+            allowfullscreen>
+        </iframe>
+    </div>
+</div>
+{% endblock %}
