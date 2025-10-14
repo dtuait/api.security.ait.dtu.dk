@@ -160,6 +160,15 @@ if not default_ou_limiter_bases:
 AD_OU_LIMITER_BASES = tuple(default_ou_limiter_bases)
 AD_OU_LIMITER_DELETE_MISSING = _as_bool(os.getenv('AD_OU_LIMITER_DELETE_MISSING'), True)
 
+# Have I Been Pwned proxy configuration
+HIBP_API_BASE_URL = os.getenv('HIBP_API_BASE_URL', 'https://api.haveibeenpwned.cert.dk')
+HIBP_API_KEY = os.getenv('HIBP_API_KEY')
+try:
+    HIBP_API_TIMEOUT = float(os.getenv('HIBP_API_TIMEOUT', '15'))
+except ValueError:
+    HIBP_API_TIMEOUT = 15.0
+HIBP_API_USER_AGENT = os.getenv('HIBP_API_USER_AGENT', 'AIT-Security-API/1.0')
+
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
@@ -271,6 +280,7 @@ INSTALLED_APPS = [
     'chatgpt_app',
     'graph',
     'defender',
+    'hibp',
 ]
 
 

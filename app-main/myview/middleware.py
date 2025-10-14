@@ -347,7 +347,11 @@ class AccessControlMiddleware(MiddlewareMixin):
                 user_principal_name = match.group() if match else None
 
                 if user_principal_name is None:
-                    return False
+                    logger.debug(
+                        "AD OU limiter matched for request %s without principal; defaulting to membership authorisation",
+                        request.path,
+                    )
+                    return True
 
                 # Get the ADOrganizationalUnitLimiter instances associated with the ADGroupAssociation instances
                 ad_organizational_unit_limiters = ADOrganizationalUnitLimiter.objects.filter(ad_groups__in=limiter.ad_groups.all()).distinct()

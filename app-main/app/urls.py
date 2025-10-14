@@ -56,6 +56,9 @@ urlpatterns = [
     # playbook api 
     path('', include('playbook.urls')),
 
+    # have i been pwned proxy api
+    path('', include('hibp.urls')),
+
     # active directory api
     path('', include('active_directory.urls')),
 
