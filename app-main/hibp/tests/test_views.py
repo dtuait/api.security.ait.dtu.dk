@@ -10,7 +10,7 @@ import requests
 
 from hibp import signals
 from hibp.services import HIBPServiceResponse
-from hibp.views import DataClassesView, PwnedPasswordsRangeView
+from hibp.views import DataClassesView, PwnedPasswordsRangeView, StealerLogsByEmailDomainView
 from myview.models import ADOrganizationalUnitLimiter, Endpoint, LimiterType
 
 
@@ -31,20 +31,33 @@ class HibpViewTests(TestCase):
         response = self._create_response(200, b"[\"EmailAddresses\"]", "application/json")
         service_response = HIBPServiceResponse(response=response)
 
-        request = self.factory.get("/hibp/v3/dataclasses")
+        request = self.factory.get("/hibp/v3/dataclasses", HTTP_AUTHORIZATION="Token abc123")
         force_authenticate(request, user=self.user)
 
-        with patch("hibp.views.HIBPClient.get", return_value=service_response):
+        with patch("hibp.views.HIBPClient.get", return_value=service_response) as mock_get:
             drf_response = DataClassesView.as_view()(request)
 
         self.assertEqual(drf_response.status_code, 200)
         self.assertEqual(drf_response.data, ["EmailAddresses"])
+        mock_get.assert_called_once()
+        _, kwargs = mock_get.call_args
+        self.assertIn("headers", kwargs)
+        self.assertEqual(kwargs["headers"].get("hibp-api-key"), "abc123")
+
+    def test_dataclasses_view_requires_api_key(self) -> None:
+        request = self.factory.get("/hibp/v3/dataclasses")
+        force_authenticate(request, user=self.user)
+
+        response = DataClassesView.as_view()(request)
+
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.data, {"detail": "Authorization header with Token <token> is required."})
 
     def test_pwned_passwords_range_view_returns_plain_text(self) -> None:
         response = self._create_response(200, b"5BAA6:10", "text/plain")
         service_response = HIBPServiceResponse(response=response)
 
-        request = self.factory.get("/hibp/range/5BAA6")
+        request = self.factory.get("/hibp/range/5BAA6", HTTP_AUTHORIZATION="Token abc123")
         force_authenticate(request, user=self.user)
 
         with patch("hibp.views.HIBPClient.get", return_value=service_response):
@@ -53,6 +66,30 @@ class HibpViewTests(TestCase):
         self.assertEqual(django_response.status_code, 200)
         self.assertEqual(django_response.content, b"5BAA6:10")
         self.assertEqual(django_response["Content-Type"], "text/plain")
+
+    def test_domain_view_filters_by_allowed_ou(self) -> None:
+        payload = b'{"thin": ["gopro.com"], "s200464": ["overleaf.com"]}'
+        response = self._create_response(200, payload, "application/json")
+        service_response = HIBPServiceResponse(response=response)
+
+        request = self.factory.get(
+            "/hibp/v3/stealerlogsbyemaildomain/dtu.dk", HTTP_AUTHORIZATION="Token key123"
+        )
+        force_authenticate(request, user=self.user)
+        allowed_dn = "OU=SUS,OU=DTUBaseUsers,DC=win,DC=dtu,DC=dk"
+        request._ado_ou_base_dns = {allowed_dn}
+
+        def ad_side_effect(base_dn, search_filter, search_attributes):
+            if base_dn == allowed_dn and "thin@dtu.dk" in search_filter:
+                return [{"userPrincipalName": "thin@dtu.dk"}]
+            return []
+
+        with patch("hibp.views.HIBPClient.get", return_value=service_response):
+            with patch("hibp.views.execute_active_directory_query", side_effect=ad_side_effect):
+                drf_response = StealerLogsByEmailDomainView.as_view()(request, domain="dtu.dk")
+
+        self.assertEqual(drf_response.status_code, 200)
+        self.assertEqual(drf_response.data, {"thin": ["gopro.com"]})
 
 
 class HibpLimiterSignalTests(TestCase):

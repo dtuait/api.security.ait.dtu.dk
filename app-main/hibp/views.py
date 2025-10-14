@@ -5,15 +5,29 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict
 
+from active_directory.services import execute_active_directory_query
 from django.http import HttpResponse
 from rest_framework import status
 from rest_framework.response import Response
+from rest_framework.authentication import get_authorization_header
+from rest_framework.authtoken.models import Token
+from drf_yasg import openapi
+from drf_yasg.utils import swagger_auto_schema
 
 from utils.api import SecuredAPIView
 
 from .services import HIBPClient, HIBPConfigurationError, HIBPRequestError
 
 logger = logging.getLogger(__name__)
+
+AUTHORIZATION_HEADER_PARAM = openapi.Parameter(
+    "Authorization",
+    in_=openapi.IN_HEADER,
+    description="Required. Must be in the format 'Token <token>'.",
+    type=openapi.TYPE_STRING,
+    required=True,
+    default="Token <token>",
+)
 
 
 class BaseHIBPView(SecuredAPIView):
@@ -46,12 +60,21 @@ class BaseHIBPView(SecuredAPIView):
         params = self._build_params(request)
         path = self._resolve_path(**kwargs)
 
+        headers: Dict[str, str] = dict(self.extra_headers or {})
+        if self.require_api_key:
+            token_value = self._extract_authorization_token(request)
+            if not token_value:
+                return Response(
+                    {"detail": "Authorization header with Token <token> is required."},
+                    status=status.HTTP_401_UNAUTHORIZED,
+                )
+            headers["hibp-api-key"] = token_value
+
         try:
             service_response = HIBPClient.get(
                 path,
                 params=params,
-                headers=self.extra_headers,
-                require_api_key=self.require_api_key,
+                headers=headers,
             )
         except HIBPConfigurationError as exc:
             logger.error("HIBP configuration error: %s", exc)
@@ -74,12 +97,47 @@ class BaseHIBPView(SecuredAPIView):
                 data = response.json()
             except ValueError:
                 data = {"detail": response.text or ""}
+
+            if 200 <= response.status_code < 300:
+                data = self.transform_response_data(data, request, **kwargs)
+
             return Response(data, status=response.status_code)
 
         data = response.text
         content_type = response.headers.get("Content-Type", "text/plain")
         return HttpResponse(data, status=response.status_code, content_type=content_type)
 
+    def _extract_authorization_token(self, request) -> str | None:
+        raw_header = get_authorization_header(request)
+        if raw_header:
+            try:
+                header_value = raw_header.decode("utf-8")
+            except UnicodeDecodeError:  # pragma: no cover - defensive
+                header_value = ""
+
+            parts = header_value.strip().split()
+            if len(parts) == 2 and parts[1]:
+                scheme = parts[0].lower()
+                if scheme in {"token", "bearer"}:
+                    return parts[1]
+
+        user = getattr(request, "user", None)
+        if user and getattr(user, "is_authenticated", False):
+            try:
+                token = Token.objects.get(user=user)
+            except Token.DoesNotExist:
+                return None
+            else:
+                return token.key
+
+        return None
+
+    def transform_response_data(self, data: Any, request, **kwargs: Any) -> Any:
+        """Allow subclasses to adjust the payload before returning it downstream."""
+
+        return data
+
+    @swagger_auto_schema(manual_parameters=[AUTHORIZATION_HEADER_PARAM])
     def get(self, request, *args: Any, **kwargs: Any) -> Response:  # type: ignore[override]
         return self._proxy_request(request, **kwargs)
 
@@ -118,6 +176,97 @@ class PasteAccountView(BaseHIBPView):
 
 class StealerLogsByEmailDomainView(BaseHIBPView):
     hibp_path_template = "api/v3/stealerlogsbyemaildomain/{domain}"
+    default_domain = "dtu.dk"
+    domain_parameter = openapi.Parameter(
+        "domain",
+        in_=openapi.IN_PATH,
+        description="Defaults to dtu.dk when left unchanged.",
+        type=openapi.TYPE_STRING,
+        required=True,
+        default="dtu.dk",
+    )
+
+    @swagger_auto_schema(manual_parameters=[AUTHORIZATION_HEADER_PARAM, domain_parameter])
+    def get(self, request, domain: str | None = None, *args: Any, **kwargs: Any) -> Response:  # type: ignore[override]
+        kwargs["domain"] = domain or self.default_domain
+        return super().get(request, *args, **kwargs)
+
+    def transform_response_data(self, data: Any, request, **kwargs: Any) -> Any:
+        domain = (kwargs.get("domain") or self.default_domain).lower()
+        return self._filter_domain_payload(data, request, domain)
+
+    def _filter_domain_payload(self, data: Any, request, domain: str) -> Any:
+        if not isinstance(data, dict):
+            return data
+
+        base_dns = getattr(request, "_ado_ou_base_dns", None)
+        if not base_dns:
+            return data
+
+        if not isinstance(base_dns, set):
+            base_dns = set(base_dns)
+
+        filtered: Dict[str, Any] = {}
+        cache: Dict[str, bool] = {}
+
+        for identifier, entries in data.items():
+            principal = self._normalise_principal(identifier, domain)
+            if principal is None:
+                continue
+
+            allowed = cache.get(principal)
+            if allowed is None:
+                allowed = self._principal_in_allowed_ou(principal, base_dns)
+                cache[principal] = allowed
+
+            if allowed:
+                filtered[identifier] = entries
+
+        removed = len(data) - len(filtered)
+        if removed:
+            logger.debug(
+                "Filtered %s principal(s) from HIBP domain response for request %s",
+                removed,
+                getattr(request, "path", ""),
+            )
+
+        return filtered
+
+    @staticmethod
+    def _normalise_principal(identifier: Any, domain: str) -> str | None:
+        if not isinstance(identifier, str):
+            return None
+        identifier = identifier.strip()
+        if not identifier:
+            return None
+        if "@" in identifier:
+            return identifier.lower()
+        return f"{identifier}@{domain}".lower()
+
+    def _principal_in_allowed_ou(self, user_principal_name: str, base_dns: set[str]) -> bool:
+        search_filter = f"(userPrincipalName={user_principal_name})"
+        for base_dn in base_dns:
+            if not base_dn:
+                continue
+            try:
+                result = execute_active_directory_query(
+                    base_dn=base_dn,
+                    search_filter=search_filter,
+                    search_attributes=["userPrincipalName"],
+                )
+            except Exception:  # pragma: no cover - best effort
+                logger.warning(
+                    "Failed to evaluate AD OU limiter for %s under %s",
+                    user_principal_name,
+                    base_dn,
+                    exc_info=True,
+                )
+                continue
+
+            if result:
+                return True
+
+        return False
 
 
 class StealerLogsByEmailView(BaseHIBPView):

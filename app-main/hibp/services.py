@@ -80,29 +80,18 @@ class HIBPClient:
         }
 
     @classmethod
-    def _inject_api_key(cls, headers: MutableMapping[str, str]) -> None:
-        api_key = getattr(settings, "HIBP_API_KEY", None)
-        if not api_key:
-            raise HIBPConfigurationError("HIBP_API_KEY setting is not configured")
-        headers.setdefault("hibp-api-key", api_key)
-
-    @classmethod
     def get(
         cls,
         path: str,
         *,
         params: Mapping[str, object] | None = None,
         headers: Mapping[str, str] | None = None,
-        require_api_key: bool = True,
     ) -> HIBPServiceResponse:
         """Perform a GET request against the HIBP API."""
 
         request_headers: MutableMapping[str, str] = cls._default_headers()
         if headers:
             request_headers.update(headers)
-
-        if require_api_key:
-            cls._inject_api_key(request_headers)
 
         url = cls._build_url(path)
         timeout = cls._get_timeout()

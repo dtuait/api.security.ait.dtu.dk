@@ -335,6 +335,24 @@ class AccessControlMiddleware(MiddlewareMixin):
         except Exception:
             logger.warning('Failed to record API request log entry.', exc_info=True)
 
+    def _record_ad_ou_limiters(self, request, limiters):
+        """Store the distinguished names for AD OU limiters applicable to the request."""
+        if not limiters:
+            return
+
+        existing_dns = getattr(request, "_ado_ou_base_dns", None)
+        if existing_dns is None:
+            existing_dns = set()
+        elif not isinstance(existing_dns, set):
+            existing_dns = set(existing_dns)
+
+        for limiter in limiters:
+            distinguished_name = getattr(limiter, "distinguished_name", "")
+            if distinguished_name:
+                existing_dns.add(distinguished_name)
+
+        request._ado_ou_base_dns = existing_dns
+
     def handle_ado_ou_limiter(self, limiters, user_groups, request):
         for limiter in limiters:
             if limiter.ad_groups.filter(id__in=user_groups).exists():
@@ -346,15 +364,19 @@ class AccessControlMiddleware(MiddlewareMixin):
                 match = re.search(regex, request.path)
                 user_principal_name = match.group() if match else None
 
+                # Get the ADOrganizationalUnitLimiter instances associated with the ADGroupAssociation instances
+                ad_organizational_unit_limiters_qs = ADOrganizationalUnitLimiter.objects.filter(
+                    ad_groups__in=limiter.ad_groups.all()
+                ).distinct()
+                ad_organizational_unit_limiters = list(ad_organizational_unit_limiters_qs)
+                self._record_ad_ou_limiters(request, ad_organizational_unit_limiters)
+
                 if user_principal_name is None:
                     logger.debug(
                         "AD OU limiter matched for request %s without principal; defaulting to membership authorisation",
                         request.path,
                     )
                     return True
-
-                # Get the ADOrganizationalUnitLimiter instances associated with the ADGroupAssociation instances
-                ad_organizational_unit_limiters = ADOrganizationalUnitLimiter.objects.filter(ad_groups__in=limiter.ad_groups.all()).distinct()
 
                 for ado_ou_limiter in ad_organizational_unit_limiters:
                     # perform ldap query ado_ou_limiters
