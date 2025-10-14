@@ -177,6 +177,14 @@ try:
     from django.contrib import admin
     from django.contrib import messages
     from .models import ADGroupAssociation
+    from django.conf import settings
+
+    IT_STAFF_API_BASE_DN = getattr(
+        settings,
+        "IT_STAFF_API_GROUP_BASE_DN",
+        "OU=API-SECURITY-AIT-DTU-DK,OU=Groups,OU=SOC,OU=CIS,OU=AIT,DC=win,DC=dtu,DC=dk",
+    )
+
     def sync_ad_group_members(modeladmin, request, queryset):
         for obj in queryset:
             ADGroupAssociation.sync_ad_group_members(obj)
@@ -186,12 +194,14 @@ try:
 
     @admin.register(ADGroupAssociation)
     class ADGroupAssociationAdmin(admin.ModelAdmin):
-        list_display = ('name', 'canonical_name', 'distinguished_name', 'member_count')  # Fields to display in the admin list view
+        list_display = ('name', 'canonical_name', 'distinguished_name', 'member_count', 'member_summary')  # Fields to display in the admin list view
         search_fields = ('name', 'canonical_name')
         filter_horizontal = ('members',)  # Provides a more user-friendly widget for ManyToMany relations
-        readonly_fields = ('name', 'canonical_name', 'distinguished_name', 'member_count')  # Fields that should be read-only in the admin
+        readonly_fields = ('name', 'canonical_name', 'distinguished_name', 'member_count', 'member_summary')  # Fields that should be read-only in the admin
         list_per_page = 40
         actions = [sync_ad_group_members]
+        change_list_template = "admin/myview/adgroupassociation/change_list.html"
+        it_staff_base_dn = IT_STAFF_API_BASE_DN
 
 
         def get_queryset(self, request):
@@ -220,6 +230,121 @@ try:
         def member_count(self, obj):
             return obj.members.count()
         member_count.short_description = 'Member Count'
+
+        def member_summary(self, obj):
+            usernames = list(obj.members.values_list('username', flat=True))
+            if not usernames:
+                return "-"
+            if len(usernames) > 5:
+                return ", ".join(usernames[:5]) + f" … (+{len(usernames) - 5})"
+            return ", ".join(usernames)
+        member_summary.short_description = _('Members')
+
+        def get_urls(self):
+            urls = super().get_urls()
+            custom = [
+                path(
+                    'sync/',
+                    self.admin_site.admin_view(self.sync_groups),
+                    name='myview_adgroupassociation_sync',
+                ),
+            ]
+            return custom + urls
+
+        def changelist_view(self, request, extra_context=None):
+            if request.method == "GET":
+                self._sync_it_staff_groups(request)
+
+            extra_context = extra_context or {}
+            try:
+                extra_context['sync_url'] = reverse(f"{self.admin_site.name}:myview_adgroupassociation_sync")
+            except Exception:
+                extra_context['sync_url'] = None
+            return super().changelist_view(request, extra_context=extra_context)
+
+        def _sync_it_staff_groups(self, request, *, show_message: bool = False):
+            import time
+
+            started = time.monotonic()
+            canonical_targets = [
+                name.strip()
+                for name in getattr(settings, "IT_STAFF_API_GROUP_CANONICAL_NAMES", ())
+                if name and name.strip()
+            ]
+
+            synced_groups = []
+            errors = []
+
+            try:
+                if canonical_targets:
+                    for canonical_name in canonical_targets:
+                        distinguished_name = ADGroupAssociation._canonical_to_distinguished_name(canonical_name)
+                        if not distinguished_name:
+                            errors.append(
+                                _("Unable to derive distinguished name for %(canonical)s") % {"canonical": canonical_name}
+                            )
+                            continue
+
+                        group, _ = ADGroupAssociation.objects.update_or_create(
+                            canonical_name=canonical_name,
+                            defaults={"distinguished_name": distinguished_name},
+                        )
+                        try:
+                            group.sync_ad_group_members()
+                        except Exception as exc:  # noqa: BLE001
+                            logger.exception("Failed to sync members for %s", canonical_name)
+                            errors.append(_("%(group)s: %(error)s") % {"group": canonical_name, "error": exc})
+                        else:
+                            synced_groups.append(group)
+                else:
+                    synced_groups = ADGroupAssociation.sync_ad_groups(
+                        base_dns=[self.it_staff_base_dn],
+                        sync_members=True,
+                        delete_missing=True,
+                    ) or []
+            except Exception as exc:  # noqa: BLE001
+                logger.exception("Failed to sync IT Staff API groups.")
+                if show_message:
+                    duration = time.monotonic() - started
+                    self.message_user(
+                        request,
+                        _(
+                            "Failed to sync IT Staff API groups after %(duration).1f seconds: %(error)s"
+                        )
+                        % {"duration": duration, "error": exc},
+                        level=messages.ERROR,
+                    )
+                return
+
+            duration = time.monotonic() - started
+
+            if show_message:
+                if errors:
+                    self.message_user(
+                        request,
+                        _(
+                            "Synced %(count)d IT Staff API group(s) in %(duration).1f seconds with warnings: %(details)s"
+                        )
+                        % {
+                            "count": len(synced_groups),
+                            "duration": duration,
+                            "details": "; ".join(errors),
+                        },
+                        level=messages.WARNING,
+                    )
+                else:
+                    self.message_user(
+                        request,
+                        _(
+                            "Synced %(count)d IT Staff API group(s) from Active Directory in %(duration).1f seconds."
+                        )
+                        % {"count": len(synced_groups), "duration": duration},
+                        level=messages.SUCCESS,
+                    )
+
+        def sync_groups(self, request):
+            self._sync_it_staff_groups(request, show_message=True)
+            return redirect(reverse(f"{self.admin_site.name}:myview_adgroupassociation_changelist"))
 
 except ImportError:
     print("ADGroup model is not available for registration in the admin site.")
