@@ -178,6 +178,7 @@ try:
     from django.contrib import messages
     from .models import ADGroupAssociation
     from django.conf import settings
+    from django.core.exceptions import ValidationError
 
     IT_STAFF_API_BASE_DN = getattr(
         settings,
@@ -264,6 +265,7 @@ try:
 
         def _sync_it_staff_groups(self, request, *, show_message: bool = False):
             import time
+            from django.utils.translation import gettext as _
 
             started = time.monotonic()
             canonical_targets = [
@@ -278,22 +280,48 @@ try:
             try:
                 if canonical_targets:
                     for canonical_name in canonical_targets:
-                        distinguished_name = ADGroupAssociation._canonical_to_distinguished_name(canonical_name)
+                        distinguished_name = ADGroupAssociation._canonical_to_distinguished_name(
+                            canonical_name,
+                            assume_group=True,
+                        )
                         if not distinguished_name:
                             errors.append(
                                 _("Unable to derive distinguished name for %(canonical)s") % {"canonical": canonical_name}
                             )
                             continue
 
-                        group, _ = ADGroupAssociation.objects.update_or_create(
-                            canonical_name=canonical_name,
-                            defaults={"distinguished_name": distinguished_name},
-                        )
+                        try:
+                            group, created_flag = ADGroupAssociation.objects.update_or_create(
+                                canonical_name=canonical_name,
+                                defaults={"distinguished_name": distinguished_name},
+                            )
+                        except ValidationError as exc:
+                            logger.warning(
+                                "Skipping IT Staff group %s due to invalid distinguished name: %s",
+                                canonical_name,
+                                exc,
+                            )
+                            errors.append(
+                                _("%(group)s skipped: %(error)s")
+                                % {"group": canonical_name, "error": ", ".join(exc.messages)}
+                            )
+                            continue
+                        except Exception as exc:  # noqa: BLE001
+                            logger.exception("Failed to persist IT Staff group %s", canonical_name)
+                            errors.append(
+                                _("%(group)s persistence failed: %(error)s")
+                                % {"group": canonical_name, "error": exc}
+                            )
+                            continue
+
                         try:
                             group.sync_ad_group_members()
                         except Exception as exc:  # noqa: BLE001
                             logger.exception("Failed to sync members for %s", canonical_name)
-                            errors.append(_("%(group)s: %(error)s") % {"group": canonical_name, "error": exc})
+                            errors.append(
+                                _("%(group)s member sync failed: %(error)s")
+                                % {"group": canonical_name, "error": exc}
+                            )
                         else:
                             synced_groups.append(group)
                 else:
@@ -302,6 +330,13 @@ try:
                         sync_members=True,
                         delete_missing=True,
                     ) or []
+            except ValidationError as exc:
+                logger.warning(
+                    "Skipping base sync due to validation error: %s",
+                    exc,
+                )
+                errors.append(", ".join(exc.messages))
+                synced_groups = synced_groups or []
             except Exception as exc:  # noqa: BLE001
                 logger.exception("Failed to sync IT Staff API groups.")
                 if show_message:

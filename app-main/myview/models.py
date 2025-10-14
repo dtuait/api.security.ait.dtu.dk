@@ -595,7 +595,7 @@ class ADGroupAssociation(BaseModel):
         return cls._build_canonical_name(domain_parts, organizational_units, None)
 
     @staticmethod
-    def _canonical_to_distinguished_name(canonical_name):
+    def _canonical_to_distinguished_name(canonical_name, *, assume_group=False):
         """Convert a canonical path (domain/OU/...) to a distinguished name."""
         if not canonical_name:
             return ''
@@ -606,9 +606,22 @@ class ADGroupAssociation(BaseModel):
 
         domain = components[0]
         domain_parts = [f"DC={part}" for part in domain.split('.') if part]
-        ou_parts = [f"OU={part}" for part in reversed(components[1:])]
+        path_components = components[1:]
 
-        return ','.join(ou_parts + domain_parts)
+        cn_part = None
+        if assume_group and path_components:
+            *ou_components, cn_component = path_components
+            cn_part = f"CN={cn_component}"
+        else:
+            ou_components = path_components
+
+        ou_parts = [f"OU={part}" for part in reversed(ou_components)]
+
+        parts = ou_parts + domain_parts
+        if cn_part:
+            parts.insert(0, cn_part)
+
+        return ','.join(parts)
 
     @classmethod
     def _normalize_base_dns(cls, base_dns):
