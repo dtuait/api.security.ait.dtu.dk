@@ -208,7 +208,7 @@ AZURE_AD = {
 # string in multiple places.
 ADMIN_URL_PATH = os.getenv(
     "DJANGO_ADMIN_URL",
-    "admin/baAT5gt52eCRX7bu58msxF5XQtbY4bye/",
+    "admin/",
 )
 # Normalise the admin path to always end with a single trailing slash as
 # expected by Django's ``path`` helper.
@@ -281,11 +281,6 @@ INSTALLED_APPS = [
     'defender',
     'hibp',
 ]
-
-
-MIGRATION_MODULES = {
-    'authtoken': 'app_mod.authtoken_migrations',
-}
 
 
 MIDDLEWARE = [
@@ -449,11 +444,10 @@ AUTHENTICATION_BACKENDS = (
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'app_mod.authentication.CustomTokenAuthentication',
+        'rest_framework.authentication.TokenAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
     ),
 }
-
-AUTH_TOKEN_MODEL = 'app_mod.CustomToken'
 
 SWAGGER_SETTINGS = {
     'SECURITY_DEFINITIONS': {
@@ -510,10 +504,5 @@ LOGGING = {
             'propagate': False,  # Avoid duplicating logs
         },
         # Add additional loggers for other apps you want to log
-        'app_mod': {  # Example for another app you may have
-            'handlers': ['console', 'file'],
-            'level': 'DEBUG',
-            'propagate': False,
-        },
     },
 }

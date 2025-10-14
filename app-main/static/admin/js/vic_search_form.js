@@ -9,11 +9,11 @@ class VicSearchFormApp {
             this.ENDS_WITH_A_COMMON_NAME = true;
             this.pathsConfig = {
                 searchBarUnitLimiter: {
-                    path: "/admin/baAT5gt52eCRX7bu58msxF5XQtbY4bye/myview/adorganizationalunitlimiter/",
+                    path: "/admin/myview/adorganizationalunitlimiter/",
                     setup: this.setupSearchBarForUnitLimiter.bind(this)
                 },
                 searchBarGroupAssociation: {
-                    path: "/admin/baAT5gt52eCRX7bu58msxF5XQtbY4bye/myview/adgroupassociation/",
+                    path: "/admin/myview/adgroupassociation/",
                     setup: this.setupSearchBarForGroupAssociation.bind(this)
                 }
             };

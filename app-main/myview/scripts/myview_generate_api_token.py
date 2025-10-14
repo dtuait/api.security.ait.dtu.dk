@@ -1,7 +1,7 @@
-from django.http import JsonResponse
-from app_mod.models import CustomToken
 from django.contrib.auth.models import User
 from django.core.exceptions import ObjectDoesNotExist
+from rest_framework.authtoken.models import Token
+
 
 def generate_custom_api_token(request=None, username=""):
     try:
@@ -9,12 +9,10 @@ def generate_custom_api_token(request=None, username=""):
         user = User.objects.get(username=username)
 
         # Check if the token already exists for the user and delete it
-        existing_token = CustomToken.objects.filter(user=user)
-        if existing_token.exists():
-            existing_token.delete()
+        Token.objects.filter(user=user).delete()
 
         # Create a new token for the user
-        token = CustomToken.objects.create(user=user)
+        token = Token.objects.create(user=user)
 
         # Return the token key directly for scripting purpose
         return token.key

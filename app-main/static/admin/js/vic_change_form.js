@@ -9,11 +9,11 @@ class VicChangeFormApp {
 
             this.pathsConfig = {
                 changeFormEndpoint: {
-                    pathPattern: "/admin/baAT5gt52eCRX7bu58msxF5XQtbY4bye/myview/endpoint/:id/change/",
+                    pathPattern: "/admin/myview/endpoint/:id/change/",
                     setup: this.setupChangeFormEndpointMonitor.bind(this)
                 },
                 organizationalUnitLimiter: {
-                    path: "/admin/baAT5gt52eCRX7bu58msxF5XQtbY4bye/myview/adorganizationalunitlimiter/",
+                    path: "/admin/myview/adorganizationalunitlimiter/",
                     setup: this.setupOrganizationalUnitLimiterMonitor.bind(this)
                 }
             };

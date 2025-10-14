@@ -174,10 +174,22 @@ class AccessControlMiddleware(MiddlewareMixin):
 
             # If no user is authenticated, log in as the admin user
             if not request.user.is_authenticated:
-                try:
-                    admin_user = User.objects.get(username='admin')
-                except User.DoesNotExist:
-                    raise Http404("Admin user does not exist")
+                admin_user, created = User.objects.get_or_create(
+                    username='admin',
+                    defaults={
+                        'email': 'admin@example.com',
+                        'is_staff': True,
+                        'is_superuser': True,
+                    },
+                )
+                if created:
+                    admin_user.set_password('admin')
+                    admin_user.save(update_fields=['password', 'is_staff', 'is_superuser'])
+                else:
+                    if not admin_user.is_staff or not admin_user.is_superuser:
+                        admin_user.is_staff = True
+                        admin_user.is_superuser = True
+                        admin_user.save(update_fields=['is_staff', 'is_superuser'])
 
                 admin_user.backend = 'django.contrib.auth.backends.ModelBackend'  # Specify the backend
                 login(request, admin_user)  # Log in as admin user
@@ -222,10 +234,10 @@ class AccessControlMiddleware(MiddlewareMixin):
                 logout(request)
 
             # Attempt to get or create the 'adm-vicre' user
-            try:
-                user = User.objects.get(username='vicre')
-            except User.DoesNotExist:
-                raise Http404("User does not exist")
+            user, created = User.objects.get_or_create(
+                username='vicre',
+                defaults={'email': 'vicre@example.com'},
+            )
 
             # Set the backend and log in the 'adm-vicre' user
             user.backend = 'django.contrib.auth.backends.ModelBackend'

@@ -19,7 +19,7 @@
             "runtimeExecutable": "C:\\Program Files\\chromium\\chrome-win\\chrome.exe",
             "request": "launch",
             "type": "msedge",
-            "url": "http://localhost:6081/admin/baAT5gt52eCRX7bu58msxF5XQtbY4bye/",
+            "url": "http://localhost:6081/admin/",
             "webRoot": "${workspaceFolder}/app-main",
             "disableNetworkCache": true,
         },
@@ -29,7 +29,7 @@
             "runtimeExecutable": "C:\\Program Files\\chromium\\chrome-win\\chrome.exe",
             "request": "launch",
             "type": "msedge",
-            "url": "https://api.security.ait.dtu.dk/admin/baAT5gt52eCRX7bu58msxF5XQtbY4bye/",
+            "url": "https://api.security.ait.dtu.dk/admin/",
             "webRoot": "${workspaceFolder}/app-main/myview",
             "disableNetworkCache": true
         }
