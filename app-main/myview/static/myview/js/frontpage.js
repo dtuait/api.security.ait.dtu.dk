@@ -20,33 +20,32 @@ class App {
 
     _setBindings() {
 
-        // // Set binding for user lookup form submission
-        // this.uiBinder.generateTokenBtn.on('click', (event) => {
-        //     event.preventDefault();
-        //     this.handleCreateNewApiTokenBtn(event, this);
-        // });
-
-        if (this.uiBinder.generateTokenBtn.length) {
-            const generateTokenBtn = `#${this.uiBinder.generateTokenBtn[0].id}`; // this is the button that will trigger the modal
-            const modalId = 'tokenDisplayModal';
-            const modalConfirmBtn = 'modalConfirmBtn'; // these are refering to elements generation innside the modal, not the main page
-            this.baseAppUtils.setModal(generateTokenBtn, modalId, {
-                title: 'Generate New Token',
-                body: '<p>The token will only be displayed once, are you sure you want to generate a new token?</p>',
+        if (this.uiBinder.rotateApiKeyBtn.length) {
+            const rotateApiKeyBtn = `#${this.uiBinder.rotateApiKeyBtn[0].id}`;
+            const modalId = 'apiKeyRotateModal';
+            const modalConfirmBtn = 'modalRotateApiKeyConfirmBtn';
+            this.baseAppUtils.setModal(rotateApiKeyBtn, modalId, {
+                title: 'Rotate API key',
+                body: '<p>Rotating your API key will immediately invalidate your previous key. Are you sure you want to continue?</p>',
                 footer: `
-                    <button type="button" class="btn btn-danger" id="${modalConfirmBtn}">Generate New Token <span id="loadingSpinnerGenerateTokenBtn" class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="display: none;"></span></button>
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">No, Cancel</button>
+                    <button type="button" class="btn btn-danger" id="${modalConfirmBtn}">Rotate API key <span id="loadingSpinnerRotateApiKeyBtn" class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="display: none;"></span></button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">No, cancel</button>
                 `,
                 eventListeners: [
                     {
-                        selector: '#modalConfirmBtn',
+                        selector: `#${modalConfirmBtn}`,
                         event: 'click',
                         handler: (event) => {
-                            // how do i access modalId in this scope?
-                            this.handleCreateNewApiToken(event, modalId, this);
+                            this.handleRotateApiKey(event, modalId);
                         }
                     }
                 ]
+            });
+        }
+
+        if (this.uiBinder.toggleApiKeyVisibility.length) {
+            this.uiBinder.toggleApiKeyVisibility.on('click', (event) => {
+                this.handleToggleApiKeyVisibility(event);
             });
         }
 
@@ -99,66 +98,86 @@ class App {
 
 
 
-    async handleCreateNewApiToken(event, modalId, app = App.getInstance()) {
+    async handleRotateApiKey(event, modalId) {
         event.preventDefault();
-        const button = $(this);
-        const spinner = $('#loadingSpinnerGenerateTokenBtn');
-        // Show the spinner and disable the button
+        const button = $(event.currentTarget);
+        const spinner = $('#loadingSpinnerRotateApiKeyBtn');
         spinner.show();
         button.prop('disabled', true);
 
-        // set a modal to display the token a
-        let formData = new FormData();
+        const formData = new FormData();
         formData.append('action', 'create_custom_token');
 
         let response;
         let errorOccurred = false;
         try {
-            response = await app.baseAppUtils.restAjax('POST', '/myview/ajax/', formData);
+            response = await this.baseAppUtils.restAjax('POST', '/myview/ajax/', formData);
         } catch (error) {
             console.log('Error:', error);
-            app.baseUIBinder.displayNotification(error, 'alert-danger')
+            this.baseUIBinder.displayNotification('Failed to rotate API key. Please try again.', 'alert-danger');
             errorOccurred = true;
         } finally {
             if (!errorOccurred) {
-                // if success
-                app.baseUIBinder.displayNotification('Token generated successfully!', 'alert-success');
+                const apiKey = response && response.custom_token ? response.custom_token : null;
+                if (apiKey) {
+                    this.updateApiKeyInput(apiKey);
+                    this.baseUIBinder.displayNotification('API key rotated successfully!', 'alert-success');
+                } else {
+                    this.baseUIBinder.displayNotification('No API key was returned. Please try again.', 'alert-danger');
+                }
 
-                const token = response.custom_token;
-                
-                const modalBody = `
-                <p>Your new token is:</p>
-                <pre id="token">${token}</pre>
-                <button id="copyButton" type="button" class="btn btn-primary">Copy Token</button>
-                <span id="copyMessage" style="display: none;">Copied!</span>
-                `
-
-                const eventListeners = [
-                    {
-                        selector: '#copyButton',
-                        event: 'click',
-                        handler: (event) => {
-                            const token = document.getElementById('token').innerText;
-                            navigator.clipboard.writeText(token);
-
-                            let copyMessage = document.getElementById('copyMessage');
-                            copyMessage.style.display = 'inline';
-                            setTimeout(function () {
-                                copyMessage.style.display = 'none';
-                            }, 800);  // Message will disappear after 2 seconds
-                        }
+                const modalElement = document.getElementById(modalId);
+                if (modalElement) {
+                    const modalInstance = bootstrap.Modal.getInstance(modalElement);
+                    if (modalInstance) {
+                        modalInstance.hide();
                     }
-                ]
-
-                app.baseAppUtils.updateModalContent(modalId, {modalBody: modalBody, eventListeners});
+                }
             }
 
-            // Hide the spinner and enable the button
             spinner.hide();
             button.prop('disabled', false);
         }
+    }
 
+    handleToggleApiKeyVisibility(event) {
+        event.preventDefault();
+        if (!this.uiBinder.apiKeyInput.length) {
+            return;
+        }
 
+        const input = this.uiBinder.apiKeyInput[0];
+        const button = $(event.currentTarget);
+        const icon = button.find('i');
+        const isHidden = input.type === 'password';
+
+        if (isHidden) {
+            input.type = 'text';
+            button.attr('aria-label', 'Hide API key');
+            icon.removeClass('bi-eye-slash').addClass('bi-eye');
+        } else {
+            input.type = 'password';
+            button.attr('aria-label', 'Show API key');
+            icon.removeClass('bi-eye').addClass('bi-eye-slash');
+        }
+    }
+
+    updateApiKeyInput(value) {
+        if (!this.uiBinder.apiKeyInput.length) {
+            return;
+        }
+
+        this.uiBinder.apiKeyInput.val(value);
+        this.uiBinder.apiKeyInput.attr('type', 'password');
+        this.uiBinder.apiKeyInput.attr('placeholder', '');
+
+        if (this.uiBinder.toggleApiKeyVisibility.length) {
+            const toggleButton = this.uiBinder.toggleApiKeyVisibility;
+            toggleButton.prop('disabled', false);
+            toggleButton.attr('aria-label', 'Show API key');
+            const icon = toggleButton.find('i');
+            icon.removeClass('bi-eye').addClass('bi-eye-slash');
+        }
     }
 
     handleApplyLimiterFilter(event, modalId) {
@@ -326,7 +345,9 @@ class AppUtils {
 class UIBinder {
     constructor() {
         if (!UIBinder.instance) {
-            this.generateTokenBtn = $('#generateTokenBtn');
+            this.apiKeyInput = $('#apiKeyInput');
+            this.toggleApiKeyVisibility = $('#toggleApiKeyVisibility');
+            this.rotateApiKeyBtn = $('#rotateApiKeyBtn');
             this.filterLimiterTypeBtn = $('#filterLimiterTypeBtn');
             this.limiterFilterSummary = $('#limiterFilterSummary');
             UIBinder.instance = this;

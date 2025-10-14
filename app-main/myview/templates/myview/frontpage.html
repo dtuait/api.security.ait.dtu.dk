@@ -21,11 +21,23 @@
 
 <div class="container my-4">    
     <div class="container my-4">
-        <!-- New button to generate a new token -->
-        <i class="bi bi-question-circle-fill" data-bs-toggle="tooltip" data-bs-placement="right" title="The token will only be displayed once!" data-bs-html="true"></i>
-        <button id="generateTokenBtn" class="btn btn-primary">
-            Generate New Token
-        </button>
+        <label for="apiKeyInput" class="form-label d-flex align-items-center gap-2 mb-2">
+            <span>API key</span>
+            <i class="bi bi-question-circle-fill" data-bs-toggle="tooltip" data-bs-placement="right" title="The API key will only be displayed once after rotation!" data-bs-html="true"></i>
+        </label>
+        <div class="input-group api-key-input-group">
+            <input type="password" class="form-control" id="apiKeyInput" placeholder="Rotate to generate a new API key" readonly>
+            <button id="toggleApiKeyVisibility" class="btn btn-outline-secondary" type="button" aria-label="Show API key" disabled>
+                <i class="bi bi-eye-slash" aria-hidden="true"></i>
+            </button>
+            <button id="rotateApiKeyBtn" class="btn btn-warning" type="button">
+                <i class="bi bi-arrow-clockwise me-1" aria-hidden="true"></i>
+                Rotate API key
+            </button>
+        </div>
+        <div class="form-text text-warning mt-2">
+            Rotating your API key will immediately invalidate your previous key.
+        </div>
     </div>
 
     <div class="container my-4">
