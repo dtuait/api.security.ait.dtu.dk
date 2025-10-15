@@ -93,11 +93,14 @@ except ImportError:
 
 try:
    from .ajax_view import AjaxView
+   from .views import api_token_view, rotate_api_token_view
 
    urlpatterns += [
       path('ajax/', AjaxView.as_view(), name='ajax'),
+      path('api/token/', api_token_view, name='api-token'),
+      path('api/token/rotate/', rotate_api_token_view, name='api-token-rotate'),
    ]
 
 except ImportError:
-      print("AjaxView model is not available for registration in the admin site.")
-      pass
+   print("AjaxView model is not available for registration in the admin site.")
+   pass

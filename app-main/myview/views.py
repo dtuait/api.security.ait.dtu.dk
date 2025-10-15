@@ -18,6 +18,9 @@ from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from django.utils.decorators import method_decorator
 from django.views import View
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.authtoken.models import Token
 from requests import RequestException
 from ldap3.utils.conv import escape_filter_chars
 
@@ -49,6 +52,21 @@ from .models import (
 from active_directory.services import execute_active_directory_query
 
 logger = logging.getLogger(__name__)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def api_token_view(request):
+    token, _ = Token.objects.get_or_create(user=request.user)
+    return JsonResponse({'api_token': token.key})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def rotate_api_token_view(request):
+    Token.objects.filter(user=request.user).delete()
+    token = Token.objects.create(user=request.user)
+    return JsonResponse({'api_token': token.key})
 
 
 @method_decorator(login_required, name='dispatch')

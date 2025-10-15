@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 from django.contrib.auth.decorators import login_required
+from rest_framework.authtoken.models import Token
 
 def get_nt_time_from_date(year, month=1, day=1):
     import datetime
@@ -79,11 +80,14 @@ class AjaxView(BaseView):
     def dispatch(self, request, *args, **kwargs):
         return super(AjaxView, self).dispatch(request, *args, **kwargs)
 
-    def create_custom_token(self, request):
-        user = User.objects.get(username=request.user.username)
-        # Generate random string of length 255
-        token = user.generate_new_custom_token()
-        return JsonResponse({'custom_token': token.key})
+    def get_api_token(self, request):
+        token, _ = Token.objects.get_or_create(user=request.user)
+        return JsonResponse({'api_token': token.key})
+
+    def rotate_api_token(self, request):
+        Token.objects.filter(user=request.user).delete()
+        token = Token.objects.create(user=request.user)
+        return JsonResponse({'api_token': token.key})
 
     # Chat-related methods
     def create_chat_thread(self, request):
@@ -247,15 +251,15 @@ class AjaxView(BaseView):
                 except Exception as e:
                     return JsonResponse({'error': str(e)})
 
-            elif action == 'create_custom_token':
+            elif action == 'get_api_token':
                 if request.user.is_authenticated:
-                    return self.create_custom_token(request)
-                
+                    return self.get_api_token(request)
+                return JsonResponse({'error': 'Authentication required'}, status=403)
 
-            elif action == 'create_custom_token':
+            elif action == 'rotate_api_token':
                 if request.user.is_authenticated:
-                    return self.create_custom_token(request)
-                
+                    return self.rotate_api_token(request)
+                return JsonResponse({'error': 'Authentication required'}, status=403)
 
             elif action == 'copilot-chatgpt-basic':
                 if request.user.is_authenticated:

@@ -93,6 +93,7 @@ class App {
 
         this.updateLimiterFilterSummary();
         this.filterEndpointTable();
+        this.fetchInitialApiKey();
     }
 
 
@@ -106,7 +107,7 @@ class App {
         button.prop('disabled', true);
 
         const formData = new FormData();
-        formData.append('action', 'create_custom_token');
+        formData.append('action', 'rotate_api_token');
 
         let response;
         let errorOccurred = false;
@@ -118,7 +119,7 @@ class App {
             errorOccurred = true;
         } finally {
             if (!errorOccurred) {
-                const apiKey = response && response.custom_token ? response.custom_token : null;
+                const apiKey = response && response.api_token ? response.api_token : null;
                 if (apiKey) {
                     this.updateApiKeyInput(apiKey);
                     this.baseUIBinder.displayNotification('API key rotated successfully!', 'alert-success');
@@ -177,6 +178,25 @@ class App {
             toggleButton.attr('aria-label', 'Show API key');
             const icon = toggleButton.find('i');
             icon.removeClass('bi-eye').addClass('bi-eye-slash');
+        }
+    }
+
+    async fetchInitialApiKey() {
+        if (!this.uiBinder.apiKeyInput.length) {
+            return;
+        }
+
+        try {
+            const response = await this.baseAppUtils.restAjax('GET', '/myview/api/token/');
+            const apiKey = response && response.api_token ? response.api_token : null;
+            if (apiKey) {
+                this.updateApiKeyInput(apiKey);
+            } else {
+                this.baseUIBinder.displayNotification('No API key is available for your account yet.', 'alert-warning');
+            }
+        } catch (error) {
+            console.error('Failed to fetch API key:', error);
+            this.baseUIBinder.displayNotification('Failed to fetch your API key. Please try again.', 'alert-danger');
         }
     }
 
