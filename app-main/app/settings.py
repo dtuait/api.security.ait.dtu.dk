@@ -341,7 +341,13 @@ if postgres_configured:
     else:
         postgres_dependencies_available = True
 
-if postgres_configured and postgres_dependencies_available:
+if postgres_configured:
+    if not postgres_dependencies_available:
+        raise ImproperlyConfigured(
+            'PostgreSQL settings detected but psycopg/psycopg2 is not installed. '
+            'Install the dependency or clear the POSTGRES_* environment variables.'
+        )
+
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
@@ -353,12 +359,6 @@ if postgres_configured and postgres_dependencies_available:
         }
     }
 else:
-    if postgres_configured and not postgres_dependencies_available:
-        warnings.warn(
-            'PostgreSQL environment variables are set but the psycopg/psycopg2 package '
-            'is not installed. Falling back to SQLite database configuration.'
-        )
-
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',

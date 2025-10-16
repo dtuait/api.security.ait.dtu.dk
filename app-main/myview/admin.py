@@ -265,7 +265,9 @@ try:
 
         def _sync_it_staff_groups(self, request, *, show_message: bool = False):
             import time
+            from concurrent.futures import ThreadPoolExecutor, as_completed
             from django.utils.translation import gettext as _
+            from django.db import OperationalError, transaction
 
             started = time.monotonic()
             canonical_targets = [
@@ -276,6 +278,7 @@ try:
 
             synced_groups = []
             errors = []
+            sync_targets = []
 
             try:
                 if canonical_targets:
@@ -290,40 +293,69 @@ try:
                             )
                             continue
 
-                        try:
-                            group, created_flag = ADGroupAssociation.objects.update_or_create(
-                                canonical_name=canonical_name,
-                                defaults={"distinguished_name": distinguished_name},
-                            )
-                        except ValidationError as exc:
-                            logger.warning(
-                                "Skipping IT Staff group %s due to invalid distinguished name: %s",
-                                canonical_name,
-                                exc,
-                            )
-                            errors.append(
-                                _("%(group)s skipped: %(error)s")
-                                % {"group": canonical_name, "error": ", ".join(exc.messages)}
-                            )
-                            continue
-                        except Exception as exc:  # noqa: BLE001
-                            logger.exception("Failed to persist IT Staff group %s", canonical_name)
-                            errors.append(
-                                _("%(group)s persistence failed: %(error)s")
-                                % {"group": canonical_name, "error": exc}
-                            )
+                        attempt = 0
+                        while True:
+                            try:
+                                with transaction.atomic():
+                                    group, created_flag = ADGroupAssociation.objects.update_or_create(
+                                        canonical_name=canonical_name,
+                                        defaults={"distinguished_name": distinguished_name},
+                                    )
+                                break
+                            except ValidationError as exc:
+                                logger.warning(
+                                    "Skipping IT Staff group %s due to invalid distinguished name: %s",
+                                    canonical_name,
+                                    exc,
+                                )
+                                errors.append(
+                                    _("%(group)s skipped: %(error)s")
+                                    % {"group": canonical_name, "error": ", ".join(exc.messages)}
+                                )
+                                group = None
+                                break
+                            except OperationalError as exc:
+                                attempt += 1
+                                if attempt >= 3:
+                                    logger.exception("Database locked while updating %s", canonical_name)
+                                    errors.append(
+                                        _("%(group)s persistence failed after retries: %(error)s")
+                                        % {"group": canonical_name, "error": exc}
+                                    )
+                                    group = None
+                                    break
+                                time.sleep(0.3 * attempt)
+                            except Exception as exc:  # noqa: BLE001
+                                logger.exception("Failed to persist IT Staff group %s", canonical_name)
+                                errors.append(
+                                    _("%(group)s persistence failed: %(error)s")
+                                    % {"group": canonical_name, "error": exc}
+                                )
+                                group = None
+                                break
+
+                        if not group:
                             continue
 
-                        try:
-                            group.sync_ad_group_members()
-                        except Exception as exc:  # noqa: BLE001
-                            logger.exception("Failed to sync members for %s", canonical_name)
-                            errors.append(
-                                _("%(group)s member sync failed: %(error)s")
-                                % {"group": canonical_name, "error": exc}
-                            )
-                        else:
-                            synced_groups.append(group)
+                        sync_targets.append((group, canonical_name))
+
+                    if sync_targets:
+                        max_workers = min(len(sync_targets), 4) or 1
+                        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                            future_to_target = {
+                                executor.submit(self._sync_group_members, group, canonical_name): (group, canonical_name)
+                                for group, canonical_name in sync_targets
+                            }
+                            for future in as_completed(future_to_target):
+                                group, canonical_name = future_to_target[future]
+                                success, error_message = future.result()
+                                if success:
+                                    synced_groups.append(group)
+                                else:
+                                    errors.append(
+                                        _("%(group)s member sync failed: %(error)s")
+                                        % {"group": canonical_name, "error": error_message}
+                                    )
                 else:
                     synced_groups = ADGroupAssociation.sync_ad_groups(
                         base_dns=[self.it_staff_base_dn],
@@ -380,6 +412,15 @@ try:
         def sync_groups(self, request):
             self._sync_it_staff_groups(request, show_message=True)
             return redirect(reverse(f"{self.admin_site.name}:myview_adgroupassociation_changelist"))
+
+        @staticmethod
+        def _sync_group_members(group, canonical_name):
+            try:
+                group.sync_ad_group_members()
+            except Exception as exc:  # noqa: BLE001
+                logger.exception("Failed to sync members for %s", canonical_name)
+                return False, str(exc)
+            return True, None
 
 except ImportError:
     print("ADGroup model is not available for registration in the admin site.")
