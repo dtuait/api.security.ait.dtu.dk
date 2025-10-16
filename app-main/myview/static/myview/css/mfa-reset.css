@@ -99,8 +99,13 @@
 
 .mfa-side-panel-table {
     border-radius: 0.75rem;
-    overflow: hidden;
+    overflow-x: auto;
+    overflow-y: hidden;
     box-shadow: 0 0.5rem 1rem rgba(15, 81, 50, 0.1);
+}
+
+.mfa-side-panel-table table {
+    min-width: 32rem;
 }
 
 .mfa-side-panel .table {
