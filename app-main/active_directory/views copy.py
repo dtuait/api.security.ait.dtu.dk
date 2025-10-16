@@ -36,7 +36,7 @@ class ActiveDirectoryQueryAssistantViewSet(viewsets.ViewSet):
 
         Curl example: \n
         \t curl --location --request POST 'http://api.security.ait.dtu.dk/active-directory/v1-0-0/query-assistant/' \
-        \t --header 'Authorization: Token \<token\>' \
+        \t --header 'Authorization:\<token\>' \
         \t --header 'Content-Type: application/json' \
         \t --data-raw '{
         \t     "user_prompt": "Retrieve all disabled user accounts in 'DTUBasen' and include their account names and statuses."

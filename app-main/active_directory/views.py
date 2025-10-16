@@ -58,7 +58,7 @@ This assistant helps generate Active Directory query parameters based on user re
 Curl example:
 ```
 curl --location --request POST 'http://api.security.ait.dtu.dk/active-directory/v1.0/query-assistant' \
-    --header 'Authorization: Token <token>' \
+    --header 'Authorization:<token>' \
     --header 'Content-Type: application/json' \
     --data-raw '{
         "user_prompt": "Retrieve all disabled user accounts in 'DTUBasen' and include their account names and statuses."

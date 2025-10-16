@@ -475,7 +475,7 @@ REST_FRAMEWORK = {
 
 SWAGGER_SETTINGS = {
     'SECURITY_DEFINITIONS': {
-        'DEFAULT_API_KEY': 'Authorization: Token <token>',
+        'DEFAULT_API_KEY': 'Authorization:<token>',
         'USE_SESSION_AUTH': False,  # This will disable the button to log out in Swagger's UI
         'Token': {
             'type': 'apiKey',

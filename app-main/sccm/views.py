@@ -31,7 +31,7 @@ class SCCMViewSet_1_0_1(viewsets.ViewSet):
 
         Curl example: \n
         \t curl --location 'http://api.security.ait.dtu.dk/sccm/computer/v1-0-0/<str:computer_name>/'
-        \t\t  --header 'Authorization: Token \<token\>'
+        \t\t  --header 'Authorization:\<token\>'
         
 
         """,
