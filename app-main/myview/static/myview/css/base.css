@@ -900,16 +900,30 @@ footer {
     padding-bottom: 20px;
 }
 
-.footer-content p {
-    margin: 0;
-}
-
 .footer-content {
     width: 100%;
     max-width: var(--primary-site-width-max);
     margin: 0 auto;
-
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
     flex-wrap: wrap; /* Allows wrapping in case of small screens */
+}
+
+.footer-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--primary-color);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.footer-link:hover,
+.footer-link:focus {
+    color: var(--primary-color);
+    text-decoration: underline;
 }
 
 
