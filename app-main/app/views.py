@@ -184,7 +184,12 @@ def msal_callback(request):
                 except Exception:
                     logger.exception('Failed to log unsuccessful login due to unsynchronised Azure AD account')
 
-                raise ValueError(f"The account you logged in with ({user_principal_name}) is not synched with on-premise users, which is a requirement.")
+                denial_message = (
+                    "The account you logged in with is not synchronised with on-premises users, "
+                    "which is required to access this application."
+                )
+
+                return HttpResponse(denial_message, status=403)
 
 
             from app.scripts.create_or_update_django_user import create_or_update_django_user
