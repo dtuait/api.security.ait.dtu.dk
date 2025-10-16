@@ -51,7 +51,7 @@ opentelemetry-sdk==1.23.0
 opentelemetry-semantic-conventions==0.44b0
 packaging==24.0
 pandas==2.2.3
-ping3==4.0.5
+ping3==5.1.5
 portalocker==2.8.2
 pyasn1==0.5.1
 pycparser==2.21
