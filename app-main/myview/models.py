@@ -15,6 +15,8 @@ from django.utils import timezone
 from django.utils.text import slugify
 from pathlib import Path
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import List, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -622,6 +624,100 @@ class ADGroupAssociation(BaseModel):
             parts.insert(0, cn_part)
 
         return ','.join(parts)
+
+    @staticmethod
+    def _sync_group_membership_worker(group):
+        group.sync_ad_group_members()
+
+    @classmethod
+    def sync_it_staff_groups_from_settings(cls, *, parallelism: int = 4):
+        canonical_targets = [
+            name.strip()
+            for name in getattr(settings, "IT_STAFF_API_GROUP_CANONICAL_NAMES", ())
+            if name and name.strip()
+        ]
+
+        synced_groups: List['ADGroupAssociation'] = []
+        errors: List[str] = []
+        sync_targets: List[Tuple['ADGroupAssociation', str]] = []
+
+        if not canonical_targets:
+            return synced_groups, errors, 0.0
+
+        started = time.monotonic()
+
+        for canonical_name in canonical_targets:
+            distinguished_name = cls._canonical_to_distinguished_name(
+                canonical_name,
+                assume_group=True,
+            )
+            if not distinguished_name:
+                errors.append(
+                    f"Unable to derive distinguished name for {canonical_name}"
+                )
+                continue
+
+            attempt = 0
+            group = None
+            while True:
+                try:
+                    with transaction.atomic():
+                        group, _ = cls.objects.update_or_create(
+                            canonical_name=canonical_name,
+                            defaults={"distinguished_name": distinguished_name},
+                        )
+                    break
+                except ValidationError as exc:
+                    errors.append(
+                        f"{canonical_name} skipped: {', '.join(exc.messages)}"
+                    )
+                    group = None
+                    break
+                except OperationalError as exc:
+                    attempt += 1
+                    if attempt >= 3:
+                        errors.append(
+                            f"{canonical_name} persistence failed after retries: {exc}"
+                        )
+                        group = None
+                        break
+                    time.sleep(0.3 * attempt)
+                except Exception as exc:  # noqa: BLE001
+                    logger.exception("Failed to persist IT Staff group %s", canonical_name)
+                    errors.append(f"{canonical_name} persistence failed: {exc}")
+                    group = None
+                    break
+
+            if not group:
+                continue
+
+            sync_targets.append((group, canonical_name))
+
+        if sync_targets:
+            workers = min(max(1, parallelism), len(sync_targets))
+            with ThreadPoolExecutor(max_workers=workers) as executor:
+                future_to_target = {
+                    executor.submit(cls._sync_group_membership_worker, group): (group, canonical_name)
+                    for group, canonical_name in sync_targets
+                }
+                for future in as_completed(future_to_target):
+                    group, canonical_name = future_to_target[future]
+                    try:
+                        future.result()
+                    except Exception as exc:  # noqa: BLE001
+                        logger.exception("Failed to sync members for %s", canonical_name)
+                        errors.append(f"{canonical_name} member sync failed: {exc}")
+                    else:
+                        synced_groups.append(group)
+
+        duration = time.monotonic() - started
+        logger.info(
+            "IT Staff API group sync complete groups=%s errors=%s duration=%.2fs",
+            len(synced_groups),
+            len(errors),
+            duration,
+        )
+        return synced_groups, errors, duration
 
     @classmethod
     def _normalize_base_dns(cls, base_dns):
@@ -1326,3 +1422,4 @@ class UserLoginLog(BaseModel):
     def __str__(self):
         username = self.user_principal_name or getattr(self.user, 'username', 'unknown')
         return f"{username} via {self.auth_method} at {self.datetime_created:%Y-%m-%d %H:%M:%S}"
+from django.db.utils import OperationalError

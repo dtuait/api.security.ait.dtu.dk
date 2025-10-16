@@ -406,7 +406,12 @@ class AccessControlMiddleware(MiddlewareMixin):
                     result = execute_active_directory_query(base_dn=base_dn, search_filter=search_filter, search_attributes=search_attributes)
 
                     if len(result) > 0:
-                        # print("User is under the OU")
+                        logger.info(
+                            "AD OU limiter authorised principal=%s limiter=%s path=%s",
+                            user_principal_name,
+                            ado_ou_limiter.distinguished_name,
+                            request.path,
+                        )
                         return True
 
                 
@@ -499,6 +504,7 @@ class AccessControlMiddleware(MiddlewareMixin):
             return
 
         try:
+            sync_start = time.monotonic()
             scheduled = ADGroupAssociation.sync_user_ad_groups_cached(
                 username=request.user.username,
                 max_age_seconds=max_age,
@@ -506,9 +512,10 @@ class AccessControlMiddleware(MiddlewareMixin):
                 block=False,
             )
             if scheduled:
-                logger.debug(
-                    "Scheduled async AD group refresh for session user=%s",
+                logger.info(
+                    "sync_user_ad_groups_cached scheduled user=%s duration=%.2fs",
                     request.user.username,
+                    time.monotonic() - sync_start,
                 )
         except Exception:
             logger.warning(
@@ -597,6 +604,12 @@ class AccessControlMiddleware(MiddlewareMixin):
                 from myview.models import ADGroupAssociation
                 block_sync = request.user.is_authenticated or bool(token)
                 sync_triggered = ADGroupAssociation.ensure_groups_synced_cached(block=block_sync)
+                if sync_triggered:
+                    logger.info(
+                        'ensure_groups_synced_cached triggered path=%s block=%s',
+                        request.path,
+                        block_sync,
+                    )
                 sync_attempted = True
         except Exception:
             logger.warning('AccessControl AD group sync failed', exc_info=True)

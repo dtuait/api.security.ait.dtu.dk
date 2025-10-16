@@ -317,6 +317,30 @@ TEMPLATES = [
 WSGI_APPLICATION = 'app.wsgi.application'
 
 
+# Caches
+CACHE_URL = os.getenv('CACHE_URL')
+REDIS_URL = os.getenv('REDIS_URL')
+
+if CACHE_URL or REDIS_URL:
+    cache_location = CACHE_URL or REDIS_URL
+    CACHES = {
+        'default': {
+            'BACKEND': 'django_redis.cache.RedisCache',
+            'LOCATION': cache_location,
+            'OPTIONS': {
+                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+                'IGNORE_EXCEPTIONS': False,
+            },
+        }
+    }
+else:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'myview-locmem-cache',
+        }
+    }
+
 
 POSTGRES_REQUIRED_ENV_VARS = (
     'POSTGRES_DB',

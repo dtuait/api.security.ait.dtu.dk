@@ -3,7 +3,6 @@ from django.contrib import messages
 from django.http import HttpRequest
 from django.contrib.admin.widgets import FilteredSelectMultiple
 from django.contrib.admin.helpers import ActionForm
-from django.db import transaction
 from django.db import models
 from myview.models import ADGroupAssociation
 from django.contrib.contenttypes.admin import GenericTabularInline
@@ -264,126 +263,22 @@ try:
             return super().changelist_view(request, extra_context=extra_context)
 
         def _sync_it_staff_groups(self, request, *, show_message: bool = False):
-            import time
-            from concurrent.futures import ThreadPoolExecutor, as_completed
             from django.utils.translation import gettext as _
-            from django.db import OperationalError, transaction
-
-            started = time.monotonic()
-            canonical_targets = [
-                name.strip()
-                for name in getattr(settings, "IT_STAFF_API_GROUP_CANONICAL_NAMES", ())
-                if name and name.strip()
-            ]
-
-            synced_groups = []
-            errors = []
-            sync_targets = []
 
             try:
-                if canonical_targets:
-                    for canonical_name in canonical_targets:
-                        distinguished_name = ADGroupAssociation._canonical_to_distinguished_name(
-                            canonical_name,
-                            assume_group=True,
-                        )
-                        if not distinguished_name:
-                            errors.append(
-                                _("Unable to derive distinguished name for %(canonical)s") % {"canonical": canonical_name}
-                            )
-                            continue
-
-                        attempt = 0
-                        while True:
-                            try:
-                                with transaction.atomic():
-                                    group, created_flag = ADGroupAssociation.objects.update_or_create(
-                                        canonical_name=canonical_name,
-                                        defaults={"distinguished_name": distinguished_name},
-                                    )
-                                break
-                            except ValidationError as exc:
-                                logger.warning(
-                                    "Skipping IT Staff group %s due to invalid distinguished name: %s",
-                                    canonical_name,
-                                    exc,
-                                )
-                                errors.append(
-                                    _("%(group)s skipped: %(error)s")
-                                    % {"group": canonical_name, "error": ", ".join(exc.messages)}
-                                )
-                                group = None
-                                break
-                            except OperationalError as exc:
-                                attempt += 1
-                                if attempt >= 3:
-                                    logger.exception("Database locked while updating %s", canonical_name)
-                                    errors.append(
-                                        _("%(group)s persistence failed after retries: %(error)s")
-                                        % {"group": canonical_name, "error": exc}
-                                    )
-                                    group = None
-                                    break
-                                time.sleep(0.3 * attempt)
-                            except Exception as exc:  # noqa: BLE001
-                                logger.exception("Failed to persist IT Staff group %s", canonical_name)
-                                errors.append(
-                                    _("%(group)s persistence failed: %(error)s")
-                                    % {"group": canonical_name, "error": exc}
-                                )
-                                group = None
-                                break
-
-                        if not group:
-                            continue
-
-                        sync_targets.append((group, canonical_name))
-
-                    if sync_targets:
-                        max_workers = min(len(sync_targets), 4) or 1
-                        with ThreadPoolExecutor(max_workers=max_workers) as executor:
-                            future_to_target = {
-                                executor.submit(self._sync_group_members, group, canonical_name): (group, canonical_name)
-                                for group, canonical_name in sync_targets
-                            }
-                            for future in as_completed(future_to_target):
-                                group, canonical_name = future_to_target[future]
-                                success, error_message = future.result()
-                                if success:
-                                    synced_groups.append(group)
-                                else:
-                                    errors.append(
-                                        _("%(group)s member sync failed: %(error)s")
-                                        % {"group": canonical_name, "error": error_message}
-                                    )
-                else:
-                    synced_groups = ADGroupAssociation.sync_ad_groups(
-                        base_dns=[self.it_staff_base_dn],
-                        sync_members=True,
-                        delete_missing=True,
-                    ) or []
-            except ValidationError as exc:
-                logger.warning(
-                    "Skipping base sync due to validation error: %s",
-                    exc,
-                )
-                errors.append(", ".join(exc.messages))
-                synced_groups = synced_groups or []
+                synced_groups, errors, duration = ADGroupAssociation.sync_it_staff_groups_from_settings()
             except Exception as exc:  # noqa: BLE001
                 logger.exception("Failed to sync IT Staff API groups.")
                 if show_message:
-                    duration = time.monotonic() - started
                     self.message_user(
                         request,
                         _(
                             "Failed to sync IT Staff API groups after %(duration).1f seconds: %(error)s"
                         )
-                        % {"duration": duration, "error": exc},
+                        % {"duration": 0.0, "error": exc},
                         level=messages.ERROR,
                     )
                 return
-
-            duration = time.monotonic() - started
 
             if show_message:
                 if errors:
