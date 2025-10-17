@@ -2,7 +2,7 @@
 # docker compose -p dev-api-security-ait-dtu-dk -f ./my-development-docker-compose.yaml up -d
 
 services:
-  xx-api-security-ait-dtu-dk-app-main:
+  web:
     build:
       context: ..
       dockerfile: Dockerfile
@@ -15,9 +15,9 @@ services:
     tty: true
     working_dir: /app/app-main
     depends_on:
-      xx-api-security-ait-dtu-dk-postgres-service:
+      db:
         condition: service_healthy
-      xx-api-security-ait-dtu-dk-redis-service:
+      redis:
         condition: service_started
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8121/healthz/ || exit 1"]
@@ -44,7 +44,7 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-app}
       POSTGRES_USER: ${POSTGRES_USER:-app}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_HOST: xx-api-security-ait-dtu-dk-postgres-service
+      POSTGRES_HOST: db
       POSTGRES_PORT: 5432
       CACHE_URL: ${CACHE_URL}
       DJANGO_MIGRATE: "false"
@@ -59,7 +59,7 @@ services:
     ports:
       - "8121:8121"
 
-  xx-api-security-ait-dtu-dk-postgres-service:
+  db:
     image: postgres:16
     restart: always
     env_file:
@@ -69,7 +69,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
-      - beta-api-security-ait-dtu-dk-postgres-service-volume:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
     networks:
       - internal
     healthcheck:
@@ -78,7 +78,7 @@ services:
       timeout: 5s
       retries: 5
 
-  xx-api-security-ait-dtu-dk-redis-service:
+  redis:
     image: redis:7-alpine
     restart: always
     command: ["redis-server", "--save", "", "--appendonly", "no"]
@@ -92,7 +92,7 @@ networks:
     driver: bridge
 
 volumes:
-  beta-api-security-ait-dtu-dk-postgres-service-volume:
+  postgres_data:
     driver: local
   static_data:
     driver: local
