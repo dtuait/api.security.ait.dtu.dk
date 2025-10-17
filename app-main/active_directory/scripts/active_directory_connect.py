@@ -2,6 +2,7 @@
 from dotenv import load_dotenv
 import os
 from typing import Optional, Tuple
+from urllib.parse import urlparse
 
 from ldap3 import ALL, Connection, Server
 
@@ -46,24 +47,47 @@ def _missing_config_message(missing: list[str]) -> str:
     )
 
 
+def _parse_server(value: str) -> tuple[str, bool, Optional[int]]:
+    """Return host, use_ssl flag, and port from configuration string."""
+
+    if not value:
+        return "", True, None
+
+    if "://" not in value:
+        # Bare hostname or IP; assume LDAPS by default.
+        return value, True, None
+
+    parsed = urlparse(value)
+    if not parsed.hostname:
+        return value, True, None
+
+    scheme = (parsed.scheme or "ldaps").lower()
+    use_ssl = scheme != "ldap"
+    return parsed.hostname, use_ssl, parsed.port
+
+
 def active_directory_connect() -> Tuple[Optional[Connection], str]:
     try:
         ad_username = _get_clean_env('ACTIVE_DIRECTORY_USERNAME')
         ad_password = _get_clean_env('ACTIVE_DIRECTORY_PASSWORD')
-        ad_server = _get_clean_env('ACTIVE_DIRECTORY_SERVER')
+        ad_server_raw = _get_clean_env('ACTIVE_DIRECTORY_SERVER')
 
         missing_variables = [
             name
             for name, value in {
                 'ACTIVE_DIRECTORY_USERNAME': ad_username,
                 'ACTIVE_DIRECTORY_PASSWORD': ad_password,
-                'ACTIVE_DIRECTORY_SERVER': ad_server,
+                'ACTIVE_DIRECTORY_SERVER': ad_server_raw,
             }.items()
             if not value
         ]
 
         if missing_variables:
             return None, _missing_config_message(missing_variables)
+
+        ad_host, use_ssl, ad_port = _parse_server(ad_server_raw)
+        if not ad_host:
+            return None, _missing_config_message(['ACTIVE_DIRECTORY_SERVER'])
 
         connect_timeout = _get_float_env(
             'ACTIVE_DIRECTORY_CONNECT_TIMEOUT',
@@ -76,11 +100,20 @@ def active_directory_connect() -> Tuple[Optional[Connection], str]:
             minimum=0.1,
         )
 
+        server_kwargs = {
+            "use_ssl": use_ssl,
+            "get_info": ALL,
+            "connect_timeout": connect_timeout,
+        }
+        if ad_port is not None:
+            try:
+                server_kwargs["port"] = int(ad_port)
+            except (TypeError, ValueError):
+                pass
+
         server = Server(
-            ad_server,
-            use_ssl=True,
-            get_info=ALL,
-            connect_timeout=connect_timeout,
+            ad_host,
+            **server_kwargs,
         )
         conn = Connection(
             server,
