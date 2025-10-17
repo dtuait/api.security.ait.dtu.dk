@@ -305,7 +305,6 @@ def msal_callback(request):
                     },
                 )
             except Exception:
-                logger = logging.getLogger(__name__)
                 logger.warning("Failed to record user login event for %s", user.username, exc_info=True)
 
             try:
@@ -510,7 +509,6 @@ def msal_director(request):
 
 
 def msal_login(request):
-    logger = logging.getLogger(__name__)
     start_time = time.monotonic()
     redirect_uri = _resolve_redirect_uri(request)
     logger.info(
@@ -613,7 +611,6 @@ def msal_logout(request):
     response = redirect(logout_url)
     response.delete_cookie('csrftoken')
     return response
-
 
 
 
