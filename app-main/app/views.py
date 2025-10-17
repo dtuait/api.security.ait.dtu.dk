@@ -6,6 +6,7 @@ from urllib.parse import urlparse, urlunparse
 
 import msal
 import requests
+from requests import exceptions as requests_exceptions
 from django.conf import settings
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
@@ -143,6 +144,7 @@ def msal_callback(request):
 
     code = request.GET['code']
     state = request.GET.get('state')
+    activity_username = request.GET.get('login_hint', '')
 
     # Validate the state parameter (if you passed one in the authorization request)
 
@@ -198,8 +200,66 @@ def msal_callback(request):
 
         
         # Make the GET request to the Graph API to get user details
-        graph_response = requests.get(graph_api_endpoint, headers=headers)
-        activity_username = None
+        graph_timeout = getattr(settings, 'AZURE_GRAPH_REQUEST_TIMEOUT', 10.0)
+        try:
+            graph_response = requests.get(
+                graph_api_endpoint,
+                headers=headers,
+                timeout=graph_timeout,
+            )
+        except requests_exceptions.Timeout:
+            logger.warning(
+                "Microsoft Graph request timed out after %.1fs during login callback",
+                graph_timeout,
+            )
+            try:
+                from myview.models import UserActivityLog
+
+                UserActivityLog.log_login(
+                    username=activity_username,
+                    request=request,
+                    was_successful=False,
+                    message=(
+                        "Microsoft Graph request timed out while completing the login callback."
+                    ),
+                )
+            except Exception:
+                logger.exception(
+                    'Failed to log login timeout for %s',
+                    activity_username or 'unknown user',
+                )
+
+            return HttpResponse(
+                "Error: request to Microsoft Graph timed out.",
+                status=504,
+            )
+        except requests_exceptions.RequestException as exc:
+            logger.warning(
+                "Microsoft Graph request failed during login callback: %s",
+                exc,
+                exc_info=logger.isEnabledFor(logging.DEBUG),
+            )
+            try:
+                from myview.models import UserActivityLog
+
+                UserActivityLog.log_login(
+                    username=activity_username,
+                    request=request,
+                    was_successful=False,
+                    message=(
+                        "Microsoft Graph request failed while completing the login callback."
+                    ),
+                )
+            except Exception:
+                logger.exception(
+                    'Failed to log login failure for %s after Microsoft Graph error',
+                    activity_username or 'unknown user',
+                )
+
+            return HttpResponse(
+                "Error: failed to retrieve user information.",
+                status=502,
+            )
 
         if graph_response.status_code == 200:
             # Successful request to the Graph API

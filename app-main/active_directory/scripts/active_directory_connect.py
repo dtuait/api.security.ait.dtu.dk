@@ -21,6 +21,23 @@ def _get_clean_env(name: str) -> Optional[str]:
     return stripped or None
 
 
+def _get_float_env(name: str, default: float, *, minimum: float | None = None) -> float:
+    """Return a float from the environment variable with optional clamping."""
+
+    value = os.getenv(name)
+    if value is None:
+        result = default
+    else:
+        try:
+            result = float(value)
+        except (TypeError, ValueError):
+            result = default
+
+    if minimum is not None and result < minimum:
+        return minimum
+    return result
+
+
 def _missing_config_message(missing: list[str]) -> str:
     formatted = ', '.join(sorted(missing))
     return (
@@ -48,8 +65,29 @@ def active_directory_connect() -> Tuple[Optional[Connection], str]:
         if missing_variables:
             return None, _missing_config_message(missing_variables)
 
-        server = Server(ad_server, use_ssl=True, get_info=ALL)
-        conn = Connection(server, ad_username, ad_password)
+        connect_timeout = _get_float_env(
+            'ACTIVE_DIRECTORY_CONNECT_TIMEOUT',
+            5.0,
+            minimum=0.1,
+        )
+        receive_timeout = _get_float_env(
+            'ACTIVE_DIRECTORY_RECEIVE_TIMEOUT',
+            10.0,
+            minimum=0.1,
+        )
+
+        server = Server(
+            ad_server,
+            use_ssl=True,
+            get_info=ALL,
+            connect_timeout=connect_timeout,
+        )
+        conn = Connection(
+            server,
+            ad_username,
+            ad_password,
+            receive_timeout=receive_timeout,
+        )
 
         # Check if the connection is successful
         if not conn.bind():
