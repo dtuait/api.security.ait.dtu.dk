@@ -13,8 +13,10 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 from pathlib import Path
 
 import os
+import socket
 import sys
 import warnings
+from urllib.parse import urlparse
 
 # Load .env file
 from dotenv import load_dotenv
@@ -321,12 +323,44 @@ WSGI_APPLICATION = 'app.wsgi.application'
 CACHE_URL = os.getenv('CACHE_URL')
 REDIS_URL = os.getenv('REDIS_URL')
 
-if CACHE_URL or REDIS_URL:
-    cache_location = CACHE_URL or REDIS_URL
+_configured_cache_location = CACHE_URL or REDIS_URL
+_normalized_cache_location: str | None = None
+
+if _configured_cache_location:
+    raw_location = _configured_cache_location.strip()
+    if raw_location:
+        if "://" not in raw_location and not raw_location.startswith("unix:"):
+            raw_location = f"redis://{raw_location}"
+
+        parsed = urlparse(raw_location)
+        fallback_reason: str | None = None
+
+        if parsed.scheme in {"redis", "rediss"}:
+            if not parsed.hostname:
+                fallback_reason = "Redis cache URL is missing a hostname"
+            else:
+                try:
+                    socket.getaddrinfo(parsed.hostname, parsed.port or 6379)
+                except OSError as exc:
+                    fallback_reason = (
+                        f"Redis cache host '{parsed.hostname}' cannot be resolved ({exc})"
+                    )
+        elif parsed.scheme == "unix":
+            fallback_reason = None
+
+        if fallback_reason:
+            warnings.warn(
+                f"{fallback_reason}. Falling back to Django's local memory cache.",
+                stacklevel=2,
+            )
+        else:
+            _normalized_cache_location = raw_location
+
+if _normalized_cache_location:
     CACHES = {
         'default': {
             'BACKEND': 'django_redis.cache.RedisCache',
-            'LOCATION': cache_location,
+            'LOCATION': _normalized_cache_location,
             'OPTIONS': {
                 'CLIENT_CLASS': 'django_redis.client.DefaultClient',
                 'IGNORE_EXCEPTIONS': False,
