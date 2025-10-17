@@ -137,30 +137,32 @@ class AccessControlMiddleware(MiddlewareMixin):
 
         User = get_user_model()
 
+        # Respect any already authenticated user unless we explicitly need to
+        # seed a debug session for a protected path. This keeps local MSAL
+        # sign-ins intact when DEBUG is enabled.
+        if request.user.is_authenticated:
+            if normalised_path.startswith("/admin") and request.user.username != "admin":
+                logout(request)
+            else:
+                return
+
         # Admin paths should authenticate as the admin user for convenience.
         if normalised_path.startswith("/admin"):
-            if request.user.is_authenticated and request.user.username != "admin":
-                logout(request)
+            admin_user, created = User.objects.get_or_create(
+                username="admin",
+                defaults={"email": "admin@example.com", "is_staff": True, "is_superuser": True},
+            )
+            if created or not (admin_user.is_staff and admin_user.is_superuser):
+                admin_user.is_staff = True
+                admin_user.is_superuser = True
+                admin_user.set_password("admin")
+                admin_user.save(update_fields=["password", "is_staff", "is_superuser"])
 
-            if not request.user.is_authenticated:
-                admin_user, created = User.objects.get_or_create(
-                    username="admin",
-                    defaults={"email": "admin@example.com", "is_staff": True, "is_superuser": True},
-                )
-                if created or not (admin_user.is_staff and admin_user.is_superuser):
-                    admin_user.is_staff = True
-                    admin_user.is_superuser = True
-                    admin_user.set_password("admin")
-                    admin_user.save(update_fields=["password", "is_staff", "is_superuser"])
-
-                admin_user.backend = "django.contrib.auth.backends.ModelBackend"
-                login(request, admin_user)
+            admin_user.backend = "django.contrib.auth.backends.ModelBackend"
+            login(request, admin_user)
             return
 
-        # Fallback debug user for other paths.
-        if request.user.is_authenticated and request.user.username != "vicre":
-            logout(request)
-
+        # Fallback debug user for other paths when no authenticated user exists.
         user, _ = User.objects.get_or_create(username="vicre", defaults={"email": "vicre@example.com"})
         user.backend = "django.contrib.auth.backends.ModelBackend"
         login(request, user)
