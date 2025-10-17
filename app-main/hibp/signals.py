@@ -66,11 +66,29 @@ except LookupError:  # pragma: no cover - defensive
 if Endpoint is not None:
 
     @receiver(post_save, sender=Endpoint, dispatch_uid="hibp_assign_ou_limiter")
-    def ensure_hibp_limiter(sender, instance, **kwargs):  # type: ignore[override]
+    def ensure_hibp_limiter(sender, instance, created=False, **kwargs):  # type: ignore[override]
         if not instance or not getattr(instance, "path", None):
             return
 
         if not _paths_match(instance.path):
+            return
+
+        # Respect manual overrides: only enforce defaults for newly created endpoints.
+        if not created:
+            return
+
+        if instance.no_limit:
+            logger.debug(
+                "Skipping HIBP limiter assignment for %s because 'no_limit' is enabled",
+                instance.path,
+            )
+            return
+
+        if instance.limiter_type_id:
+            logger.debug(
+                "HIBP endpoint %s already has a limiter assigned; leaving as-is",
+                instance.path,
+            )
             return
 
         limiter_type_id = _get_ou_limiter_type_id()
@@ -78,19 +96,14 @@ if Endpoint is not None:
             logger.debug("HIBP limiter assignment skipped; limiter type id unavailable")
             return
 
-        updates = {}
-        if instance.limiter_type_id != limiter_type_id:
-            updates["limiter_type_id"] = limiter_type_id
-        if instance.no_limit:
-            updates["no_limit"] = False
-
-        if not updates:
-            return
-
         try:
-            sender.objects.filter(pk=instance.pk).update(**updates)
+            sender.objects.filter(pk=instance.pk, limiter_type__isnull=True).update(
+                limiter_type_id=limiter_type_id
+            )
             logger.debug(
-                "Aligned HIBP endpoint pk=%s path=%s with AD OU limiter", instance.pk, instance.path
+                "Assigned default HIBP limiter to new endpoint pk=%s path=%s",
+                instance.pk,
+                instance.path,
             )
         except (OperationalError, ProgrammingError, ConnectionDoesNotExist):
             logger.info("Database not ready to update HIBP endpoint limiter")

@@ -412,7 +412,12 @@ try:
 
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
-            self.fields['limiter_type'].queryset = LimiterType.objects.all()
+            limiter_choices = [("", "---------")] + [
+                (str(obj.pk), obj.name) for obj in LimiterType.objects.all()
+            ] + [
+                ("__none__", "<None> (clear limiter)")
+            ]
+            self.fields['limiter_type'].choices = limiter_choices
             self.fields['ad_groups'].queryset = ADGroupAssociation.objects.all()
 
     @admin.register(Endpoint)
@@ -454,18 +459,26 @@ try:
                 )
                 return None
 
-            if limiter_type_id:
-                try:
-                    lt = LimiterType.objects.get(pk=limiter_type_id)
-                except LimiterType.DoesNotExist:
-                    self.message_user(request, "Selected limiter type no longer exists.", level=messages.ERROR)
-                    return None
-                updated = queryset.update(limiter_type=lt, no_limit=False)
-                self.message_user(
-                    request,
-                    _("Updated limiter type for %(count)d endpoint(s).") % {"count": updated},
-                    level=messages.SUCCESS,
-                )
+            if limiter_type_id is not None and limiter_type_id != "":
+                if limiter_type_id == "__none__":
+                    updated = queryset.update(limiter_type=None)
+                    self.message_user(
+                        request,
+                        _("Cleared limiter type for %(count)d endpoint(s).") % {"count": updated},
+                        level=messages.SUCCESS,
+                    )
+                else:
+                    try:
+                        lt = LimiterType.objects.get(pk=limiter_type_id)
+                    except LimiterType.DoesNotExist:
+                        self.message_user(request, "Selected limiter type no longer exists.", level=messages.ERROR)
+                        return None
+                    updated = queryset.update(limiter_type=lt, no_limit=False)
+                    self.message_user(
+                        request,
+                        _("Updated limiter type for %(count)d endpoint(s).") % {"count": updated},
+                        level=messages.SUCCESS,
+                    )
 
             if no_limit_action == "true":
                 updated = queryset.update(no_limit=True, limiter_type=None)
@@ -485,12 +498,13 @@ try:
             if ad_group_ids:
                 groups = list(ADGroupAssociation.objects.filter(pk__in=ad_group_ids))
                 if groups:
+                    endpoint_count = queryset.count()
                     for endpoint in queryset:
                         endpoint.ad_groups.add(*groups)
                     self.message_user(
                         request,
                         _("Added %(group_count)d AD group(s) to %(endpoint_count)d endpoint(s).")
-                        % {"group_count": len(groups), "endpoint_count": queryset.count()},
+                        % {"group_count": len(groups), "endpoint_count": endpoint_count},
                         level=messages.SUCCESS,
                     )
                 else:
