@@ -1,8 +1,5 @@
-
-# development command - the only differnce is command in xx-api-security-ait-dtu-dk-app-main is commented out
+# Development docker compose aligned with production settings
 # docker compose -p dev-api-security-ait-dtu-dk -f ./my-development-docker-compose.yaml up -d
-# production command
-# docker compose -p prod-api-security-ait-dtu-dk -f ./my-production-docker-compose.yaml up -d
 
 services:
   xx-api-security-ait-dtu-dk-app-main:
@@ -16,16 +13,51 @@ services:
       - ../.env
     restart: always
     tty: true
+    working_dir: /app/app-main
+    depends_on:
+      xx-api-security-ait-dtu-dk-postgres-service:
+        condition: service_healthy
+      xx-api-security-ait-dtu-dk-redis-service:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8121/healthz/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     environment:
+      SERVICE_FQDN_WEB: ${SERVICE_FQDN_WEB:-api.security.ait.dtu.dk}
+      SERVICE_URL_WEB: ${SERVICE_URL_WEB:-https://api.security.ait.dtu.dk}
+      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-api.security.ait.dtu.dk,localhost,127.0.0.1}
+      DJANGO_CSRF_TRUSTED_ORIGINS: ${DJANGO_CSRF_TRUSTED_ORIGINS:-https://api.security.ait.dtu.dk}
+      DJANGO_DEBUG: ${DJANGO_DEBUG:-false}
+      DJANGO_STATIC_ROOT: /data/static
+      DJANGO_MEDIA_ROOT: /data/media
+      DJANGO_SESSION_COOKIE_SECURE: ${DJANGO_SESSION_COOKIE_SECURE:-true}
+      DJANGO_CSRF_COOKIE_SECURE: ${DJANGO_CSRF_COOKIE_SECURE:-true}
+      DJANGO_SECURE_SSL_REDIRECT: ${DJANGO_SECURE_SSL_REDIRECT:-true}
+      DJANGO_SECURE_HSTS_SECONDS: ${DJANGO_SECURE_HSTS_SECONDS:-3600}
+      DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS: ${DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS:-true}
+      DJANGO_SECURE_HSTS_PRELOAD: ${DJANGO_SECURE_HSTS_PRELOAD:-true}
+      AZURE_REDIRECT_URI: ${AZURE_REDIRECT_URI:-https://api.security.ait.dtu.dk/auth/callback}
+      DJANGO_SECRET: ${DJANGO_SECRET:?DJANGO_SECRET must be set}
+      POSTGRES_DB: ${POSTGRES_DB:-app}
+      POSTGRES_USER: ${POSTGRES_USER:-app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+      POSTGRES_HOST: xx-api-security-ait-dtu-dk-postgres-service
+      POSTGRES_PORT: 5432
+      CACHE_URL: ${CACHE_URL:-redis://xx-api-security-ait-dtu-dk-redis-service:6379/0}
       DJANGO_MIGRATE: "false"
       DJANGO_COLLECTSTATIC: "false"
     volumes:
       - ..:/app
       - ../shared-project-data:/mnt/shared-project-data
-      # - ./entrypoint.sh:/entrypoint.sh # you dont need to mount it since it is already in the image
+      - static_data:/data/static
+      - media_data:/data/media
     networks:
-      - shared_network
-
+      - internal
+    ports:
+      - "8121:8121"
 
   xx-api-security-ait-dtu-dk-postgres-service:
     image: postgres:16
@@ -33,22 +65,38 @@ services:
     env_file:
       - ../.env
     environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-app}
+      POSTGRES_USER: ${POSTGRES_USER:-app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-please-change-me}
     volumes:
       - beta-api-security-ait-dtu-dk-postgres-service-volume:/var/lib/postgresql/data
-      # If you have Postgres init scripts, mount them here
-      # - ../postgres-service/init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
-      - shared_network
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-app} -d ${POSTGRES_DB:-app}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-
+  xx-api-security-ait-dtu-dk-redis-service:
+    image: redis:7-alpine
+    restart: always
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    volumes:
+      - redis_data:/data
+    networks:
+      - internal
 
 networks:
-  shared_network:
-    external: true
+  internal:
+    driver: bridge
 
 volumes:
   beta-api-security-ait-dtu-dk-postgres-service-volume:
+    driver: local
+  static_data:
+    driver: local
+  media_data:
+    driver: local
+  redis_data:
     driver: local
