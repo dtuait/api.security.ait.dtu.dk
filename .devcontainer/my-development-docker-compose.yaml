@@ -40,10 +40,10 @@ services:
       DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS: ${DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS:-true}
       DJANGO_SECURE_HSTS_PRELOAD: ${DJANGO_SECURE_HSTS_PRELOAD:-true}
       AZURE_REDIRECT_URI: ${AZURE_REDIRECT_URI:-https://api.security.ait.dtu.dk/auth/callback}
-      DJANGO_SECRET: ${DJANGO_SECRET:?DJANGO_SECRET must be set}
+      DJANGO_SECRET: ${DJANGO_SECRET:-local-dev-insecure-secret}
       POSTGRES_DB: ${POSTGRES_DB:-app}
       POSTGRES_USER: ${POSTGRES_USER:-app}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-please-change-me}
       POSTGRES_HOST: xx-api-security-ait-dtu-dk-postgres-service
       POSTGRES_PORT: 5432
       CACHE_URL: ${CACHE_URL:-redis://xx-api-security-ait-dtu-dk-redis-service:6379/0}
