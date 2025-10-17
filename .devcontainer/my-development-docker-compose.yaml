@@ -43,18 +43,7 @@ services:
     networks:
       - shared_network
 
-  xx-api-security-ait-dtu-dk-pgadmin-service:
-    image: dpage/pgadmin4:8.11
-    restart: always
-    env_file:
-      - ../.env
-    ports:
-      - "5010:80"
-    environment:
-      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
-    networks:
-      - shared_network
+
 
 networks:
   shared_network:
