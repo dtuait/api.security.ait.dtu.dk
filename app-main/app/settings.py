@@ -37,6 +37,22 @@ def _as_bool(value: str | None, default: bool) -> bool:
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
+def _as_float(value: str | None, default: float, *, minimum: float | None = None) -> float:
+    """Return a float parsed from an environment variable with sensible defaults."""
+
+    if value is None:
+        result = default
+    else:
+        try:
+            result = float(value)
+        except (TypeError, ValueError):
+            result = default
+
+    if minimum is not None and result < minimum:
+        return minimum
+    return result
+
+
 def _split_env_list(value: str | None) -> list[str]:
     """Split an environment variable into a list of non-empty strings."""
 
@@ -202,6 +218,27 @@ AZURE_AD = {
     'AUTHORITY': f'https://login.microsoftonline.com/{os.getenv("AZURE_TENANT_ID")}',
     'SCOPE': ['User.Read']  # Add other scopes if needed
 }
+
+AZURE_GRAPH_REQUEST_TIMEOUT = _as_float(
+    os.getenv('AZURE_GRAPH_TIMEOUT'),
+    10.0,
+    minimum=1.0,
+)
+ACTIVE_DIRECTORY_CONNECT_TIMEOUT = _as_float(
+    os.getenv('ACTIVE_DIRECTORY_CONNECT_TIMEOUT'),
+    5.0,
+    minimum=0.1,
+)
+ACTIVE_DIRECTORY_RECEIVE_TIMEOUT = _as_float(
+    os.getenv('ACTIVE_DIRECTORY_RECEIVE_TIMEOUT'),
+    10.0,
+    minimum=0.1,
+)
+ACTIVE_DIRECTORY_SEARCH_TIMEOUT = _as_float(
+    os.getenv('ACTIVE_DIRECTORY_SEARCH_TIMEOUT'),
+    15.0,
+    minimum=1.0,
+)
 
 # 'HOST': os.getenv('MYSQL_HOST'),
 

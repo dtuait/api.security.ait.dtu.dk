@@ -1,8 +1,20 @@
 
+import datetime
+import logging
+import os
+
 from ldap3 import SUBTREE, ALL_ATTRIBUTES
 from .active_directory_connect import active_directory_connect
 from ldap3.core.exceptions import LDAPException
-import datetime
+
+logger = logging.getLogger(__name__)
+
+try:
+    _SEARCH_TIME_LIMIT = float(os.getenv('ACTIVE_DIRECTORY_SEARCH_TIMEOUT', '15'))
+except (TypeError, ValueError):
+    _SEARCH_TIME_LIMIT = 15.0
+
+SEARCH_TIME_LIMIT = max(1, int(_SEARCH_TIME_LIMIT))
 
 def serialize_value(value):
     """
@@ -44,13 +56,18 @@ def active_directory_query(*, base_dn, search_filter, search_attributes=ALL_ATTR
 
 
 
+        search_timed_out = False
+
         while True:
-            conn.search(search_base=base_dn,
-                        search_filter=search_filter,
-                        search_scope=SUBTREE,
-                        attributes=attributes_to_fetch,
-                        paged_size=page_size,
-                        paged_cookie=paged_cookie)
+            conn.search(
+                search_base=base_dn,
+                search_filter=search_filter,
+                search_scope=SUBTREE,
+                attributes=attributes_to_fetch,
+                paged_size=page_size,
+                paged_cookie=paged_cookie,
+                time_limit=SEARCH_TIME_LIMIT,
+            )
 
             for entry in conn.entries:
                 if limit is not None and entries_collected >= limit:
@@ -80,15 +97,36 @@ def active_directory_query(*, base_dn, search_filter, search_attributes=ALL_ATTR
             if limit is not None and entries_collected >= limit:
                 break
 
-            if conn.result['controls'] and '1.2.840.113556.1.4.319' in conn.result['controls']:
-                paged_cookie = conn.result['controls']['1.2.840.113556.1.4.319']['value']['cookie']
+            result_controls = conn.result.get('controls') if isinstance(conn.result, dict) else None
+            if result_controls and '1.2.840.113556.1.4.319' in result_controls:
+                paged_cookie = result_controls['1.2.840.113556.1.4.319']['value']['cookie']
                 if not paged_cookie:
                     break
             else:
-                print('Paged search control not found in server response.')
+                if isinstance(conn.result, dict):
+                    description = conn.result.get('description')
+                    if description == 'timeLimitExceeded':
+                        search_timed_out = True
+                        break
+                    if description and description != 'success':
+                        logger.warning(
+                            'Active Directory query returned description=%s for base_dn=%s filter=%s',
+                            description,
+                            base_dn,
+                            search_filter,
+                        )
+                else:
+                    print('Paged search control not found in server response.')
                 break
 
         conn.unbind()
+        if search_timed_out:
+            logger.warning(
+                'Active Directory query time limit (%ss) exceeded for base_dn=%s filter=%s',
+                SEARCH_TIME_LIMIT,
+                base_dn,
+                search_filter,
+            )
         return ldap_list
 
 
