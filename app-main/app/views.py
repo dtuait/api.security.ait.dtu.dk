@@ -1,31 +1,78 @@
-from django.shortcuts import render, redirect
-from django.contrib.auth.decorators import login_required
-from django.http import HttpResponse, HttpResponseRedirect
-from django.urls import reverse
-from django.views import View
-import msal
+import logging
 import os
-from dotenv import load_dotenv
+import time
+import urllib.parse
+from urllib.parse import urlparse, urlunparse
+
+import msal
 import requests
-from msal import ConfidentialClientApplication
-from django.contrib.auth.models import User
 from django.conf import settings
 from django.contrib.auth import login, logout
-dotenv_path = '/usr/src/project/.devcontainer/.env'
-load_dotenv(dotenv_path=dotenv_path)
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import User
+from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
+from django.shortcuts import redirect, render
+from django.urls import reverse
 from django.utils.decorators import method_decorator
-import urllib.parse
-import time
-import logging
-from django.http import JsonResponse
-from django.views.decorators.http import require_GET
+from django.views import View
 from django.views.decorators.cache import cache_control
-from myview.models import UserLoginLog, ADGroupAssociation
+from django.views.decorators.http import require_GET
+from msal import ConfidentialClientApplication
+
+from myview.models import ADGroupAssociation, UserLoginLog
 
 logger = logging.getLogger(__name__)
 
 
+def _build_callback_absolute_uri(request) -> str:
+    """Return the callback URL using the current request's scheme/host."""
 
+    return request.build_absolute_uri(reverse('msal_callback'))
+
+
+def _resolve_redirect_uri(request) -> str:
+    """Determine which redirect URI to hand to Azure AD for this request."""
+
+    callback_url = _build_callback_absolute_uri(request)
+    configured_uri = (getattr(settings, 'AZURE_AD', {}) or {}).get('REDIRECT_URI')
+    if not configured_uri:
+        return callback_url
+
+    try:
+        configured_parsed = urlparse(configured_uri)
+    except Exception:  # noqa: BLE001
+        logger.warning(
+            "Invalid AZURE_AD redirect URI configured (%s); using request host %s",
+            configured_uri,
+            callback_url,
+        )
+        return callback_url
+
+    if not configured_parsed.scheme or not configured_parsed.netloc:
+        logger.warning(
+            "Configured AZURE_AD redirect URI missing scheme/host (%s); using %s",
+            configured_uri,
+            callback_url,
+        )
+        return callback_url
+
+    callback_parsed = urlparse(callback_url)
+    configured_host = (configured_parsed.hostname or "").lower()
+    request_host = (callback_parsed.hostname or "").lower()
+
+    if configured_host and request_host and configured_host != request_host:
+        logger.warning(
+            "Configured AZURE_AD redirect URI host '%s' does not match request host '%s'. "
+            "Falling back to %s. Update SERVICE_URL_WEB/AZURE_REDIRECT_URI if this is unexpected.",
+            configured_host,
+            request_host,
+            callback_url,
+        )
+        return callback_url
+
+    path = configured_parsed.path or callback_parsed.path or '/auth/callback/'
+    normalised = configured_parsed._replace(path=path)
+    return urlunparse(normalised)
 
 
 def _get_client_ip(request):
@@ -100,12 +147,13 @@ def msal_callback(request):
     # Validate the state parameter (if you passed one in the authorization request)
 
     # MSAL Config
-    tenant_id = os.getenv('AZURE_TENANT_ID')
-    authority_url = f'https://login.microsoftonline.com/{tenant_id}'
-    client_id = os.getenv('AIT_SOC_MSAL_VICRE_CLIENT_ID')
-    client_secret = os.getenv('AIT_SOC_MSAL_VICRE_MSAL_SECRET_VALUE')
-    # Use configured redirect URI (supports local HTTP or production HTTPS)
-    redirect_uri = settings.AZURE_AD['REDIRECT_URI']
+    azure_config = getattr(settings, 'AZURE_AD', {}) or {}
+    tenant_id = azure_config.get('TENANT_ID') or os.getenv('AZURE_TENANT_ID')
+    authority_url = azure_config.get('AUTHORITY') or f'https://login.microsoftonline.com/{tenant_id}'
+    client_id = azure_config.get('CLIENT_ID') or os.getenv('AIT_SOC_MSAL_VICRE_CLIENT_ID')
+    client_secret = azure_config.get('CLIENT_SECRET') or os.getenv('AIT_SOC_MSAL_VICRE_MSAL_SECRET_VALUE')
+    redirect_uri = _resolve_redirect_uri(request)
+    logger.debug("MSAL callback resolved redirect_uri=%s", redirect_uri)
 
     # Initialize the MSAL confidential client
     client_app = msal.ConfidentialClientApplication(
@@ -464,10 +512,11 @@ def msal_director(request):
 def msal_login(request):
     logger = logging.getLogger(__name__)
     start_time = time.monotonic()
+    redirect_uri = _resolve_redirect_uri(request)
     logger.info(
         "MSAL login start client_id=%s redirect_uri=%s scope=%s",
         settings.AZURE_AD['CLIENT_ID'],
-        settings.AZURE_AD['REDIRECT_URI'],
+        redirect_uri,
         settings.AZURE_AD['SCOPE'],
     )
 
@@ -483,7 +532,7 @@ def msal_login(request):
         auth_started = time.monotonic()
         auth_url = client_app.get_authorization_request_url(
             scopes=settings.AZURE_AD['SCOPE'],
-            redirect_uri=settings.AZURE_AD['REDIRECT_URI']
+            redirect_uri=redirect_uri,
         )
         logger.info(
             "MSAL auth URL generated in %.1fms total_elapsed=%.1fms",
@@ -564,11 +613,6 @@ def msal_logout(request):
     response = redirect(logout_url)
     response.delete_cookie('csrftoken')
     return response
-
-
-
-
-
 
 
 
