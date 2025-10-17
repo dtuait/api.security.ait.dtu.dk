@@ -63,7 +63,14 @@ def _parse_server(value: str) -> tuple[str, bool, Optional[int]]:
 
     scheme = (parsed.scheme or "ldaps").lower()
     use_ssl = scheme != "ldap"
-    return parsed.hostname, use_ssl, parsed.port
+    port = parsed.port
+    if port is None:
+        port = 636 if use_ssl else 389
+    try:
+        port_int = int(port)
+    except (TypeError, ValueError):
+        port_int = 636 if use_ssl else 389
+    return parsed.hostname, use_ssl, port_int
 
 
 def active_directory_connect() -> Tuple[Optional[Connection], str]:
@@ -99,11 +106,14 @@ def active_directory_connect() -> Tuple[Optional[Connection], str]:
             10.0,
             minimum=0.1,
         )
+        # ldap3 expects integer timeouts; coercing to int avoids socket errors.
+        connect_timeout_int = max(1, int(round(connect_timeout)))
+        receive_timeout_int = max(1, int(round(receive_timeout)))
 
         server_kwargs = {
             "use_ssl": use_ssl,
             "get_info": ALL,
-            "connect_timeout": connect_timeout,
+            "connect_timeout": connect_timeout_int,
         }
         if ad_port is not None:
             try:
@@ -119,7 +129,7 @@ def active_directory_connect() -> Tuple[Optional[Connection], str]:
             server,
             ad_username,
             ad_password,
-            receive_timeout=receive_timeout,
+            receive_timeout=receive_timeout_int,
         )
 
         # Check if the connection is successful
@@ -128,7 +138,7 @@ def active_directory_connect() -> Tuple[Optional[Connection], str]:
 
         return conn, "Successfully connected to Active Directory"
     except Exception as e:
-        return None, f"Error connecting to Active Directory: {str(e)}"
+        return None, f"Error connecting to Active Directory: {type(e).__name__}: {e}"
 
 
 def run():
