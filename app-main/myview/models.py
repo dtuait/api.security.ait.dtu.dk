@@ -990,7 +990,6 @@ class ADGroupAssociation(BaseModel):
                 logger_local.exception(
                     "Failed to synchronise AD groups for user %s", username
                 )
-                raise
             finally:
                 cache.delete(lock_key)
 
