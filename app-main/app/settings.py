@@ -181,6 +181,7 @@ AD_OU_LIMITER_DELETE_MISSING = _as_bool(os.getenv('AD_OU_LIMITER_DELETE_MISSING'
 # Have I Been Pwned proxy configuration
 HIBP_API_BASE_URL = os.getenv('HIBP_API_BASE_URL', 'https://api.haveibeenpwned.cert.dk')
 HIBP_API_KEY = os.getenv('HIBP_API_KEY')
+HIBP_CERT_API_KEY = os.getenv('HIBP_CERT_API_KEY')
 try:
     HIBP_API_TIMEOUT = float(os.getenv('HIBP_API_TIMEOUT', '15'))
 except ValueError:
@@ -348,6 +349,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'myview.context_processors.swagger_defaults',
             ],
         },
     },
@@ -564,14 +566,13 @@ REST_FRAMEWORK = {
 
 SWAGGER_SETTINGS = {
     'SECURITY_DEFINITIONS': {
-        'DEFAULT_API_KEY': 'Authorization:<token>',
-        'USE_SESSION_AUTH': False,  # This will disable the button to log out in Swagger's UI
-        'Token': {
+        'Authorization': {
             'type': 'apiKey',
             'name': 'Authorization',
-            'in': 'header'
+            'in': 'header',
         }
     },
+    'USE_SESSION_AUTH': False,
 }
 
 

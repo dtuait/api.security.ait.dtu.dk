@@ -6,10 +6,10 @@ import logging
 from typing import Any, Dict
 
 from active_directory.services import execute_active_directory_query
+from django.conf import settings
 from django.http import HttpResponse
 from rest_framework import status
 from rest_framework.response import Response
-from rest_framework.authtoken.models import Token
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 
@@ -23,12 +23,11 @@ AUTHORIZATION_HEADER_PARAM = openapi.Parameter(
     "Authorization",
     in_=openapi.IN_HEADER,
     description=(
-        "Required. Provide the unencrypted 32-character Django REST Framework token "
-        "as 'Token <token>'."
+        "Required for user authentication. Supply your API key as 'Token &lt;api_key&gt;'."
     ),
     type=openapi.TYPE_STRING,
     required=True,
-    default="Token <token>",
+    default="",
 )
 
 
@@ -64,13 +63,18 @@ class BaseHIBPView(SecuredAPIView):
 
         headers: Dict[str, str] = dict(self.extra_headers or {})
         if self.require_api_key:
-            token_value = self._extract_authorization_token(request)
-            if not token_value:
+            service_key = getattr(settings, "HIBP_CERT_API_KEY", None) or getattr(
+                settings, "HIBP_API_KEY", None
+            )
+            if isinstance(service_key, str):
+                service_key = service_key.strip()
+            if not service_key:
+                logger.error("HIBP service API key missing; set HIBP_CERT_API_KEY or HIBP_API_KEY")
                 return Response(
-                    {"detail": "API token required."},
-                    status=status.HTTP_401_UNAUTHORIZED,
+                    {"detail": "HIBP backend is not configured."},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 )
-            headers["hibp-api-key"] = token_value
+            headers["hibp-api-key"] = service_key
 
         try:
             service_response = HIBPClient.get(
@@ -108,14 +112,6 @@ class BaseHIBPView(SecuredAPIView):
         data = response.text
         content_type = response.headers.get("Content-Type", "text/plain")
         return HttpResponse(data, status=response.status_code, content_type=content_type)
-
-    def _extract_authorization_token(self, request) -> str | None:
-        auth = getattr(request, "auth", None)
-        if isinstance(auth, Token):
-            return auth.key
-        if isinstance(auth, str):
-            return auth
-        return None
 
     def transform_response_data(self, data: Any, request, **kwargs: Any) -> Any:
         """Allow subclasses to adjust the payload before returning it downstream."""

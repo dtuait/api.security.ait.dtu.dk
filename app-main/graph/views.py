@@ -59,10 +59,10 @@ class GetUserView(SecuredAPIView):
     authorization_header = openapi.Parameter(
         "Authorization",
         in_=openapi.IN_HEADER,
-        description="Required. Must be in the format 'Token <token>'.",
+        description="Required. Must be in the format ''.",
         type=openapi.TYPE_STRING,
         required=True,
-        default="Token <token>",
+        default="",
     )
 
     user_path_param = openapi.Parameter(
@@ -93,7 +93,7 @@ Microsoft Graph API documentation: https://learn.microsoft.com/en-us/graph/api/u
 Curl example:
 ```
 curl --location --request GET 'https://api.security.ait.dtu.dk/v1.0/graph/get-user/<user>' \
-    --header 'Authorization:<token>'
+    --header 'Authorization: Token YOUR_API_KEY'
 ```
 
 Response example:
@@ -133,10 +133,10 @@ class ListUserAuthenticationMethodsView(SecuredAPIView):
     authorization_header = openapi.Parameter(
         "Authorization",
         in_=openapi.IN_HEADER,
-        description="Required. Must be in the format 'Token <token>'.",
+        description="Required. Must be in the format ''.",
         type=openapi.TYPE_STRING,
         required=True,
-        default="Token <token>",
+        default="",
     )
 
     user_path_param = openapi.Parameter(
@@ -161,7 +161,7 @@ Response example using SMS as MFA method:
 curl -X 'GET' \
     'http://localhost:6081/v1.0/graph/list/vicre-test01%40dtudk.onmicrosoft.com/authentication-methods' \
     -H 'accept: application/json' \
-    -H 'Authorization:<token>'
+    -H 'Authorization: Token YOUR_API_KEY'
 ```
 
 Response
@@ -207,10 +207,10 @@ class _BaseGraphDeleteView(SecuredAPIView):
     authorization_header = openapi.Parameter(
         "Authorization",
         in_=openapi.IN_HEADER,
-        description="Required. Must be in the format 'Token <token>'.",
+        description="Required. Must be in the format ''.",
         type=openapi.TYPE_STRING,
         required=True,
-        default="Token <token>",
+        default="",
     )
 
     def _error_response(self, response: Optional[Any], message: str, status_code: Optional[int]) -> Response:
@@ -258,7 +258,7 @@ Curl example:
 curl -X 'DELETE' \
     'http://localhost:6081/v1.0/graph/users/vicre-test01%40dtudk.onmicrosoft.com/software-authentication-methods/38870367-9eb1-4568-9056-23c141f777de' \
     -H 'accept: application/json' \
-    -H 'Authorization:<token>'
+    -H 'Authorization: Token YOUR_API_KEY'
 ```
 
 Response: 204 No content
@@ -339,7 +339,7 @@ Curl example:
 curl -X 'DELETE' \
     'http://localhost:6081/v1.0/graph/users/vicre-test01%40dtudk.onmicrosoft.com/microsoft-authentication-methods/171397f2-804e-4664-8ede-c4b3adf6bbb0' \
     -H 'accept: application/json' \
-    -H 'Authorization:<token>'
+    -H 'Authorization: Token YOUR_API_KEY'
 ```
 
 Response: 204 No content
@@ -420,7 +420,7 @@ Curl example:
 curl -X 'DELETE' \
     'http://localhost:6081/v1.0/graph/users/vicre-test01%40dtudk.onmicrosoft.com/phone-authentication-methods/171397f2-804e-4664-8ede-c4b3adf6bbb0' \
     -H 'accept: application/json' \
-    -H 'Authorization:<token>'
+    -H 'Authorization: Token YOUR_API_KEY'
 ```
 
 Response: 204 No content
@@ -472,7 +472,7 @@ class HuntingQueryView(SecuredAPIView):
     authorization_header = openapi.Parameter(
         "Authorization",
         in_=openapi.IN_HEADER,
-        description="Required. Must be in the format 'Token <token>'.",
+        description="Required. Must be in the format ''.",
         type=openapi.TYPE_STRING,
         required=True,
     )

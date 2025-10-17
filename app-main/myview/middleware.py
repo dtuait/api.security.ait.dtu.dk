@@ -440,7 +440,7 @@ class AccessControlMiddleware(MiddlewareMixin):
         else:
             self._ensure_debug_user(request, normalised_path)
 
-            if token and not token.startswith("<token>"):
+            if token and not token.startswith("YOUR_API_KEY"):
                 if not self._authenticate_by_token(request, token):
                     action = "invalid_token"
                     response = JsonResponse({"error": "Invalid API token."}, status=403)

@@ -212,6 +212,9 @@ if [ "${DJANGO_COLLECTSTATIC:-true}" = "true" ]; then
   run_as_app_user python manage.py collectstatic --noinput
 fi
 
+# Ensure the built-in limiter types exist so admin bulk actions work out of the box.
+run_as_app_user python manage.py ensure_limiter_types || true
+
 # Optionally bootstrap an administrative account when credentials are provided.
 if [ -n "${DJANGO_ADMIN_USERNAME}" ] && [ -n "${DJANGO_ADMIN_PASSWORD}" ]; then
   run_as_app_user python manage.py ensure_admin_user || true

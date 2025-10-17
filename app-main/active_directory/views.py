@@ -29,10 +29,10 @@ class ActiveDirectoryQueryAssistantView(SecuredAPIView):
     header_parameter = openapi.Parameter(
         "Authorization",
         in_=openapi.IN_HEADER,
-        description="Type: Token <token>",
+        description="Type: Token YOUR_API_KEY",
         type=openapi.TYPE_STRING,
         required=True,
-        default="Token <token>",
+        default="",
     )
 
     user_prompt_body = openapi.Schema(
@@ -58,7 +58,7 @@ This assistant helps generate Active Directory query parameters based on user re
 Curl example:
 ```
 curl --location --request POST 'http://api.security.ait.dtu.dk/active-directory/v1.0/query-assistant' \
-    --header 'Authorization:<token>' \
+    --header 'Authorization: Token YOUR_API_KEY' \
     --header 'Content-Type: application/json' \
     --data-raw '{
         "user_prompt": "Retrieve all disabled user accounts in 'DTUBasen' and include their account names and statuses."
