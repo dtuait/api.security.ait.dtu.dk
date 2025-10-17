@@ -42,7 +42,23 @@
                 "app.production_settings"
             ],
             "django": true,
-            "justMyCode": true
+            "justMyCode": true,
+            "console": "integratedTerminal",
+            "envFile": "${workspaceFolder}/.env",
+            "env": {
+                "DJANGO_DEBUG": "true",
+                "SERVICE_URL_WEB": "https://indifferently-piscine-anson.ngrok-free.dev",
+                "SERVICE_FQDN_WEB": "indifferently-piscine-anson.ngrok-free.dev",
+                "AZURE_REDIRECT_URI": "https://indifferently-piscine-anson.ngrok-free.dev/auth/callback",
+                "DJANGO_ALLOWED_HOSTS": "localhost,127.0.0.1,indifferently-piscine-anson.ngrok-free.dev",
+                "DJANGO_CSRF_TRUSTED_ORIGINS": "https://indifferently-piscine-anson.ngrok-free.dev",
+                "DJANGO_SECURE_SSL_REDIRECT": "false",
+                "DJANGO_SECURE_HSTS_SECONDS": "0",
+                "DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS": "false",
+                "DJANGO_SECURE_HSTS_PRELOAD": "false",
+                "DJANGO_SESSION_COOKIE_SECURE": "false",
+                "DJANGO_CSRF_COOKIE_SECURE": "false"
+            }
         }
 
 
