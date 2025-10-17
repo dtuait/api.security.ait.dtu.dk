@@ -473,6 +473,24 @@ STATICFILES_DIRS = [
 
 STATICFILES_STORAGE = 'myview.storage.LenientCompressedManifestStaticFilesStorage'
 
+def _static_manifest_exists() -> bool:
+    try:
+        static_root_path = Path(STATIC_ROOT)
+    except TypeError:
+        return False
+    return (static_root_path / 'staticfiles.json').exists()
+
+_has_static_manifest = _static_manifest_exists()
+
+WHITENOISE_AUTOREFRESH = _as_bool(
+    os.getenv('WHITENOISE_AUTOREFRESH'),
+    DEBUG or not _has_static_manifest,
+)
+WHITENOISE_USE_FINDERS = _as_bool(
+    os.getenv('WHITENOISE_USE_FINDERS'),
+    DEBUG or not _has_static_manifest,
+)
+
 MEDIA_URL = '/media/'
 MEDIA_ROOT = _ensure_storage_dir(
     'DJANGO_MEDIA_ROOT',

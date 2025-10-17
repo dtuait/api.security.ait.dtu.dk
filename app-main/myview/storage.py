@@ -1,6 +1,7 @@
 import logging
 from typing import Any
 
+from django.conf import settings
 from whitenoise.storage import CompressedManifestStaticFilesStorage
 
 logger = logging.getLogger("myview.staticfiles")
@@ -48,7 +49,11 @@ class LenientCompressedManifestStaticFilesStorage(CompressedManifestStaticFilesS
         if key in self._logged_missing_files:
             return
         self._logged_missing_files.add(key)
-        logger.warning(
+        if getattr(settings, "DEBUG", False) or getattr(settings, "WHITENOISE_USE_FINDERS", False):
+            log_method = logger.debug
+        else:
+            log_method = logger.warning
+        log_method(
             "Static asset '%s' missing from manifest or storage. "
             "Serving original path; run collectstatic to restore hashed assets. (%s)",
             name,
