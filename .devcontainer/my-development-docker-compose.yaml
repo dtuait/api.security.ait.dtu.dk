@@ -10,7 +10,7 @@ services:
     image: dtuait/api-security-ait-dtu-dk-app-main:dev-latest
     command: sleep infinity
     env_file:
-      - ../.env
+      - ./.env
     restart: always
     tty: true
     working_dir: /app/app-main
@@ -26,10 +26,10 @@ services:
       retries: 3
       start_period: 30s
     environment:
-      SERVICE_FQDN_WEB: ${SERVICE_FQDN_WEB:-api.security.ait.dtu.dk}
-      SERVICE_URL_WEB: ${SERVICE_URL_WEB:-https://api.security.ait.dtu.dk}
-      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-api.security.ait.dtu.dk,localhost,127.0.0.1}
-      DJANGO_CSRF_TRUSTED_ORIGINS: ${DJANGO_CSRF_TRUSTED_ORIGINS:-https://api.security.ait.dtu.dk}
+      SERVICE_FQDN_WEB: ${SERVICE_FQDN_WEB}
+      SERVICE_URL_WEB: ${SERVICE_URL_WEB}
+      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS}
+      DJANGO_CSRF_TRUSTED_ORIGINS: ${DJANGO_CSRF_TRUSTED_ORIGINS}
       DJANGO_DEBUG: ${DJANGO_DEBUG:-false}
       DJANGO_STATIC_ROOT: /data/static
       DJANGO_MEDIA_ROOT: /data/media
@@ -39,14 +39,14 @@ services:
       DJANGO_SECURE_HSTS_SECONDS: ${DJANGO_SECURE_HSTS_SECONDS:-3600}
       DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS: ${DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS:-true}
       DJANGO_SECURE_HSTS_PRELOAD: ${DJANGO_SECURE_HSTS_PRELOAD:-true}
-      AZURE_REDIRECT_URI: ${AZURE_REDIRECT_URI:-https://api.security.ait.dtu.dk/auth/callback}
+      AZURE_REDIRECT_URI: ${AZURE_REDIRECT_URI}
       DJANGO_SECRET: ${DJANGO_SECRET:-local-dev-insecure-secret}
       POSTGRES_DB: ${POSTGRES_DB:-app}
       POSTGRES_USER: ${POSTGRES_USER:-app}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-please-change-me}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_HOST: xx-api-security-ait-dtu-dk-postgres-service
       POSTGRES_PORT: 5432
-      CACHE_URL: ${CACHE_URL:-redis://xx-api-security-ait-dtu-dk-redis-service:6379/0}
+      CACHE_URL: ${CACHE_URL}
       DJANGO_MIGRATE: "false"
       DJANGO_COLLECTSTATIC: "false"
     volumes:
@@ -63,17 +63,17 @@ services:
     image: postgres:16
     restart: always
     env_file:
-      - ../.env
+      - ./.env
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-app}
-      POSTGRES_USER: ${POSTGRES_USER:-app}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-please-change-me}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - beta-api-security-ait-dtu-dk-postgres-service-volume:/var/lib/postgresql/data
     networks:
       - internal
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-app} -d ${POSTGRES_DB:-app}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 5
