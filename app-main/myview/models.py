@@ -968,7 +968,57 @@ class ADGroupAssociation(BaseModel):
         lock_timeout = max(60, int(max_age_seconds / 2))
         now = time.time()
 
-        last_synced = cache.get(cache_key)
+        cache_available = True
+        cache_error_logged = False
+
+        def _handle_cache_error(exc: Exception, operation: str) -> None:
+            nonlocal cache_available, cache_error_logged
+            cache_available = False
+            if not cache_error_logged:
+                logger_local.warning(
+                    "Cache %s failed for user %s: %s. Continuing without caching.",
+                    operation,
+                    username,
+                    exc,
+                    exc_info=logger_local.isEnabledFor(logging.DEBUG),
+                )
+                cache_error_logged = True
+
+        def _cache_get(key: str):
+            if not cache_available:
+                return None
+            try:
+                return cache.get(key)
+            except Exception as exc:  # noqa: BLE001 - backend-specific errors
+                _handle_cache_error(exc, "get")
+                return None
+
+        def _cache_add(key: str, value: str, *, timeout: int) -> bool:
+            if not cache_available:
+                return True
+            try:
+                return bool(cache.add(key, value, timeout=timeout))
+            except Exception as exc:  # noqa: BLE001 - backend-specific errors
+                _handle_cache_error(exc, "add")
+                return True
+
+        def _cache_set(key: str, value, *, timeout: int) -> None:
+            if not cache_available:
+                return
+            try:
+                cache.set(key, value, timeout=timeout)
+            except Exception as exc:  # noqa: BLE001 - backend-specific errors
+                _handle_cache_error(exc, "set")
+
+        def _cache_delete(key: str) -> None:
+            if not cache_available:
+                return
+            try:
+                cache.delete(key)
+            except Exception as exc:  # noqa: BLE001 - backend-specific errors
+                _handle_cache_error(exc, "delete")
+
+        last_synced = _cache_get(cache_key)
         if not force and last_synced and (now - float(last_synced)) < max_age_seconds:
             return False
 
@@ -976,22 +1026,22 @@ class ADGroupAssociation(BaseModel):
             if wait:
                 deadline = time.monotonic() + 10.0
                 while time.monotonic() < deadline:
-                    if cache.add(lock_key, "1", timeout=lock_timeout):
+                    if _cache_add(lock_key, "1", timeout=lock_timeout):
                         return True
                     time.sleep(0.1)
                 return False
-            return cache.add(lock_key, "1", timeout=lock_timeout)
+            return _cache_add(lock_key, "1", timeout=lock_timeout)
 
         def _perform_sync():
             try:
                 cls.sync_user_ad_groups(username=username)
-                cache.set(cache_key, time.time(), timeout=max_age_seconds)
+                _cache_set(cache_key, time.time(), timeout=max_age_seconds)
             except Exception:
                 logger_local.exception(
                     "Failed to synchronise AD groups for user %s", username
                 )
             finally:
-                cache.delete(lock_key)
+                _cache_delete(lock_key)
 
         if not block:
             if not _acquire_lock(wait=False):
@@ -1014,7 +1064,7 @@ class ADGroupAssociation(BaseModel):
             return True
         finally:
             # _perform_sync already clears the lock in normal flow, but ensure cleanup if it raised.
-            cache.delete(lock_key)
+            _cache_delete(lock_key)
 
     @staticmethod
     def delete_unused_groups():
