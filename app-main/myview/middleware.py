@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import re
 import time
 from typing import Iterable, Optional, Sequence, Tuple
@@ -128,41 +129,42 @@ class AccessControlMiddleware(MiddlewareMixin):
         return True
 
     def _ensure_debug_user(self, request, normalised_path: str) -> None:
-        if not settings.DEBUG or request.META.get("HTTP_AUTHORIZATION"):
-            return
-
-        # Avoid creating sessions for async AJAX traffic.
-        if normalised_path.startswith("/myview/ajax"):
-            return
-
         User = get_user_model()
 
-        # Respect any already authenticated user unless we explicitly need to
-        # seed a debug session for a protected path. This keeps local MSAL
-        # sign-ins intact when DEBUG is enabled.
-        if request.user.is_authenticated:
-            if normalised_path.startswith("/admin") and request.user.username != "admin":
-                logout(request)
-            else:
-                return
-
-        # Admin paths should authenticate as the admin user for convenience.
         if normalised_path.startswith("/admin"):
             admin_user, created = User.objects.get_or_create(
                 username="admin",
                 defaults={"email": "admin@example.com", "is_staff": True, "is_superuser": True},
             )
-            if created or not (admin_user.is_staff and admin_user.is_superuser):
+            desired_password = os.getenv("DJANGO_ADMIN_PASSWORD") or "admin"
+            needs_update = created or not (admin_user.is_staff and admin_user.is_superuser)
+            if desired_password and not admin_user.check_password(desired_password):
+                needs_update = True
+            if needs_update:
                 admin_user.is_staff = True
                 admin_user.is_superuser = True
-                admin_user.set_password("admin")
-                admin_user.save(update_fields=["password", "is_staff", "is_superuser"])
+                admin_user.set_password(desired_password)
+                admin_user.save(update_fields=["password", "is_staff", "is_superuser", "email"])
+
+            if not settings.DEBUG or request.META.get("HTTP_AUTHORIZATION"):
+                return
+
+            if request.user.is_authenticated and request.user.username != "admin":
+                logout(request)
 
             admin_user.backend = "django.contrib.auth.backends.ModelBackend"
             login(request, admin_user)
             return
 
-        # Fallback debug user for other paths when no authenticated user exists.
+        if not settings.DEBUG or request.META.get("HTTP_AUTHORIZATION"):
+            return
+
+        if normalised_path.startswith("/myview/ajax"):
+            return
+
+        if request.user.is_authenticated:
+            return
+
         user, _ = User.objects.get_or_create(username="vicre", defaults={"email": "vicre@example.com"})
         user.backend = "django.contrib.auth.backends.ModelBackend"
         login(request, user)
@@ -517,4 +519,3 @@ class AccessControlMiddleware(MiddlewareMixin):
             ),
             (time.monotonic() - sync_started) * 1000,
         )
-
