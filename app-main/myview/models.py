@@ -1102,54 +1102,10 @@ class ADGroupAssociation(BaseModel):
             sam_accountname = sam_accountname[0] if isinstance(sam_accountname, list) else sam_accountname
 
             try:
-                # Only consider DTU users; skip others quietly
                 if not user_principal_name or not user_principal_name.endswith('@dtu.dk'):
                     logger.debug("Skipping non-DTU or missing UPN: %s", user_principal_name)
                     continue
 
-                # Validate user presence in Azure AD
-                from graph.services import execute_get_user
-                user_data, status_code = execute_get_user(
-                    user_principal_name=user_principal_name,
-                    select_parameters='$select=onPremisesImmutableId'
-                )
-                if status_code != 200:
-                    # Improve observability: distinguish 404 vs auth/other errors
-                    err_detail = None
-                    try:
-                        if isinstance(user_data, dict):
-                            err_detail = user_data.get('error')
-                    except Exception:
-                        err_detail = None
-
-                    if status_code == 404:
-                        logger.info("Azure AD user not found (404), skipping: %s", user_principal_name)
-                    elif status_code in (401, 403):
-                        logger.warning(
-                            "Azure Graph auth/permission error (%s) for %s: %s",
-                            status_code,
-                            user_principal_name,
-                            err_detail,
-                        )
-                    else:
-                        logger.warning(
-                            "Azure Graph error (%s) for %s: %s",
-                            status_code,
-                            user_principal_name,
-                            err_detail,
-                        )
-                    continue
-
-                on_premises_immutable_id = user_data.get('onPremisesImmutableId', '')
-                from app.scripts.azure_user_is_synced_with_on_premise_users import azure_user_is_synced_with_on_premise_users
-                if not azure_user_is_synced_with_on_premise_users(
-                    sam_accountname=sam_accountname,
-                    on_premises_immutable_id=on_premises_immutable_id,
-                ):
-                    logger.info("User not synced with on-prem AD, skipping: %s", user_principal_name)
-                    continue
-
-                # Create new user if the user is synced with Azure AD
                 username = (sam_accountname or '').lower()
                 if not username:
                     logger.warning("Missing sAMAccountName for %s; cannot create user", user_principal_name)
@@ -1171,7 +1127,6 @@ class ADGroupAssociation(BaseModel):
                 )
 
             except Exception:
-                # Log unexpected errors with stack trace but keep syncing
                 logger.exception("Unexpected error while ensuring Django user for %s", user_principal_name)
 
 
