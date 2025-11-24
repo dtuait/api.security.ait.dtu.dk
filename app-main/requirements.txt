@@ -54,7 +54,7 @@ pandas==2.2.3
 ping3==4.0.5
 portalocker==2.8.2
 pyasn1==0.5.1
-pycparser==2.21
+pycparser==2.23
 PyJWT==2.10.1
 PyMySQL==1.1.1
 pyodbc==5.1.0
