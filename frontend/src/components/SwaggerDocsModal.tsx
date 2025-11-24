@@ -34,6 +34,7 @@ const SwaggerDocsModal: React.FC<SwaggerDocsModalProps> = ({ accessToken, onClos
         const response = await fetch(swaggerSpecUrl, {
           method: 'GET',
           headers,
+          credentials: 'include',
         });
 
         if (!response.ok) {
@@ -81,6 +82,7 @@ const SwaggerDocsModal: React.FC<SwaggerDocsModalProps> = ({ accessToken, onClos
           layout: 'BaseLayout',
           deepLinking: true,
           requestInterceptor: (req) => {
+            req.credentials = 'include';
             if (accessToken) {
               req.headers = req.headers || {};
               req.headers.Authorization = 'Bearer ' + accessToken;
@@ -122,6 +124,7 @@ const SwaggerDocsModal: React.FC<SwaggerDocsModalProps> = ({ accessToken, onClos
           layout: 'BaseLayout',
           deepLinking: true,
           requestInterceptor: (req) => {
+            req.credentials = 'include';
             if (accessToken) {
               req.headers = req.headers || {};
               req.headers.Authorization = 'Bearer ' + accessToken;
