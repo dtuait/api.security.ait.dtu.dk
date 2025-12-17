@@ -36,6 +36,13 @@ services:
       POSTGRES_HOST: db
       POSTGRES_PORT: 5432
       CACHE_URL: ${CACHE_URL:-redis://redis:6379/0}
+      AIT_SOC_MSAL_VICRE_AUTHORITY: ${AIT_SOC_MSAL_VICRE_AUTHORITY:?must be set}
+      AIT_SOC_MSAL_VICRE_CLIENT_ID: ${AIT_SOC_MSAL_VICRE_CLIENT_ID:?must be set}
+      AIT_SOC_MSAL_VICRE_MSAL_SECRET_VALUE: ${AIT_SOC_MSAL_VICRE_MSAL_SECRET_VALUE:?must be set}
+      GRAPH_CLIENT_ID: ${GRAPH_CLIENT_ID:?must be set}
+      GRAPH_CLIENT_SECRET: ${GRAPH_CLIENT_SECRET:?must be set}
+      GRAPH_GRANT_TYPE: ${GRAPH_GRANT_TYPE:?must be set}
+
     volumes:
       - static_data:/data/static
       - media_data:/data/media
